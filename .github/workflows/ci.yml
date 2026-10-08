@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  plan:
+    name: Plan files present
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required files
+        run: |
+          for f in PLAN.md CLAUDE.md README.md LICENSE; do
+            test -f "$f" || { echo "missing $f"; exit 1; }
+          done
+          echo "Plan stage: M1 adds lint, type-check and test jobs here."

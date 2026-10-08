@@ -1,0 +1,119 @@
+# CLAUDE.md — working notes for agents on agent-replay
+
+Read PLAN.md first; it is the single source of truth. Tick a milestone only
+when its definition of done is met and CI is green. Keep `.agent/summary.md`
+and `.agent/journal.md` current at the end of every run.
+
+## What this is
+
+`agent-replay`: record an LLM agent's run (model calls, tool calls, clock,
+randomness) into a JSONL cassette, replay it with chosen cut points, assert on
+the trajectory, gate CI statistically on flakiness, and calibrate the LLM judge
+against human labels. Python SDK + CLI (`replay`), GitHub Action, FastAPI +
+React dashboard. See PLAN.md "Architecture" for the component map.
+
+## Layout (target)
+
+```
+agent_replay/        Python package (record, cassette, replay, checks, judge,
+                     stats [Patrick's piece], flake, calibrate, diff, store, cli)
+server/              FastAPI app over the store
+dashboard/           React 19 + TypeScript strict (Vite, TanStack Query, Tailwind)
+examples/            retail_agent (τ-bench retail subset, MIT, attributed) and a toy agent
+eval/                datasets, mutation suite, SPRT simulation, eval scripts
+tests/               offline, deterministic; no network ever
+docs/                screenshots, architecture notes, RELEASE.md
+action.yml           composite GitHub Action
+```
+
+## Commands
+
+Python is managed with `uv` (Python 3.12). Node 22 for the dashboard.
+
+```
+make setup        uv sync --all-extras; cd dashboard && npm ci
+make lint         ruff check . && ruff format --check . && (cd dashboard && npm run lint)
+make type         mypy --strict agent_replay server && (cd dashboard && npm run typecheck)
+make test         pytest -q (offline; fake model + committed cassettes)
+make eval         every eval that runs without credentials; writes RESULTS.md sections
+make bench        replay/recording benchmarks; writes RESULTS.md sections
+make eval-judge, eval-llmbar, bench-flake   need ANTHROPIC_API_KEY; print a cost estimate first
+make ui           cd dashboard && npm run dev
+make serve        replay serve (FastAPI + built dashboard)
+docker compose up dashboard with PostgreSQL
+```
+
+Until a target exists, say so in the PR rather than inventing it.
+
+## Quality gates (CI must pass all)
+
+- `ruff check` and `ruff format --check` clean; `mypy --strict` clean for
+  `agent_replay/` and `server/`; TypeScript `strict: true`, `eslint` clean.
+- `pytest` fully offline and deterministic: no network, no API key, no clock
+  dependence (use the replay clock helpers), fixed seeds. Mock at the SDK
+  wrapper boundary, not with HTTP mocking: `anthropic` 1.x uses `httpx2`, so
+  `respx`/`httpx` mocks do not intercept it.
+- Unit + integration tests for every milestone's features; Hypothesis property
+  tests for `stats` against scikit-learn / statsmodels oracles (dev deps only;
+  the package itself keeps `stats` stdlib-only).
+- No number in README.md or RESULTS.md that was not produced by a command in
+  this repo. Record dataset, method, command and raw output in RESULTS.md. Key-
+  requiring measurements go under "To measure" with the exact command.
+- No secrets, no personal data, no resume content. Config via env vars with the
+  `REPLAY_` prefix (`REPLAY_JUDGE_PROVIDER`, `REPLAY_JUDGE_MODEL`,
+  `REPLAY_JUDGE_MIN_KAPPA`, `REPLAY_DB_URL`, `REPLAY_STATS_IMPL`, …),
+  documented in README.
+- Structured logging (structlog) in the server and CLI; clear error messages
+  that name the fix.
+
+## Conventions
+
+- Small, reviewable commits in imperative mood ("Add cursor fallback to replay
+  engine"). Never add Co-Authored-By, "Generated with", or any AI attribution
+  to commits, PRs, code or docs. Git identity is already configured.
+- Typed everything: pydantic 2 models for cassette and reports; `Protocol`s for
+  provider adapters; TypeScript types generated from the OpenAPI schema.
+- Cassette schema is versioned (`schema_version`); never change v1 fields,
+  add v2 with a migration.
+- Each PR body teaches: big picture, decisions and trade-offs, how any number
+  was measured, and a "What to learn from this PR" section pointing at PLAN.md
+  "Learning path". Patrick reads explanations, not diffs.
+- Patrick's piece is `agent_replay/stats.py`. Build the interface, tests and
+  `stats_baseline.py` around it; do not implement the real module unless
+  PLAN.md says so (see "Patrick's piece" for the fallback rule).
+- Use subagents for independent work (tests vs implementation, dashboard vs
+  API) and review their output before committing.
+- Never sign up for services, publish, deploy or use credentials. Prepare
+  release workflows with `if:` guards and document steps in docs/RELEASE.md.
+
+## Claude API facts to rely on (verified 2026-10-08)
+
+- Default model `claude-opus-5-5` via the official `anthropic` SDK (1.12.x,
+  depends on `httpx2`, Python ≥ 3.10). Judge and example agent both use it;
+  Ollama (`ollama` 0.6.x) is the offline fallback provider.
+- Thinking cannot be disabled on Opus 5.5; control cost with
+  `output_config={"effort": "low"|"medium"|...}` (default `medium`). Do not send
+  `budget_tokens` or `thinking: {type: "disabled"}` (400).
+- `tool_choice: {type: "any"}` / `{type: "tool"}` return 400 on Opus 5.5. Use
+  `auto`, `strict: true` on tools, or structured outputs
+  (`output_config={"format": {"type": "json_schema", ...}}` or
+  `client.messages.parse(..., output_format=PydanticModel)`). The judge uses
+  structured outputs.
+- No assistant prefill. Parse tool inputs with `json.loads`, never string-match.
+- Return all `tool_result` blocks for one assistant turn in a single user
+  message, `is_error: true` for failures.
+- Put stable content (rubric, tool list) first for prompt caching; verify with
+  `usage.cache_read_input_tokens`.
+- Thinking blocks are bound to the producing model and conversation. Replay
+  never sends recorded assistant turns back to a live model.
+- Pricing used for cost gates lives in `agent_replay/pricing.py` with the date
+  it was captured; Opus 5.5 is $4 / $20 per MTok (input / output), cache reads
+  $0.20.
+
+## Prior art to stay differentiated from
+
+`pytest-agentreplay`, `replayproof`, `chronicle` (cut-point replay,
+arXiv:2609.20625), `pytest-agent-trace`, `agentprobe`. Replay's differentiators
+are measured judge calibration, statistical flakiness gating, the mutation
+study, and the dashboard with aligned trace diffs. Cite prior art where an idea
+is borrowed.
