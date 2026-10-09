@@ -374,3 +374,13 @@ def test_cassette_dir_override_reads_cassettes_by_file_name(tmp_path: Path) -> N
     assert set(failed) == {"modify_address_suite"}
     assert failed["modify_address_suite"].error is not None
     assert str(tmp_path / "other") in failed["modify_address_suite"].error.message
+
+
+def test_live_opus_recordings_pass_the_suite_offline() -> None:
+    """Six real claude-opus-5-5 runs (RESULTS.md), replayed with zero network."""
+    report = run_suite(SUITE, overrides=Overrides(cassette_dir=RETAIL_CASSETTES / "live"))
+
+    assert report.passed, to_markdown(report)
+    for scenario in report.scenarios:
+        assert set(scenario.steps.by_status) == {"exact"}
+    assert sum(s.cost_usd for s in report.scenarios) == pytest.approx(0.295, abs=0.001)
