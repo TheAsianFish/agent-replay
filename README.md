@@ -41,7 +41,7 @@ flaky from broken.
 Measured so far ([RESULTS.md](RESULTS.md)): on a live `model-live` run, a
 25% relative cost limit passed the unchanged agent (within 5% of baseline)
 and failed all six tasks of a variant with prompt caching removed (+76% to
-+156% cost at unchanged token counts). The uncalibrated judge agreed with the
++155% cost at unchanged token counts). The uncalibrated judge agreed with the
 deterministic checks on 23 of 24 runs; that is a wiring test, not a
 calibration.
 

@@ -376,7 +376,7 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     gate (baseline only for now).
     (g) **Measured.** On a live `model-live` run, the 25% cost limit passed
     the agent and failed all six tasks of a `no_prompt_cache` mutant (+76%
-    to +156% cost, tokens unchanged). The uncalibrated judge agreed with the
+    to +155% cost, tokens unchanged). The uncalibrated judge agreed with the
     deterministic checks on 23/24 runs (wiring test, not calibration).
     M3 API spend $1.41.
     (h) **Review fixes.** An independent review found six defects, all fixed

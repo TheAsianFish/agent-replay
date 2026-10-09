@@ -228,9 +228,9 @@ are against the baseline, from the budget check's details:
 | **Result** | **6/6 pass** | | | **6/6 fail (budget)** | | |
 
 The unchanged agent stayed within 5% of its baseline cost. The mutant used the
-same tokens (within 0.6%) but cost 1.8× to 2.6× as much, and only the cost
+same tokens (within 0.3% of the baseline) but cost 1.8× to 2.6× as much, and only the cost
 limit caught it: a token budget would not have. p95 model latency moved between
-−36% and +17% in the agent's run and between −21% and +7% in the mutant's,
+−36% and +16% in the agent's run and between −21% and +7% in the mutant's,
 inside the 50% limit both times; with one run per task, latency is too noisy to
 gate tightly.
 
@@ -379,8 +379,12 @@ accurate_report: pass - The reply says #W2417020 is cancelled, which matches the
   section (about $0.30 each with `claude-opus-5-5` and a cold prompt cache);
   the M3 cost-gate run with the two commands in its section (about $1.00).
 
-API spend in M3: $1.409 (cost gate $0.974; judge on recordings and mutants
+API spend in M3: $1.408 (cost gate $0.974; judge on recordings and mutants
 $0.358; three runs of the judge's live test $0.076, two of them while the
 rubric was being written, one of which failed `accurate_report` on a correct
-but terse reply and led to the criterion's current wording). Project total:
-$2.114 (M1 $0.014, M2 $0.691, M3 $1.409).
+but terse reply and led to the criterion's current wording). The committed
+artefacts account for $1.329 of that (cost-gate reports $0.974, the 21 cached
+verdicts $0.330, the live test above $0.025); the remaining $0.079 (two
+re-judged duplicate mutant transcripts, two earlier live-test runs) comes from
+the session log, not from a file in this repo. Project total: $2.113
+(M1 $0.014, M2 $0.691, M3 $1.408).
