@@ -526,12 +526,14 @@ def to_markdown(report: SuiteReport) -> str:
         "|---|---|---|---|---|---|",
     ]
     for s in report.scenarios:
-        passed_checks = sum(1 for c in s.checks if not c.blocking)
+        passed_checks = sum(1 for c in s.checks if c.passed)
+        advisory_note = f" (+{len(s.advisory_failures)} advisory)" if s.advisory_failures else ""
         steps = ", ".join(f"{n} {status}" for status, n in sorted(s.steps.by_status.items()))
         result = "✅ pass" if s.passed else ("❌ fail" if s.ran else "⚠️ did not run")
         lines.append(
             f"| `{_cell(s.name)}` | {s.mode} | {result} "
-            f"| {passed_checks}/{len(s.checks)} | {_cell(steps) or '—'} | {_cost(s)} |"
+            f"| {passed_checks}/{len(s.checks)}{advisory_note} | {_cell(steps) or '—'} "
+            f"| {_cost(s)} |"
         )
     advisory = [s for s in report.scenarios if s.advisory_failures]
     if advisory:

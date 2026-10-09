@@ -523,7 +523,7 @@ def test_an_advisory_failure_is_reported_but_does_not_fail_the_scenario(tmp_path
     assert data["scenarios"][0]["failed_checks"] == []
     markdown = to_markdown(report)
     assert "Advisory (reported, not gating)" in markdown
-    assert "| 2/2 |" in markdown
+    assert "| 1/2 (+1 advisory) |" in markdown
     result = invoke("ci", str(write_suite(tmp_path, ADVISORY_SUITE)), "--no-store")
     assert result.exit_code == 0, result.output
     assert "judge (advisory)" in result.output
