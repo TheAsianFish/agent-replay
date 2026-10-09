@@ -7,6 +7,7 @@ Ollama provider to ``FakeOllama``, and suites use the retail example's fake judg
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import tomllib
@@ -641,6 +642,46 @@ def test_a_corrupt_cache_file_is_a_logged_miss(tmp_path: Path, content: str | No
     assert provider.calls == 2
     assert [entry["event"] for entry in logs] == ["judge.cache_corrupt"]
     assert cache.verdict(provider, rubric, judge_input)[1] is True  # rewritten
+
+
+def test_an_entry_copied_under_another_key_is_a_logged_miss(tmp_path: Path):
+    cache = JudgeCache(tmp_path)
+    provider = FakeJudge(lambda _r, _i: {"resolved": True, "policy": False})
+    rubric, judge_input = make_rubric(), a_transcript()
+    cache.verdict(provider, rubric, judge_input)
+    source = cache.path(cache_key(provider.judge_id, rubric, judge_input))
+
+    # Someone moves the file under the key of a different transcript, fixing up
+    # the key field but not the rest: the verdict must not be served for it.
+    other = JudgeInput.from_run(make_run(output="something else"))
+    target_key = cache_key(provider.judge_id, rubric, other)
+    data = json.loads(source.read_text(encoding="utf-8"))
+    data["key"] = target_key
+    target = cache.path(target_key)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(data), encoding="utf-8")
+
+    with capture_logs() as logs:
+        _, hit = cache.verdict(provider, rubric, other)
+
+    assert hit is False
+    assert provider.calls == 2
+    assert logs[0]["event"] == "judge.cache_corrupt"
+    assert "input_fingerprint" in logs[0]["error"]
+    assert cache.verdict(provider, rubric, other)[1] is True  # overwritten with the real one
+
+
+def test_cache_files_are_readable_under_the_usual_umask(tmp_path: Path):
+    previous = os.umask(0o022)
+    try:
+        cache = JudgeCache(tmp_path)
+        provider = FakeJudge()
+        rubric, judge_input = make_rubric(), a_transcript()
+        cache.verdict(provider, rubric, judge_input)
+        path = cache.path(cache_key(provider.judge_id, rubric, judge_input))
+        assert path.stat().st_mode & 0o777 == 0o644
+    finally:
+        os.umask(previous)
 
 
 def test_an_unwritable_cache_still_returns_the_verdict(tmp_path: Path):

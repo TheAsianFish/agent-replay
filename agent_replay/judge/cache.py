@@ -56,6 +56,13 @@ def env_flag(name: str) -> bool:
     raise ConfigError(f"{name}={raw!r} is not a boolean; use 1/true or 0/false")
 
 
+def _file_mode() -> int:
+    """``0o666`` less the process umask: what ``open()`` would have created."""
+    mask = os.umask(0)
+    os.umask(mask)
+    return 0o666 & ~mask
+
+
 def cache_key(judge_id: str, rubric: Rubric, judge_input: JudgeInput) -> str:
     payload = canonical_json(
         {
@@ -136,6 +143,30 @@ class JudgeCache:
             return None
         return entry
 
+    def _matching(
+        self, key: str, judge_id: str, rubric: Rubric, judge_input: JudgeInput
+    ) -> CacheEntry | None:
+        """The entry for ``key`` if its own fields describe this judge, rubric, transcript and
+        prompt version; an entry copied under another key counts as corrupt."""
+        entry = self.get(key)
+        if entry is None:
+            return None
+        expected = {
+            "judge_id": judge_id,
+            "rubric_fingerprint": rubric.fingerprint,
+            "input_fingerprint": judge_input.fingerprint,
+            "prompt_version": PROMPT_VERSION,
+        }
+        wrong = [f for f, v in expected.items() if getattr(entry, f) != v]
+        if wrong:
+            log.warning(
+                "judge.cache_corrupt",
+                path=str(self.path(key)),
+                error=f"{', '.join(wrong)} do(es) not match the key",
+            )
+            return None
+        return entry
+
     def put(
         self,
         key: str,
@@ -161,10 +192,9 @@ class JudgeCache:
         tmp_name: str | None = None
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(
-                "w", encoding="utf-8", dir=path.parent, suffix=".tmp", delete=False
-            ) as tmp:
-                tmp_name = tmp.name
+            fd, tmp_name = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+            os.chmod(fd, _file_mode())  # mkstemp creates 0600; a shared cache should be readable
+            with os.fdopen(fd, "w", encoding="utf-8") as tmp:
                 tmp.write(entry.model_dump_json(indent=2) + "\n")
             os.replace(tmp_name, path)
         except OSError as exc:
@@ -179,7 +209,7 @@ class JudgeCache:
     ) -> tuple[JudgeResponse, bool]:
         """The cached verdict, else the provider's (then cached). Returns ``(response, hit)``."""
         key = cache_key(provider.judge_id, rubric, judge_input)
-        entry = self.get(key)
+        entry = self._matching(key, provider.judge_id, rubric, judge_input)
         if entry is not None:
             try:
                 verdicts = validated(rubric, JudgeOutput(criteria=list(entry.verdicts)))
