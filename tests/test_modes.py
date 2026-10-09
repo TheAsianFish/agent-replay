@@ -503,6 +503,78 @@ def test_nested_calls_of_a_served_parent_are_not_servable(mode: str) -> None:
     assert result.unconsumed == ()  # the nested model call is not "left over"
 
 
+@tool
+def price(sku: str) -> int:
+    return {"a": 1, "b": 2, "c": 3}[sku]
+
+
+@tool
+def basket(skus: list[str]) -> int:
+    return sum(price(s) for s in skus)
+
+
+def record_basket() -> Cassette:
+    """``basket(["a"])`` with its nested ``price("a")``, then a top-level ``price("c")``."""
+    session = recorder()
+    with session:
+        basket(["a"])
+        price("c")
+    return session.finish()
+
+
+@pytest.mark.parametrize("mode", ["full", "model-live"])
+def test_a_nested_call_under_a_fallback_parent_never_takes_a_top_level_recording(
+    mode: str,
+) -> None:
+    """The oldest-unconsumed fallback stays within the call's nesting level.
+
+    ``basket(["b"])`` is unrecorded, so under ``fallback`` it runs live and asks
+    for ``price("b")`` from inside. Only a top-level ``price("c")`` recording is
+    left; serving it would hand the live tool unrelated data and steal the
+    envelope the later top-level ``price("c")`` needs.
+    """
+    cassette = record_basket()
+
+    def agent(_client: Any, _task: str) -> list[int]:
+        return [basket(["a"]), basket(["b"]), price("c")]
+
+    result = replay(cassette, agent, mode=mode, policy="fallback", client=make_client())  # type: ignore[arg-type]
+
+    assert result.ok, result.error
+    assert result.output == [1, 2, 3]
+    assert [(s.name, s.status, s.parent_span_id is not None) for s in result.trajectory.steps] == [
+        ("basket", StepStatus.EXACT, False),
+        ("basket", StepStatus.FALLBACK, False),
+        ("price", StepStatus.FALLBACK, True),
+        ("price", StepStatus.EXACT, False),
+    ]
+    assert result.unconsumed == ()
+
+
+def test_a_top_level_call_never_takes_a_nested_recording_approximately() -> None:
+    """The reverse: in tools-live the nested model reply (under a live tool) is
+    servable, but a top-level model call with another request must not get it."""
+    cassette, _agent = record_nested()
+    [nested] = [e for e in cassette.envelopes if e.parent_span_id is not None]
+    assert nested.kind is Kind.MODEL
+
+    def agent(client: Any, _task: str) -> str:
+        reply = client.messages.create(
+            model="claude-opus-5-5",
+            max_tokens=64,
+            messages=[{"role": "user", "content": "Something the recording never saw"}],
+        )
+        return toy.final_text(reply.content)
+
+    result = replay(cassette, agent, mode="tools-live")
+
+    assert not result.ok
+    assert result.error is not None
+    assert result.error.type == "UnrecordedCallError"
+    assert [s.status for s in result.trajectory.steps] == [StepStatus.UNRECORDED]
+    assert [e.seq for e in result.unconsumed] == [nested.seq]
+
+
 # --- threads --------------------------------------------------------------------
 
 

@@ -152,7 +152,11 @@ class Session:
     Matching a served call: among the recorded envelopes of the same kind and
     name that are still unconsumed, the first (in starting order) with the same
     request fingerprint is served and the step is ``exact``; if none matches,
-    the oldest one is served and the step is ``approximate``. A call with
+    the oldest one *at the same nesting level* (top-level, or made inside
+    another call) is served and the step is ``approximate``. A nested call
+    never takes a top-level recording as an approximation, or the reverse: a
+    tool that runs live under ``fallback`` would otherwise answer its inner
+    calls with data recorded for unrelated top-level ones. A call with
     nothing left to serve follows the policy: ``strict`` fails the run,
     ``fallback`` performs it for real, ``synth`` answers a tool call with a stub
     built from its return type (clock and random calls run for real; a model
@@ -294,7 +298,7 @@ class Session:
             if call.kind not in self._served:
                 status = StepStatus.LIVE
             else:
-                envelope = self._take(call)
+                envelope = self._take(call, nested=_parent_span.get() is not None)
                 if envelope is not None:
                     exact = envelope.fingerprint == call.fingerprint
                     status = StepStatus.EXACT if exact else StepStatus.APPROXIMATE
@@ -313,14 +317,27 @@ class Session:
             log.debug("replay.step", seq=envelope.seq, name=call.name, status=status.value)
         return plan
 
-    def _take[T](self, call: Call[T]) -> Envelope | None:
+    def _take[T](self, call: Call[T], *, nested: bool) -> Envelope | None:
+        """Pop the envelope serving ``call``: an exact match, else the oldest at its level."""
         queue = self._queues.get((call.kind, call.name))
         if not queue:
             return None
-        for i, envelope in enumerate(queue):
-            if envelope.fingerprint == call.fingerprint:
-                return queue.pop(i)
-        return queue.pop(0)
+
+        def same_level(envelope: Envelope) -> bool:
+            return (envelope.parent_span_id is not None) == nested
+
+        def exact(envelope: Envelope) -> bool:
+            return envelope.fingerprint == call.fingerprint
+
+        for accept in (
+            lambda e: exact(e) and same_level(e),
+            exact,
+            same_level,
+        ):
+            for i, envelope in enumerate(queue):
+                if accept(envelope):
+                    return queue.pop(i)
+        return None
 
     def _unrecorded_status[T](self, call: Call[T]) -> StepStatus:
         if self.policy == "fallback":
