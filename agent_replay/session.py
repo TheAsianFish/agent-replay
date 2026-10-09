@@ -53,12 +53,34 @@ _active_lock = threading.Lock()
 
 
 def current_session() -> Session | None:
-    """The session intercepting calls here: this context's, else the only active one."""
+    """The session intercepting calls here: this context's, else the only active one.
+
+    A call from a context with no session (a plain thread-pool worker) while
+    several sessions are active cannot be attributed. Passing it through would
+    run it live inside a replay, so instead every active session is failed and
+    the call raises.
+    """
     session = _current.get()
     if session is not None:
         return session
     with _active_lock:
-        return _active[0] if len(_active) == 1 else None
+        active = list(_active)
+    if len(active) <= 1:
+        return active[0] if active else None
+    error = ReplayError(
+        f"a call from a thread with no session context while {len(active)} sessions are "
+        "active cannot be attributed to one of them; submit work through "
+        "agent_replay.ContextThreadPoolExecutor (or contextvars.copy_context().run)"
+    )
+    for candidate in active:
+        candidate.fail(error)
+    raise error
+
+
+def fail_current(error: ReplayError) -> ReplayError:
+    """Mark ``error`` fatal on the active session, if any, and return it for raising."""
+    session = current_session()
+    return session.fail(error) if session is not None else error
 
 
 type Mode = Literal["record", "full", "model-live", "tools-live"]

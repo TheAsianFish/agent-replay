@@ -50,7 +50,7 @@ from agent_replay.cassette import Kind, Usage
 from agent_replay.errors import ReplayError
 from agent_replay.record._base import WrappedClient
 from agent_replay.record._streams import AsyncSyntheticStream, SyntheticStream, events_from_message
-from agent_replay.session import Call, Session, current_session
+from agent_replay.session import Call, Session, current_session, fail_current
 
 MODEL_CALL = "anthropic.messages.create"
 
@@ -393,10 +393,14 @@ class _AsyncClientProxy(_ClientProxy):
 
 
 def _offline_error() -> ReplayError:
-    return ReplayError(
-        "this replay has no live model client, so an unrecorded model call cannot run; "
-        "pass one (--client anthropic, or replay(..., client=...)) to use the fallback "
-        "policy for model calls, or re-record"
+    # Fatal, like an unrecorded call: an agent that retries or swallows model
+    # errors must not turn "no client to fall back to" into a passing run.
+    return fail_current(
+        ReplayError(
+            "this replay has no live model client, so an unrecorded model call cannot run; "
+            "pass one (--client anthropic, or replay(..., client=...)) to use the fallback "
+            "policy for model calls, or re-record"
+        )
     )
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import concurrent.futures
 import itertools
 import json
+import threading
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -525,3 +526,51 @@ def test_full_replay_output_cassette_matches_the_recording() -> None:
 
     assert comparable(replayed) == comparable(eligible())
     assert json.loads(replayed.dumps().split("\n")[0])["metadata"]["mode"] == "full"
+
+
+# --- review regressions: ambiguous threads, swallowed offline errors ---------------
+
+
+def test_a_worker_thread_call_with_two_active_sessions_fails_both() -> None:
+    """Passing it through would run the tool live inside a full replay."""
+    cassette = record_pings(1)
+    first, second = ReplaySession(cassette), ReplaySession(cassette)
+    entered, done = threading.Event(), threading.Event()
+
+    def parallel_replay() -> None:  # a second replay running in another thread
+        with second:
+            entered.set()
+            assert done.wait(5)
+
+    other = threading.Thread(target=parallel_replay)
+    other.start()
+    try:
+        assert entered.wait(5)
+        with (
+            first,
+            concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool,
+            pytest.raises(ReplayError, match="cannot be attributed"),
+        ):
+            pool.submit(ping, 1).result()
+    finally:
+        done.set()
+        other.join()
+    assert first.fatal is not None
+    assert second.fatal is not None
+    assert first.trajectory.steps == ()
+
+
+def test_fallback_without_a_client_fails_even_if_the_agent_swallows_it() -> None:
+    def forgiving(client: Any, task: str) -> str:
+        answer = toy.run(client, task)
+        try:
+            client.messages.create(model="m", max_tokens=1, messages=[])
+        except Exception:  # an agent that retries or ignores model errors
+            return answer
+        return answer
+
+    result = replay(eligible(), forgiving, policy="fallback")
+
+    assert not result.ok
+    assert result.error is not None
+    assert "no live model client" in result.error.message

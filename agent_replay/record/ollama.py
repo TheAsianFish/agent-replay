@@ -37,7 +37,7 @@ from agent_replay._json import fingerprint, to_jsonable
 from agent_replay.cassette import Kind, Usage
 from agent_replay.errors import ReplayError
 from agent_replay.record._base import WrappedClient
-from agent_replay.session import Call, current_session
+from agent_replay.session import Call, current_session, fail_current
 
 if TYPE_CHECKING:
     from ollama import ChatResponse
@@ -313,14 +313,14 @@ class _Offline:
     """Stands in for ``ollama.Client`` when replay serves the model and none was given."""
 
     def chat(self, *args: object, **kwargs: object) -> NoReturn:
-        raise ReplayError(_OFFLINE_MESSAGE)
+        raise fail_current(ReplayError(_OFFLINE_MESSAGE))
 
 
 class _AsyncOffline:
     """Stands in for ``ollama.AsyncClient`` when replay serves the model and none was given."""
 
     async def chat(self, *args: object, **kwargs: object) -> NoReturn:
-        raise ReplayError(_OFFLINE_MESSAGE)
+        raise fail_current(ReplayError(_OFFLINE_MESSAGE))
 
 
 # --- adapter ------------------------------------------------------------------
