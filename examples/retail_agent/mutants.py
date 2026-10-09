@@ -49,6 +49,13 @@ class FirstToolOnly(RetailAgent):
         return [execute(blocks[0])]
 
 
+class NoPromptCache(RetailAgent):
+    """Drops prompt caching: same behaviour, every turn pays full price for the prefix."""
+
+    prompt_cache = False
+
+
 skips_order_lookup = SkipsOrderLookup().run
 wrong_write_argument = WrongWriteArgument().run
 first_tool_only = FirstToolOnly().run
+no_prompt_cache = NoPromptCache().run
