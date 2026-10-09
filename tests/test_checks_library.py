@@ -9,12 +9,16 @@ from pydantic import BaseModel, JsonValue
 
 from agent_replay.cassette import ErrorInfo, Kind, Usage
 from agent_replay.checks import (
+    CheckResult,
     arg_schema,
+    budget,
     forbidden_tools,
     max_tool_calls,
     output_schema,
     required_tools,
+    rule,
 )
+from agent_replay.checks.budget import percentile_nearest_rank
 from agent_replay.runner import RunResult
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
@@ -256,3 +260,159 @@ def test_output_schema_errored_run_fails_clearly() -> None:
     assert not result.passed
     assert "errored" in result.message
     assert "KeyError" in result.message
+
+
+# --- rule -------------------------------------------------------------------------------------
+
+
+def has_output(run: RunResult) -> bool:
+    return run.output is not None
+
+
+def with_message(run: RunResult, *, needle: str = "x") -> tuple[bool, str]:
+    ok = needle in str(run.output)
+    return ok, f"{'found' if ok else 'missing'} {needle}"
+
+
+def full_result(run: RunResult) -> CheckResult:
+    return CheckResult(check="mine", passed=True, message="custom", details={"k": 1})
+
+
+def boom(run: RunResult) -> bool:
+    raise RuntimeError("kaput")
+
+
+def test_rule_bool() -> None:
+    check = rule(has_output)
+    assert check.name == "rule:has_output"
+    assert check(make_run(output="x")).passed
+    failed = check(make_run())
+    assert not failed.passed
+    assert failed.check == "rule:has_output"
+    assert failed.message
+
+
+def test_rule_tuple_with_kwargs_and_name() -> None:
+    check = rule(with_message, name="needle", needle="abc")
+    assert check.name == "needle"
+    ok = check(make_run(output="xabcx"))
+    assert ok.passed
+    assert ok.message == "found abc"
+    bad = check(make_run(output="zzz"))
+    assert not bad.passed
+    assert bad.message == "missing abc"
+    assert rule(with_message)(make_run(output="x")).passed  # default kwarg
+
+
+def test_rule_checkresult_passes_through() -> None:
+    result = rule(full_result)(make_run())
+    assert result.check == "mine"
+    assert result.details == {"k": 1}
+
+
+def test_rule_raising_fails_instead_of_crashing() -> None:
+    result = rule(boom)(make_run())
+    assert not result.passed
+    assert "RuntimeError" in result.message
+    assert "kaput" in result.message
+    assert result.check == "rule:boom"
+
+
+def test_rule_bad_return_shape_fails_with_hint() -> None:
+    result = rule(lambda run: "yes")(make_run())
+    assert not result.passed
+    assert "bool" in result.message
+    assert rule(lambda run: None, name="n").name == "n"
+
+
+def test_rule_rejects_non_callable() -> None:
+    with pytest.raises(TypeError, match="callable"):
+        rule("nope")  # type: ignore[arg-type]
+
+
+# --- budget -----------------------------------------------------------------------------------
+
+
+def test_percentile_nearest_rank() -> None:
+    assert percentile_nearest_rank([], 95) is None
+    assert percentile_nearest_rank([7.0], 95) == 7.0
+    assert percentile_nearest_rank([9.0, 1.0], 95) == 9.0
+    values = [float(v) for v in range(20, 0, -1)]  # 1..20 shuffled order
+    assert percentile_nearest_rank(values, 95) == 19.0  # ceil(0.95 * 20) = 19th
+    assert percentile_nearest_rank(values, 100) == 20.0
+    assert percentile_nearest_rank(values, 5) == 1.0
+
+
+def model_step(index: int, **kw: float | Usage | None) -> Step:
+    return step(index, "m", Kind.MODEL, **kw)  # type: ignore[arg-type]
+
+
+def test_budget_requires_a_limit_and_rejects_negative() -> None:
+    with pytest.raises(ValueError, match="at least one limit"):
+        budget()
+    with pytest.raises(ValueError, match=">= 0"):
+        budget(max_tokens=-1)
+
+
+def test_budget_within_limits_and_details() -> None:
+    usage = Usage(input_tokens=100, output_tokens=50)
+    run = make_run(
+        [
+            model_step(0, usage=usage, cost=0.01, latency=100.0),
+            step(1, "tool"),
+            model_step(2, usage=usage, cost=0.02, latency=300.0),
+        ]
+    )
+    result = budget(max_cost_usd=0.05, max_tokens=400, max_model_calls=2, max_p95_latency_ms=300)(
+        run
+    )
+    assert result.passed, result.message
+    assert result.check == "budget"
+    assert result.details == {
+        "cost_usd": 0.03,
+        "max_cost_usd": 0.05,
+        "tokens": 300,
+        "max_tokens": 400,
+        "model_calls": 2,
+        "max_model_calls": 2,
+        "p95_latency_ms": 300.0,
+        "max_p95_latency_ms": 300,
+    }
+
+
+def test_budget_message_names_each_exceeded_limit() -> None:
+    usage = Usage(input_tokens=1000)
+    run = make_run([model_step(i, usage=usage, cost=0.5, latency=50.0 * (i + 1)) for i in range(3)])
+    result = budget(max_cost_usd=1.0, max_tokens=2000, max_model_calls=2, max_p95_latency_ms=200)(
+        run
+    )
+    assert not result.passed
+    assert "cost_usd 1.5 > max_cost_usd 1" in result.message
+    assert "tokens 3000 > max_tokens 2000" in result.message
+    assert "model_calls 3 > max_model_calls 2" in result.message
+    assert "p95_latency_ms 150" not in result.message  # 150 <= 200: not exceeded
+    assert "p95_latency_ms" not in result.message
+
+
+def test_budget_p95_latency_exceeded_and_skips_missing_latency() -> None:
+    run = make_run([model_step(0, latency=10.0), model_step(1), model_step(2, latency=900.0)])
+    result = budget(max_p95_latency_ms=500)(run)
+    assert not result.passed
+    assert "p95_latency_ms 900 > max_p95_latency_ms 500" in result.message
+    assert result.details["model_calls"] == 3
+
+
+def test_budget_p95_on_one_two_and_twenty_samples() -> None:
+    one = make_run([model_step(0, latency=42.0)])
+    assert budget(max_p95_latency_ms=100)(one).details["p95_latency_ms"] == 42.0
+    two = make_run([model_step(0, latency=10.0), model_step(1, latency=20.0)])
+    assert budget(max_p95_latency_ms=100)(two).details["p95_latency_ms"] == 20.0
+    twenty = make_run([model_step(i, latency=float(i + 1)) for i in range(20)])
+    assert budget(max_p95_latency_ms=100)(twenty).details["p95_latency_ms"] == 19.0
+
+
+def test_budget_empty_run_and_no_latency_samples() -> None:
+    result = budget(max_cost_usd=0.0, max_p95_latency_ms=1)(make_run())
+    assert result.passed
+    assert result.details["p95_latency_ms"] is None
+    assert result.details["model_calls"] == 0
