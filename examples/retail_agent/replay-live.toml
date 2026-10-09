@@ -22,6 +22,11 @@ checks = [
   { type = "budget", max_model_calls = 8 },
   # Relative to the baseline: at most 25% dearer or longer, 50% slower at p95.
   { type = "budget", max_cost_increase_pct = 25, max_tokens_increase_pct = 25, max_p95_latency_increase_pct = 50 },
+  # claude-opus-5-5 grades each run against the rubric. Advisory: there is no
+  # calibration report yet, so a failed criterion is reported, never gating.
+  # Verdicts are cached in judge-cache/ (committed), so a full replay is judged
+  # offline; set REPLAY_JUDGE_OFFLINE=1 to make a cache miss fail fast.
+  { type = "judge", rubric = "rubric.yaml", cache_dir = "judge-cache" },
 ]
 
 [[scenario]]

@@ -1,7 +1,7 @@
 # Targets for later milestones (eval, bench, ui, serve, dashboard lint/type)
 # are added with the code they run.
 
-.PHONY: setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
+.PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
 	bench-sprt
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
@@ -58,7 +58,7 @@ RETAIL_SUITE = examples/retail_agent/replay.toml
 # and each seeded regression fails it (expected exit 1).
 ci-demo:
 	uv run replay ci $(RETAIL_SUITE) --no-store
-	uv run replay ci examples/retail_agent/replay-live.toml --no-store
+	REPLAY_JUDGE_OFFLINE=1 uv run replay ci examples/retail_agent/replay-live.toml --no-store
 	uv run replay ci $(RETAIL_SUITE) --no-store --mode tools-live
 	uv run replay ci $(RETAIL_SUITE) --no-store --mode model-live \
 		--client examples.retail_agent.fake_model:make_client
@@ -71,3 +71,9 @@ ci-demo:
 # Simulate the sequential CI gate over a grid of true pass rates (offline, ~seconds).
 bench-sprt:
 	uv run python eval/sprt_sim.py --out eval/results/sprt_sim.json
+
+# The judge against the deterministic checks on the live retail recordings and the
+# seeded mutants. Offline from the committed verdict cache; drop --offline to judge
+# cache misses with claude-opus-5-5 (needs ANTHROPIC_API_KEY, about $0.015 a run).
+eval-judge-smoke:
+	uv run python eval/judge_smoke.py --offline --out eval/results/judge_smoke.json
