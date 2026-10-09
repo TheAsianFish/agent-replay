@@ -5,10 +5,16 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import pytest
-from pydantic import JsonValue
+from pydantic import BaseModel, JsonValue
 
 from agent_replay.cassette import ErrorInfo, Kind, Usage
-from agent_replay.checks import forbidden_tools, max_tool_calls, required_tools
+from agent_replay.checks import (
+    arg_schema,
+    forbidden_tools,
+    max_tool_calls,
+    output_schema,
+    required_tools,
+)
 from agent_replay.runner import RunResult
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
@@ -128,3 +134,125 @@ def test_tool_checks_reject_bare_string_and_negative_limit() -> None:
         forbidden_tools("abc")
     with pytest.raises(ValueError, match=">= 0"):
         max_tool_calls(-1)
+
+
+# --- arg_schema / output_schema --------------------------------------------------------------
+
+ARGS = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "integer"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["id"],
+    "additionalProperties": False,
+}
+
+
+class Args(BaseModel):
+    id: int
+    tags: list[str] = []
+
+
+def call(index: int, request: JsonValue, tool: str = "lookup") -> Step:
+    return step(index, tool, request=request)
+
+
+def test_arg_schema_json_schema_pass() -> None:
+    run = make_run([call(0, {"id": 1}), call(1, {"id": 2, "tags": ["x"]})])
+    result = arg_schema("lookup", ARGS)(run)
+    assert result.passed
+    assert result.check == "arg_schema:lookup"
+    assert result.details["calls"] == 2
+
+
+def test_arg_schema_reports_each_failing_call_with_path() -> None:
+    run = make_run(
+        [call(0, {"id": 1}), call(1, {"id": "x"}), call(2, {"id": 3, "tags": [1]}), call(3, {})]
+    )
+    result = arg_schema("lookup", ARGS)(run)
+    assert not result.passed
+    failures = result.details["failures"]
+    assert isinstance(failures, list)
+    assert [f["step"] for f in failures] == [1, 2, 3]  # type: ignore[index,call-overload]
+    assert "step 1: $.id" in result.message
+    assert "step 2: $.tags[0]" in result.message
+    assert "step 3: $: " in result.message
+    assert "'id' is a required property" in result.message
+
+
+def test_arg_schema_pydantic_model() -> None:
+    run = make_run([call(0, {"id": 1}), call(1, {"id": "nope"})])
+    result = arg_schema("lookup", Args)(run)
+    assert not result.passed
+    assert "step 1: $.id" in result.message
+    assert "step 0" not in result.message
+    assert arg_schema("lookup", Args)(make_run([call(0, {"id": 1})])).passed
+
+
+def test_arg_schema_other_tools_and_nested_calls_ignored() -> None:
+    run = make_run([call(0, {"bad": 1}, "other"), step(1, "outer"), call(2, {}, "lookup")])
+    nested = make_run([step(0, "outer"), step(1, "lookup", request={}, parent="s0")])
+    assert arg_schema("lookup", ARGS)(nested).passed
+    assert not arg_schema("lookup", ARGS)(run).passed  # step 2 is top level and invalid
+
+
+def test_arg_schema_not_called() -> None:
+    assert arg_schema("lookup", ARGS)(make_run()).passed
+    result = arg_schema("lookup", ARGS, must_call=True)(make_run())
+    assert not result.passed
+    assert "never called" in result.message
+
+
+def test_bad_json_schema_rejected_at_construction() -> None:
+    with pytest.raises(ValueError, match="invalid JSON Schema"):
+        arg_schema("t", {"type": "not-a-type"})
+    with pytest.raises(ValueError, match="invalid JSON Schema"):
+        output_schema({"properties": 3})
+    with pytest.raises(TypeError, match="JSON Schema mapping or a pydantic model"):
+        output_schema(int)  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="JSON Schema mapping or a pydantic model"):
+        output_schema("string")  # type: ignore[arg-type]
+
+
+OUT = {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}
+
+
+class Out(BaseModel):
+    answer: str
+
+
+def test_output_schema_json_schema_and_pydantic() -> None:
+    good = make_run(output={"answer": "42"})
+    bad = make_run(output={"answer": 42})
+    assert output_schema(OUT)(good).passed
+    assert output_schema(Out)(good).passed
+    failed = output_schema(OUT)(bad)
+    assert not failed.passed
+    assert "$.answer" in failed.message
+    assert "$.answer" in str(failed.details["error"])
+    assert not output_schema(Out)(bad).passed
+    assert not output_schema(OUT)(make_run(output=None)).passed
+
+
+def test_output_schema_parse_json() -> None:
+    check = output_schema(OUT, parse_json=True)
+    assert check(make_run(output='{"answer": "x"}')).passed
+    assert check(make_run(output={"answer": "x"})).passed  # non-strings are validated as is
+    invalid = check(make_run(output="{not json"))
+    assert not invalid.passed
+    assert "not valid JSON" in invalid.message
+    assert not check(make_run(output='{"answer": 1}')).passed
+
+
+def test_output_schema_string_without_parse_json_is_a_string() -> None:
+    assert not output_schema(OUT)(make_run(output='{"answer": "x"}')).passed
+    assert output_schema({"type": "string"})(make_run(output="hi")).passed
+
+
+def test_output_schema_errored_run_fails_clearly() -> None:
+    run = make_run(error=ErrorInfo(type="KeyError", message="'x'"))
+    result = output_schema(OUT)(run)
+    assert not result.passed
+    assert "errored" in result.message
+    assert "KeyError" in result.message

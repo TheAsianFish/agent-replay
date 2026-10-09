@@ -1,6 +1,7 @@
 """Checks: assertions over a replayed (or recorded) run."""
 
 from agent_replay.checks.base import Check, CheckResult
+from agent_replay.checks.schema import ArgSchema, OutputSchema, arg_schema, output_schema
 from agent_replay.checks.tool_sequence import ToolSequence, tool_sequence
 from agent_replay.checks.tools import (
     ForbiddenTools,
@@ -12,14 +13,18 @@ from agent_replay.checks.tools import (
 )
 
 __all__ = [
+    "ArgSchema",
     "Check",
     "CheckResult",
     "ForbiddenTools",
     "MaxToolCalls",
+    "OutputSchema",
     "RequiredTools",
     "ToolSequence",
+    "arg_schema",
     "forbidden_tools",
     "max_tool_calls",
+    "output_schema",
     "required_tools",
     "tool_sequence",
 ]
