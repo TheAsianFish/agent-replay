@@ -1,0 +1,177 @@
+"""A deterministic stand-in for ``anthropic.Anthropic`` for offline tests and demos.
+
+``FakeAnthropic(policy)`` implements ``messages.create`` by asking ``policy`` what
+to say given the request, and returns real ``anthropic.types.Message`` objects,
+so agent code and the recorder cannot tell it apart from the API. Token counts
+are synthetic (about four characters per token) and only exist so token and
+budget code paths have something to work with; responses report the model as
+``fake:<requested model>``, which has no price, so fake runs never show a cost.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterator, Sequence
+from dataclasses import dataclass, field
+from typing import Any, cast
+
+import anthropic
+from anthropic import Anthropic
+from anthropic.types import Message
+from pydantic import JsonValue
+
+from agent_replay._json import canonical_json, to_jsonable
+
+
+@dataclass(frozen=True)
+class ToolCall:
+    name: str
+    input: dict[str, JsonValue] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Reply:
+    """What the fake model says on one turn: optional text, then tool calls."""
+
+    text: str | None = None
+    tool_calls: Sequence[ToolCall] = ()
+
+
+@dataclass(frozen=True)
+class ToolResult:
+    tool_use_id: str
+    name: str
+    content: str
+    is_error: bool
+
+
+@dataclass(frozen=True)
+class FakeRequest:
+    """A ``messages.create`` request as plain JSON, with helpers for policies."""
+
+    model: str
+    system: JsonValue
+    messages: list[dict[str, Any]]
+    tools: list[dict[str, Any]]
+
+    def first_user_text(self) -> str:
+        return _text_of(self.messages[0]["content"]) if self.messages else ""
+
+    def tool_results(self) -> list[ToolResult]:
+        """Every tool result in the conversation so far, oldest first."""
+        names: dict[str, str] = {}
+        results: list[ToolResult] = []
+        for message in self.messages:
+            content = message.get("content")
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if block.get("type") == "tool_use":
+                    names[block["id"]] = block["name"]
+                elif block.get("type") == "tool_result":
+                    results.append(
+                        ToolResult(
+                            tool_use_id=block["tool_use_id"],
+                            name=names.get(block["tool_use_id"], "?"),
+                            content=_text_of(block.get("content", "")),
+                            is_error=bool(block.get("is_error", False)),
+                        )
+                    )
+        return results
+
+    def latest_result(self, name: str) -> ToolResult | None:
+        for result in reversed(self.tool_results()):
+            if result.name == name:
+                return result
+        return None
+
+
+Policy = Callable[[FakeRequest], Reply]
+
+
+def _text_of(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(b.get("text", "") for b in content if isinstance(b, dict))
+    return ""
+
+
+def scripted(replies: Sequence[Reply]) -> Policy:
+    """A policy that returns ``replies`` in order, regardless of the request."""
+    it: Iterator[Reply] = iter(replies)
+
+    def policy(_: FakeRequest) -> Reply:
+        try:
+            return next(it)
+        except StopIteration:
+            raise AssertionError(
+                f"scripted fake model ran out of replies after {len(replies)} turn(s)"
+            ) from None
+
+    return policy
+
+
+class _FakeMessages:
+    def __init__(self, policy: Policy) -> None:
+        self._policy = policy
+        self._turn = 0
+
+    def create(self, **kwargs: Any) -> Message:
+        if kwargs.get("stream"):
+            raise NotImplementedError("FakeAnthropic does not stream")
+        payload = to_jsonable(
+            {
+                k: v
+                for k, v in kwargs.items()
+                if not isinstance(v, anthropic.NotGiven | anthropic.Omit)
+            }
+        )
+        assert isinstance(payload, dict)
+        request = FakeRequest(
+            model=str(payload["model"]),
+            system=payload.get("system"),
+            messages=cast(list[dict[str, Any]], payload["messages"]),
+            tools=cast(list[dict[str, Any]], payload.get("tools", [])),
+        )
+        reply = self._policy(request)
+        turn = self._turn
+        self._turn += 1
+        content: list[dict[str, JsonValue]] = []
+        if reply.text is not None:
+            content.append({"type": "text", "text": reply.text})
+        for i, call in enumerate(reply.tool_calls):
+            content.append(
+                {
+                    "type": "tool_use",
+                    "id": f"toolu_fake_{turn:03d}_{i}",
+                    "name": call.name,
+                    "input": dict(call.input),
+                }
+            )
+        return Message.model_validate(
+            {
+                "id": f"msg_fake_{turn:03d}",
+                "type": "message",
+                "role": "assistant",
+                # Not a real model id, so the synthetic usage is never priced.
+                "model": f"fake:{request.model}",
+                "content": content,
+                "stop_reason": "tool_use" if reply.tool_calls else "end_turn",
+                "stop_sequence": None,
+                "usage": {
+                    "input_tokens": max(1, len(canonical_json(payload)) // 4),
+                    "output_tokens": max(1, len(canonical_json(content)) // 4),
+                },
+            }
+        )
+
+
+class FakeAnthropic:
+    """Deterministic fake of the ``anthropic.Anthropic`` client (``messages.create`` only)."""
+
+    def __init__(self, policy: Policy) -> None:
+        self.messages = _FakeMessages(policy)
+
+    def as_anthropic(self) -> Anthropic:
+        """This object, typed as the client it imitates, for agents annotated with it."""
+        return cast(Anthropic, self)

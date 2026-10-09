@@ -1,0 +1,78 @@
+[project]
+name = "agent-replay"
+version = "0.1.0"
+description = "Record-and-replay regression testing for LLM agents"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [{ name = "TheAsianFish" }]
+keywords = ["llm", "agents", "testing", "evals", "anthropic", "replay"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+dependencies = [
+    "anthropic>=1.12,<2",
+    "pydantic>=2.9,<3",
+    "rich>=13",
+    "structlog>=24",
+    "typer>=0.12",
+]
+
+[project.scripts]
+replay = "agent_replay.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent_replay"]
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.168.5",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["examples/toy_agent/cassettes"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "PT", "TID", "ANN", "S", "PL"]
+ignore = [
+    "PLR0913",  # CLI commands take one parameter per option by design
+    "PLR0917",
+    "PLR2004",  # magic numbers are fine in tests and pricing tables
+    "S101",     # assert is how pytest works
+    "ANN401",   # proxies over SDK clients are dynamically typed by nature; mypy --strict still runs
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "S", "PLR"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -m 'not live'"
+markers = [
+    "live: calls the real Anthropic API; needs ANTHROPIC_API_KEY (run with `make test-live`)",
+]
+filterwarnings = ["error"]

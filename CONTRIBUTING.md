@@ -30,17 +30,21 @@ action.yml           composite GitHub Action
 Python is managed with `uv` (Python 3.12). Node 22 for the dashboard.
 
 ```
-make setup        uv sync --all-extras; cd dashboard && npm ci
-make lint         ruff check . && ruff format --check . && (cd dashboard && npm run lint)
-make type         mypy --strict agent_replay server && (cd dashboard && npm run typecheck)
-make test         pytest -q (offline; fake model + committed cassettes)
-make eval         every eval that runs without credentials; writes RESULTS.md sections
-make bench        replay/recording benchmarks; writes RESULTS.md sections
-make eval-judge, eval-llmbar, bench-flake   need ANTHROPIC_API_KEY; print a cost estimate first
-make ui           cd dashboard && npm run dev
-make serve        replay serve (FastAPI + built dashboard)
-docker compose up dashboard with PostgreSQL
+make setup        uv sync --all-extras
+make lint         ruff check . && ruff format --check .
+make format       ruff check --fix . && ruff format .
+make type         mypy --strict agent_replay examples
+make test         pytest -q (offline; sockets blocked; fake model + committed cassettes)
+make test-live    pytest -m live (needs ANTHROPIC_API_KEY; records with claude-opus-5-5)
+make check        lint + type + test (what CI runs)
+make cassettes    re-record the toy agent's committed cassettes with the fake model
+make demo         the README quickstart: replay passes, the mutant fails
 ```
+
+Planned with later milestones (not in the Makefile yet): `make eval`, `make bench`,
+`make eval-judge`, `make eval-llmbar`, `make bench-flake` (key-requiring ones print a
+cost estimate first), `make ui`, `make serve`, dashboard lint/typecheck, and
+`docker compose up`.
 
 Until a target exists, say so in the PR rather than inventing it.
 
