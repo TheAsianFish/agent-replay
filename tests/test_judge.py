@@ -883,6 +883,23 @@ def test_the_judge_check_passed_advisory_blocking_matrix(
     assert result.details["calibrated"] is (lows is not None)
 
 
+def test_the_summary_says_why_a_report_does_not_gate():
+    below = calibration(ci_low={"resolved": 0.3, "policy": 0.5})
+    result = run_check(deciding(True, False), below)
+    assert result.advisory is True
+    assert result.message.startswith(
+        "judge: 1/2 criteria passed (advisory: calibrated below the kappa threshold)"
+    )
+
+    other_judge = calibration(judge_id="fake:other")
+    result = run_check(deciding(True, False), other_judge)
+    assert result.advisory is True
+    assert result.message.startswith(
+        "judge: 1/2 criteria passed (advisory: not calibrated for this rubric, judge and "
+        "prompt version)"
+    )
+
+
 def test_failed_criteria_are_named_with_their_reasoning():
     result = run_check(deciding(False, False), calibration(ci_low=ONLY_RESOLVED))
 

@@ -31,13 +31,15 @@ log = structlog.get_logger("agent_replay")
 _REASON_CHARS = 160
 
 
-def _gate_summary(gates: dict[str, CriterionGate], *, has_report: bool) -> str:
+def _gate_summary(gates: dict[str, CriterionGate], *, report: CalibrationReport | None) -> str:
     gated = [i for i, g in gates.items() if g.gating]
     advisory = [i for i, g in gates.items() if not g.gating]
     if not gated:
-        return "advisory: " + (
-            "not calibrated for this rubric and judge" if has_report else "uncalibrated"
-        )
+        if report is None:
+            return "advisory: uncalibrated"
+        if all(g.reason.startswith("kappa lower bound") for g in gates.values()):
+            return "advisory: calibrated below the kappa threshold"
+        return "advisory: not calibrated for this rubric, judge and prompt version"
     if not advisory:
         return "calibrated"
     return f"gating: {', '.join(gated)}; advisory: {', '.join(advisory)}"
@@ -81,7 +83,7 @@ class Judge:
         judge_id = self.provider.judge_id
         gates = gating(self.calibration, self.rubric, judge_id, self.min_kappa)
         any_gating = any(g.gating for g in gates.values())
-        summary = _gate_summary(gates, has_report=self.calibration is not None)
+        summary = _gate_summary(gates, report=self.calibration)
         details: dict[str, JsonValue] = {
             "judge_id": judge_id,
             "rubric": self.rubric.name,
