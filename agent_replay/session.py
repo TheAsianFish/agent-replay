@@ -475,7 +475,9 @@ class Session:
                 update={
                     "response": response,
                     "error": error,
-                    "envelope_seq": seq,
+                    # In a recording the step points at the envelope it wrote; in a
+                    # replay only served steps point anywhere (into the source cassette).
+                    "envelope_seq": seq if self.mode == "record" else None,
                     "usage": usage,
                     "cost_usd": cost,
                     "latency_ms": latency_ms,

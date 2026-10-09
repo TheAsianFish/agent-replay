@@ -40,7 +40,8 @@ class Step(BaseModel):
     response: JsonValue = None
     error: ErrorInfo | None = None
     envelope_seq: int | None = None
-    """The source cassette envelope that served this step; when recording, the one it wrote."""
+    """When replaying, the source-cassette envelope that served this step (``None`` for
+    steps performed live, by fallback or by synth); when recording, the envelope written."""
     usage: Usage | None = None
     cost_usd: float | None = None
     latency_ms: float | None = None

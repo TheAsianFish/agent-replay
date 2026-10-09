@@ -636,3 +636,15 @@ def test_synth_failure_for_an_unschematisable_type_is_fatal_and_named() -> None:
     assert "cannot synthesise" in str(swallowed)
     assert "--policy fallback" in str(swallowed)
     assert session.fatal is swallowed
+
+
+def test_envelope_seq_points_into_the_source_cassette_only() -> None:
+    result = replay(eligible(), toy.run, mode="tools-live")
+
+    source = eligible()
+    for step in result.trajectory.steps:
+        if step.kind is Kind.MODEL:  # served
+            assert step.envelope_seq is not None
+            assert source.envelopes[step.envelope_seq].fingerprint == step.fingerprint
+        else:  # performed live
+            assert step.envelope_seq is None
