@@ -74,10 +74,17 @@ def default_grid(params: GateParams) -> list[float]:
 def simulate_point(
     impl: StatsImpl, p: float, params: GateParams, *, trials: int, rng: random.Random
 ) -> Point:
-    """Run ``trials`` gates on Bernoulli(``p``) outcomes drawn from ``rng``."""
+    """Run ``trials`` gates on Bernoulli(``p``) outcomes drawn from ``rng``.
+
+    Each trial draws all ``max_runs`` outcomes up front and feeds the gate as
+    many as it asks for, so the stream a trial sees does not depend on how
+    early an earlier trial's gate stopped: every implementation gets the same
+    outcomes at the same trial.
+    """
     total_runs = 0
     passes = 0
     for _ in range(trials):
+        outcomes = [rng.random() < p for _ in range(params.max_runs)]
         gate = impl.SequentialGate(
             params.p_fail,
             params.p_pass,
@@ -86,8 +93,15 @@ def simulate_point(
             max_runs=params.max_runs,
         )
         decision = "continue"
-        while decision == "continue":
-            decision = gate.update(rng.random() < p)
+        for outcome in outcomes:
+            decision = gate.update(outcome)
+            if decision != "continue":
+                break
+        if decision == "continue":
+            raise RuntimeError(
+                f"the gate did not decide after max_runs={params.max_runs} "
+                "updates; the gate must truncate at max_runs"
+            )
         total_runs += gate.runs
         passes += decision == "pass"
     return Point(p=p, mean_runs=total_runs / trials, p_says_pass=passes / trials)

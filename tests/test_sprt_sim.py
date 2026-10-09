@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
+from types import SimpleNamespace
+from typing import ClassVar
 
 import pytest
 
@@ -27,6 +30,49 @@ def test_baseline_always_uses_max_runs() -> None:
 def test_simulation_is_deterministic_for_a_seed() -> None:
     first = sprt_sim.simulate(stats_baseline, PARAMS, grid=GRID, trials=30, seed=1)
     assert sprt_sim.simulate(stats_baseline, PARAMS, grid=GRID, trials=30, seed=1) == first
+
+
+class _StopsAtOnce:
+    """A gate that decides on its first outcome, recording what it saw."""
+
+    seen: ClassVar[list[bool]] = []
+
+    def __init__(self, p_fail: float, p_pass: float, **_: float) -> None:
+        self.runs = 0
+        self.passes = 0
+        self.decision = "continue"
+
+    def update(self, passed: bool) -> str:
+        self.seen.append(passed)
+        self.runs += 1
+        self.passes += passed
+        self.decision = "pass" if passed else "fail"
+        return self.decision
+
+
+class _NeverDecides(_StopsAtOnce):
+    def update(self, passed: bool) -> str:
+        self.runs += 1
+        return "continue"
+
+
+def test_an_early_stopping_gate_sees_the_same_stream_as_the_baseline() -> None:
+    # Trial k's outcomes are the k-th block of max_runs draws, however many the
+    # gate consumed before, so both implementations face the same sequences.
+    _StopsAtOnce.seen = []
+    rng = random.Random("7:0")
+    expected = [[rng.random() < 0.6 for _ in range(PARAMS.max_runs)][0] for _ in range(25)]  # noqa: RUF015 - the block is drawn whole
+    sprt_sim.simulate(
+        SimpleNamespace(SequentialGate=_StopsAtOnce), PARAMS, grid=[0.6], trials=25, seed=7
+    )  # type: ignore[arg-type]
+    assert _StopsAtOnce.seen == expected
+
+
+def test_a_gate_that_never_decides_is_an_error() -> None:
+    with pytest.raises(RuntimeError, match="max_runs"):
+        sprt_sim.simulate(
+            SimpleNamespace(SequentialGate=_NeverDecides), PARAMS, grid=[0.6], trials=1, seed=0
+        )  # type: ignore[arg-type]
 
 
 def test_summary_reads_the_p_fail_and_p_pass_points() -> None:
