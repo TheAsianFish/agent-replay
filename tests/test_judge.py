@@ -33,12 +33,14 @@ from agent_replay.judge import (
     CalibrationReport,
     CriterionVerdict,
     FakeJudge,
+    Judge,
     JudgeCache,
     JudgeInput,
     JudgeOutput,
     OllamaJudge,
     Rubric,
     gating,
+    judge,
     make_provider,
 )
 from agent_replay.judge.cache import cache_key
@@ -796,3 +798,220 @@ def test_min_kappa_comes_from_the_argument_or_the_environment(monkeypatch: pytes
         resolve_min_kappa(-0.1)
     with pytest.raises(ConfigError, match="out of range"):
         resolve_min_kappa(float("nan"))
+
+
+# --- the check ------------------------------------------------------------------
+
+
+def deciding(resolved: bool, policy: bool) -> FakeJudge:
+    return FakeJudge(
+        lambda _r, _i: {
+            "resolved": (resolved, "the refund was issued" if resolved else "nothing was done"),
+            "policy": (policy, "looked up first" if policy else "refunded without a lookup"),
+        }
+    )
+
+
+class Broken:
+    judge_id = "broken:1"
+
+    def __init__(self, exc: Exception) -> None:
+        self.exc = exc
+
+    def evaluate(self, _rubric: Rubric, _judge_input: JudgeInput) -> Any:
+        raise self.exc
+
+
+def run_check(provider: Any, report: CalibrationReport | None = None, **kwargs: Any):
+    check = judge(make_rubric(), provider=provider, cache=None, calibration=report, **kwargs)
+    return check(make_run())
+
+
+ALL_GATING = {"resolved": 0.8, "policy": 0.8}
+ONLY_RESOLVED = {"resolved": 0.8, "policy": 0.3}
+
+
+@pytest.mark.parametrize(
+    ("resolved", "policy", "lows", "passed", "advisory", "summary"),
+    [
+        # uncalibrated: reported, never blocking
+        (True, True, None, True, True, "2/2 criteria passed (advisory: uncalibrated)"),
+        (True, False, None, False, True, "1/2 criteria passed (advisory: uncalibrated)"),
+        (False, False, None, False, True, "0/2 criteria passed (advisory: uncalibrated)"),
+        # calibrated: a failure blocks
+        (True, True, ALL_GATING, True, False, "2/2 criteria passed (calibrated)"),
+        (True, False, ALL_GATING, False, False, "1/2 criteria passed (calibrated)"),
+        # mixed: only a gating criterion's failure blocks
+        (
+            True,
+            False,
+            ONLY_RESOLVED,
+            False,
+            True,
+            "1/2 criteria passed (gating: resolved; advisory: policy)",
+        ),
+        (
+            False,
+            True,
+            ONLY_RESOLVED,
+            False,
+            False,
+            "1/2 criteria passed (gating: resolved; advisory: policy)",
+        ),
+    ],
+)
+def test_the_judge_check_passed_advisory_blocking_matrix(
+    resolved, policy, lows, passed, advisory, summary
+):
+    report = calibration(ci_low=lows) if lows is not None else None
+
+    result = run_check(deciding(resolved, policy), report)
+
+    assert result.check == "judge:refunds"
+    assert result.passed is passed
+    assert result.advisory is advisory
+    assert result.blocking is (not passed and not advisory)
+    assert result.message.startswith(f"judge: {summary}")
+    assert result.details["calibrated"] is (lows is not None)
+
+
+def test_failed_criteria_are_named_with_their_reasoning():
+    result = run_check(deciding(False, False), calibration(ci_low=ONLY_RESOLVED))
+
+    assert result.message.endswith(
+        "failed: resolved — nothing was done; policy (advisory) — refunded without a lookup"
+    )
+    long = FakeJudge(lambda _r, _i: {"resolved": (False, "x" * 500), "policy": True})
+    message = run_check(long).message
+    assert message.endswith("failed: resolved — " + "x" * 159 + "…")
+
+
+def test_the_judge_check_details():
+    result = run_check(deciding(True, False), calibration(ci_low=ONLY_RESOLVED))
+
+    details = result.details
+    assert details["judge_id"] == FAKE_ID
+    assert details["rubric_fingerprint"] == make_rubric().fingerprint
+    assert details["cached"] is False
+    assert details["cost_usd"] == 0.0
+    assert details["criteria"] == {
+        "resolved": {
+            "verdict": "pass",
+            "reasoning": "the refund was issued",
+            "gating": True,
+            "gate_reason": "calibrated: kappa lower bound 0.80 >= 0.60 (n=120)",
+        },
+        "policy": {
+            "verdict": "fail",
+            "reasoning": "refunded without a lookup",
+            "gating": False,
+            "gate_reason": (
+                "kappa lower bound 0.30 < 0.60 (n=120); sharpen the criterion or label more "
+                "runs, then recalibrate"
+            ),
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    ("lows", "advisory"),
+    [(None, True), (ONLY_RESOLVED, False), (ALL_GATING, False)],
+)
+def test_a_judge_error_is_an_unknown_verdict(lows, advisory):
+    report = calibration(judge_id="broken:1", ci_low=lows) if lows is not None else None
+    provider = Broken(JudgeError("the judge is down; set ANTHROPIC_API_KEY"))
+
+    result = run_check(provider, report)
+
+    assert result.passed is False
+    assert result.advisory is advisory
+    assert result.message.startswith("judge verdict unknown (")
+    assert "the judge is down; set ANTHROPIC_API_KEY" in result.message
+    if advisory:
+        assert "so this does not fail the run" in result.message
+    else:
+        assert "failing closed" in result.message
+    assert result.details["error"] == "the judge is down; set ANTHROPIC_API_KEY"
+    assert set(result.details["criteria"]) == {"resolved", "policy"}  # type: ignore[arg-type]
+
+
+def test_a_crashing_custom_provider_fails_the_check_instead_of_the_suite():
+    result = run_check(Broken(RuntimeError("bug")))
+
+    assert result.passed is False
+    assert result.advisory is True
+    assert "RuntimeError: bug" in result.message
+
+
+@pytest.mark.parametrize(
+    ("text", "stop", "fragment"),
+    [
+        (GOOD_ANSWER, "refusal", "refused"),
+        (GOOD_ANSWER[:30], "max_tokens", "max_tokens"),
+        ("{}", None, "verdict schema"),
+        (answer(("resolved", "pass")), None, "missing policy"),
+        (answer(("resolved", "pass"), ("policy", "pass"), ("policy", "pass")), None, "repeated"),
+    ],
+)
+def test_a_bad_anthropic_answer_fails_the_check(text, stop, fragment):
+    result = run_check(AnthropicJudge(SpyAnthropic(text, stop=stop)))
+
+    assert result.passed is False
+    assert result.advisory is True
+    assert fragment in result.message
+
+
+def test_the_judge_check_through_the_anthropic_provider_and_the_cache(tmp_path: Path):
+    client = SpyAnthropic(GOOD_ANSWER)
+    check = judge(make_rubric(), provider=AnthropicJudge(client), cache=JudgeCache(tmp_path))
+    run = make_run()
+
+    first = check(run)
+    second = check(run)
+
+    assert len(client.requests) == 1
+    assert first.details["cached"] is False
+    original = first.details["cost_usd"]
+    assert isinstance(original, float)
+    assert original > 0
+    assert second.details["cached"] is True
+    assert second.details["cost_usd"] == 0.0
+    assert second.details["original_cost_usd"] == original
+    assert second.message == first.message
+    assert first.details["usage"] == second.details["usage"]
+
+
+def test_the_judge_factory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    rubric_path = write_yaml(tmp_path, RUBRIC_DATA)
+    report_path = write_calibration(tmp_path, calibration())
+    monkeypatch.setenv("REPLAY_JUDGE_CACHE", str(tmp_path / "cache"))
+
+    check = judge(rubric_path, provider=FakeJudge(), calibration=report_path, min_kappa=0.7)
+
+    assert check.name == "judge:refunds"
+    assert check.rubric == make_rubric()
+    assert check.calibration == calibration()
+    assert check.min_kappa == 0.7
+    assert check.cache is not None
+    assert check.cache.directory == tmp_path / "cache"
+    assert check.cache.offline is False
+    assert judge(rubric_path, provider=FakeJudge(), offline=True).cache.offline is True  # type: ignore[union-attr]
+    assert isinstance(judge(rubric_path).provider, AnthropicJudge)  # no key needed to build
+    assert judge(rubric_path, provider=FakeJudge(), cache=None).cache is None
+    with pytest.raises(ConfigError, match="the cache is disabled"):
+        judge(rubric_path, provider=FakeJudge(), cache=None, offline=True)
+    with pytest.raises(ConfigError, match="min_kappa"):
+        judge(rubric_path, provider=FakeJudge(), min_kappa=2)
+    with pytest.raises(ConfigError, match="max_chars"):
+        judge(rubric_path, provider=FakeJudge(), max_chars=0)
+    with pytest.raises(ConfigError, match="does not exist"):
+        judge(tmp_path / "missing.yaml")
+
+
+def test_judge_is_exported_from_the_checks_package():
+    from agent_replay import checks  # noqa: PLC0415
+
+    assert checks.judge is judge
+    assert checks.Judge is Judge
+    with pytest.raises(AttributeError):
+        _ = checks.nonexistent  # type: ignore[attr-defined]

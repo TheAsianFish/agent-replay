@@ -11,6 +11,7 @@ from agent_replay.judge.calibration import (
     CriterionGate,
     gating,
 )
+from agent_replay.judge.check import Judge, judge
 from agent_replay.judge.providers import (
     AnthropicJudge,
     FakeJudge,
@@ -38,6 +39,7 @@ __all__ = [
     "CriterionGate",
     "CriterionVerdict",
     "FakeJudge",
+    "Judge",
     "JudgeCache",
     "JudgeInput",
     "JudgeOutput",
@@ -47,5 +49,6 @@ __all__ = [
     "Rubric",
     "ToolCallRecord",
     "gating",
+    "judge",
     "make_provider",
 ]
