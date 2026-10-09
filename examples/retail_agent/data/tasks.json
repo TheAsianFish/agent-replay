@@ -1,0 +1,276 @@
+[
+ {
+  "tau_bench_index": 10,
+  "user_id": "mia_garcia_4516",
+  "instruction": "You are mia_garcia_4516 (mia.garcia2723@example.com). For some reason, you want to return all things ordered. You have two payment methods and two orders, and you want to refund each order to the opposite order's payment method. If not possible, you are angry and swear for a few times, then asks for human representative. You are a mysterious person and do not want to reveal much about yourself or speak too many words at the same time.",
+  "actions": [
+   {
+    "name": "find_user_id_by_email",
+    "arguments": {
+     "email": "mia.garcia2723@example.com"
+    }
+   },
+   {
+    "name": "get_user_details",
+    "arguments": {
+     "user_id": "mia_garcia_4516"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W5490111"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W7387996"
+    }
+   },
+   {
+    "name": "transfer_to_human_agents",
+    "arguments": {
+     "summary": "The user wants to refund each order to the opposite order's payment method, but the agent cannot help."
+    }
+   }
+  ],
+  "outputs": []
+ },
+ {
+  "tau_bench_index": 17,
+  "user_id": "fatima_johnson_7581",
+  "instruction": "You are Fatima Johnson in 78712. You want to change #W8665881 to be delivered to Suite 641 instead. You are a private person that does not want to reveal much about yourself.",
+  "actions": [
+   {
+    "name": "find_user_id_by_name_zip",
+    "arguments": {
+     "first_name": "Fatima",
+     "last_name": "Johnson",
+     "zip": "78712"
+    }
+   },
+   {
+    "name": "get_user_details",
+    "arguments": {
+     "user_id": "fatima_johnson_7581"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W5199551"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W8665881"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W9389413"
+    }
+   },
+   {
+    "name": "modify_pending_order_address",
+    "arguments": {
+     "order_id": "#W8665881",
+     "address1": "123 Elm Street",
+     "address2": "Suite 641",
+     "city": "Austin",
+     "state": "TX",
+     "country": "USA",
+     "zip": "78712"
+    }
+   }
+  ],
+  "outputs": []
+ },
+ {
+  "tau_bench_index": 27,
+  "user_id": "isabella_johansson_2152",
+  "instruction": "You are Isabella Johansson, and you live in 32286. You want to return the hose, backpack, and exchange the hiking boots to the exact same item except that it is waterproof. Make sure you mention the two requests at the same time, and if the agent can only do one, you prefer the exchange. You are a bit anxious and want to get things done quickly.",
+  "actions": [
+   {
+    "name": "find_user_id_by_name_zip",
+    "arguments": {
+     "first_name": "Isabella",
+     "last_name": "Johansson",
+     "zip": "32286"
+    }
+   },
+   {
+    "name": "get_user_details",
+    "arguments": {
+     "user_id": "isabella_johansson_2152"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W3792453"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W7181492"
+    }
+   },
+   {
+    "name": "get_product_details",
+    "arguments": {
+     "product_id": "7363354090"
+    }
+   },
+   {
+    "name": "exchange_delivered_order_items",
+    "arguments": {
+     "order_id": "#W7181492",
+     "item_ids": [
+      "8118291112"
+     ],
+     "new_item_ids": [
+      "8277474082"
+     ],
+     "payment_method_id": "paypal_3024827"
+    }
+   }
+  ],
+  "outputs": []
+ },
+ {
+  "tau_bench_index": 53,
+  "user_id": "sofia_li_9219",
+  "instruction": "You are Sofia Li, residing in San Antonio, 78260. The bicycle you received was damaged during delivery, and you want to get a refund. You're quite frustrated because the bike was very expensive and you'd like to receive the refund as soon as possible. You want the refund to be credited to your original credit card.",
+  "actions": [
+   {
+    "name": "find_user_id_by_name_zip",
+    "arguments": {
+     "first_name": "Sofia",
+     "last_name": "Li",
+     "zip": "78260"
+    }
+   },
+   {
+    "name": "get_user_details",
+    "arguments": {
+     "user_id": "sofia_li_9219"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W4689314"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W8855135"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W3916020"
+    }
+   },
+   {
+    "name": "return_delivered_order_items",
+    "arguments": {
+     "order_id": "#W3916020",
+     "item_ids": [
+      "7758198585"
+     ],
+     "payment_method_id": "credit_card_8105988"
+    }
+   }
+  ],
+  "outputs": []
+ },
+ {
+  "tau_bench_index": 67,
+  "user_id": "noah_ito_3850",
+  "instruction": "You are user noah_ito_3850 living in Seattle WA 98187. Your name is Noah but you go by NoNo. If asked for your zip code, say that it is 98178 first (common mistake), then correct yourself and say 98186 if an error is found. If that fails, then say 98187. You want to check how much you paid for the order that you most recently placed. You are not sure how long ago the order was placed.",
+  "actions": [
+   {
+    "name": "find_user_id_by_name_zip",
+    "arguments": {
+     "first_name": "Noah",
+     "last_name": "Ito",
+     "zip": "98178"
+    }
+   },
+   {
+    "name": "find_user_id_by_name_zip",
+    "arguments": {
+     "first_name": "Noah",
+     "last_name": "Ito",
+     "zip": "98186"
+    }
+   },
+   {
+    "name": "find_user_id_by_name_zip",
+    "arguments": {
+     "first_name": "Noah",
+     "last_name": "Ito",
+     "zip": "98187"
+    }
+   },
+   {
+    "name": "get_user_details",
+    "arguments": {
+     "user_id": "noah_ito_3850"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W6729841"
+    }
+   }
+  ],
+  "outputs": [
+   "829.43"
+  ]
+ },
+ {
+  "tau_bench_index": 69,
+  "user_id": "emma_smith_8564",
+  "instruction": "You are emma_smith_8564 living in New York, New York, 10192. You want to return an item you just received: a laptop. You think that you ordered it around April 2023 but are not sure. You want to return it because you found a better deal elsewhere. You want to return it for a full refund. If it cannot be returned, see if it can be canceled. You are polite and friendly.",
+  "actions": [
+   {
+    "name": "find_user_id_by_name_zip",
+    "arguments": {
+     "first_name": "Emma",
+     "last_name": "Smith",
+     "zip": "10192"
+    }
+   },
+   {
+    "name": "get_user_details",
+    "arguments": {
+     "user_id": "emma_smith_8564"
+    }
+   },
+   {
+    "name": "get_order_details",
+    "arguments": {
+     "order_id": "#W2417020"
+    }
+   },
+   {
+    "name": "cancel_pending_order",
+    "arguments": {
+     "order_id": "#W2417020",
+     "reason": "no longer needed"
+    }
+   }
+  ],
+  "outputs": []
+ }
+]
