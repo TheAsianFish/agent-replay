@@ -228,7 +228,8 @@ with statistics rather than retries. PLAN.md has the full component map.
   `fake:<model>`, so agent code cannot tell it apart, and its synthetic token
   counts are never priced as real spend.
 - **Committed cassettes are regenerated, not hand-edited.** A test re-records
-  the toy cassettes and fails if they drifted from the code (`make cassettes`).
+  the toy cassettes and fails if they drifted from the code (`make cassettes`);
+  the retail example's cassettes get the same test (`make retail-cassettes`).
 
 ## Development
 
@@ -236,6 +237,7 @@ with statistics rather than retries. PLAN.md has the full component map.
 make check       # ruff check + format check, mypy --strict, pytest (offline, sockets blocked)
 make test-live   # the one live test: record with claude-opus-5-5, replay offline (needs a key)
 make cassettes   # re-record the toy agent's committed cassettes with the fake model
+make retail-cassettes  # re-record the retail example's cassettes (examples/retail_agent)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and [RESULTS.md](RESULTS.md)

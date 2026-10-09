@@ -52,7 +52,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["examples/toy_agent/cassettes"]
+extend-exclude = ["examples/toy_agent/cassettes", "examples/retail_agent/cassettes"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "PT", "TID", "ANN", "S", "PL"]

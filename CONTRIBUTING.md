@@ -38,6 +38,7 @@ make test         pytest -q (offline; sockets blocked; fake model + committed ca
 make test-live    pytest -m live (needs ANTHROPIC_API_KEY; records with claude-opus-5-5)
 make check        lint + type + test (what CI runs)
 make cassettes    re-record the toy agent's committed cassettes with the fake model
+make retail-cassettes  re-record the retail example's cassettes with its fake model
 make demo         the README quickstart: replay passes, the mutant fails
 ```
 

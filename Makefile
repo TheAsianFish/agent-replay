@@ -1,7 +1,7 @@
 # Targets for later milestones (eval, bench, ui, serve, dashboard lint/type)
 # are added with the code they run.
 
-.PHONY: setup lint format type test test-live check cassettes demo
+.PHONY: setup lint format type test test-live check cassettes retail-cassettes demo
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -35,6 +35,10 @@ cassettes:
 		-o examples/toy_agent/cassettes/refund_eligible.jsonl
 	$(TOY_RECORD) -t "I'd like a refund for order A1002, please." \
 		-o examples/toy_agent/cassettes/refund_denied.jsonl
+
+# Re-record the retail agent's committed cassettes (one per task) with the fake model.
+retail-cassettes:
+	uv run python -m examples.retail_agent.record_all
 
 # The quickstart: replay passes, then the mutant fails (expected exit 1).
 demo:
