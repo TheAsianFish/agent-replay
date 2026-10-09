@@ -2,26 +2,18 @@
 
 from __future__ import annotations
 
-import math
-from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from pydantic import JsonValue
 
+from agent_replay.baseline import measure, percentile_nearest_rank
 from agent_replay.checks.base import CheckResult
 
 if TYPE_CHECKING:
     from agent_replay.runner import RunResult
 
-
-def percentile_nearest_rank(values: Sequence[float], q: float) -> float | None:
-    """Nearest-rank percentile (``q`` in 0..100); ``None`` for no samples."""
-    if not values:
-        return None
-    ordered = sorted(values)
-    rank = max(1, math.ceil(q / 100 * len(ordered)))
-    return ordered[rank - 1]
+__all__ = ["Budget", "budget", "percentile_nearest_rank"]
 
 
 @dataclass(frozen=True)
@@ -46,14 +38,7 @@ class Budget:
         return "budget"
 
     def __call__(self, run: RunResult, /) -> CheckResult:
-        model_steps = run.trajectory.model_steps()
-        latencies = [s.latency_ms for s in model_steps if s.latency_ms is not None]
-        measured: dict[str, float | int | None] = {
-            "cost_usd": run.cost_usd,
-            "tokens": run.tokens,
-            "model_calls": len(model_steps),
-            "p95_latency_ms": percentile_nearest_rank(latencies, 95),
-        }
+        measured: dict[str, float | int | None] = measure(run).model_dump()
         limits: list[tuple[str, str, float | int | None]] = [
             ("cost_usd", "max_cost_usd", self.max_cost_usd),
             ("tokens", "max_tokens", self.max_tokens),
