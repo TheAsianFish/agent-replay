@@ -434,3 +434,54 @@ def test_wrapped_client_is_a_context_manager():
     with wrap(inner) as client:
         assert client.messages.create is not None
     assert inner.is_closed()
+
+
+# --- exit codes -------------------------------------------------------------------
+
+
+def test_record_with_a_client_that_cannot_be_wrapped_is_a_usage_error(in_root):
+    out = runner.invoke(
+        app,
+        [
+            "record",
+            "examples.toy_agent.agent:run",
+            "-t",
+            "x",
+            "-o",
+            str(in_root / "c.jsonl"),
+            "--client",
+            "builtins:dict",
+        ],
+    )
+    assert out.exit_code == 2, out.output
+    assert "cannot wrap dict" in out.output
+    assert not (in_root / "c.jsonl").exists()
+
+
+def test_record_function_rejects_an_unwrappable_client_before_running_the_agent():
+    ran: list[str] = []
+    with pytest.raises(TypeError, match="cannot wrap"):
+        record(lambda c, t: ran.append(t), "t", client={})
+    assert ran == []
+
+
+def test_record_to_an_unwritable_path_is_a_usage_error(in_root):
+    blocker = in_root / "file.txt"
+    _write(blocker, "not a directory")
+    target = blocker / "x.jsonl"
+    out = runner.invoke(
+        app,
+        [
+            "record",
+            "examples.toy_agent.agent:run",
+            "-t",
+            "Order A1001 arrived damaged. Can I get a refund?",
+            "-o",
+            str(target),
+            "--client",
+            "examples.toy_agent.fake_model:make_client",
+        ],
+    )
+    assert out.exit_code == 2, out.output
+    assert "cannot write" in out.output
+    assert "Traceback" not in out.output

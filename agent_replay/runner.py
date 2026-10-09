@@ -105,14 +105,18 @@ def record(
     agent_ref: str | None = None,
     metadata: dict[str, JsonValue] | None = None,
 ) -> tuple[RunResult, Cassette]:
-    """Run ``agent`` for real, recording every model and tool call into a cassette."""
+    """Run ``agent`` for real, recording every model and tool call into a cassette.
+
+    Raises :class:`TypeError` before anything runs if ``client`` cannot be wrapped.
+    """
+    model_client = wrap(client)
     session = RecordingSession(agent=agent_ref, task=task, metadata=metadata)
     output: object = None
     failure: Exception | None = None
     log.info("record.start", agent=agent_ref, task=task)
     with session:
         try:
-            output = agent(wrap(client), task)
+            output = agent(model_client, task)
         except Exception as exc:
             failure = exc
             log.warning("record.agent_error", error=repr(exc))

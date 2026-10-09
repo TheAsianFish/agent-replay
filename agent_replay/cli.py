@@ -24,6 +24,7 @@ from agent_replay.cassette import Cassette
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
 from agent_replay.errors import ReplayError
+from agent_replay.record.anthropic import wrap
 from agent_replay.runner import RunResult, load_agent, load_object, record, replay
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
@@ -141,11 +142,16 @@ def record_cmd(
         raise _fail(f"{output} already exists; pass --force to overwrite it")
     try:
         agent_fn = load_agent(agent)
-        model_client = _make_client(client)
-    except ReplayError as exc:
+        model_client = wrap(_make_client(client))
+    except (ReplayError, TypeError) as exc:
         raise _fail(str(exc)) from exc
     result, cassette = record(agent_fn, task, client=model_client, agent_ref=agent)
-    cassette.dump(output)
+    try:
+        cassette.dump(output)
+    except OSError as exc:
+        raise _fail(
+            f"cannot write the cassette to {output}: {exc}; pick a writable --output path"
+        ) from exc
     console.print(_steps_table(result.trajectory))
     costs = [e.cost_usd for e in cassette.envelopes if e.cost_usd is not None]
     cost = f"${sum(costs):.4f}" if costs else "no priced model calls"
