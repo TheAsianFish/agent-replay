@@ -5,7 +5,8 @@ One SQLAlchemy model set serves two backends (PLAN.md decision 7): SQLite under
 column types are used so the same models work on both.
 
 Schema migrations arrive with Alembic in M5, together with PostgreSQL. Until
-then the SQLite file is a local cache that can be deleted.
+then the SQLite file is a local cache that can be deleted; columns added since
+it was created are added on open (:func:`_add_missing_columns`).
 """
 
 from __future__ import annotations
@@ -32,7 +33,9 @@ from sqlalchemy import (
     create_engine,
     event,
     func,
+    inspect,
     select,
+    text,
 )
 from sqlalchemy.engine import URL, Engine, make_url
 from sqlalchemy.exc import ArgumentError, SQLAlchemyError
@@ -45,6 +48,7 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.schema import CreateColumn
 
 from agent_replay.checks.base import CheckResult
 from agent_replay.errors import StoreError
@@ -151,6 +155,7 @@ class CheckRow(Base):
     passed: Mapped[bool] = mapped_column(Boolean)
     message: Mapped[str] = mapped_column(Text)
     details: Mapped[Any] = mapped_column(JSON)
+    advisory: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
 
 class _Model(BaseModel):
@@ -218,6 +223,7 @@ class CheckRecord(_Model):
     passed: bool
     message: str
     details: dict[str, JsonValue]
+    advisory: bool = False
 
 
 class RunRecord(RunSummary):
@@ -292,6 +298,7 @@ class Store:
             if sqlite:
                 event.listen(engine, "connect", _sqlite_pragmas)
             Base.metadata.create_all(engine)
+            _add_missing_columns(engine)
         except (SQLAlchemyError, OSError, ImportError) as exc:
             if engine is not None:
                 engine.dispose()
@@ -408,6 +415,7 @@ class Store:
                     passed=c.passed,
                     message=c.message,
                     details=c.details,
+                    advisory=c.advisory,
                 )
                 for i, c in enumerate(checks)
             ],
@@ -465,6 +473,25 @@ class Store:
         )
         with self._session() as session:
             return [_suite_summary(s, n) for s, n in session.execute(stmt)]
+
+
+def _add_missing_columns(engine: Engine) -> None:
+    """Add columns that are in the models but not in an older database's tables.
+
+    ``create_all`` creates missing tables but leaves existing ones alone. Every
+    column added so far is nullable or has a server default, so ``ADD COLUMN``
+    is all an older local store needs until Alembic arrives.
+    """
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            present = {c["name"] for c in inspector.get_columns(table.name)}
+            for column in table.columns:
+                if column.name in present:
+                    continue
+                ddl = CreateColumn(column).compile(dialect=engine.dialect)
+                conn.execute(text(f"ALTER TABLE {table.name} ADD COLUMN {ddl}"))
+                log.info("store.column_added", table=table.name, column=column.name)
 
 
 def _ensure_parent(url: URL) -> None:

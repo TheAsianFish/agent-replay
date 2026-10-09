@@ -198,7 +198,12 @@ def _report(
 
 
 def _print_check(check: CheckResult) -> None:
-    mark = "[bold green]PASS[/]" if check.passed else "[bold red]FAIL[/]"
+    if check.passed:
+        mark = "[bold green]PASS[/]"
+    elif check.advisory:
+        mark = "[bold yellow]ADVISORY FAIL[/]"
+    else:
+        mark = "[bold red]FAIL[/]"
     console.print(f"{mark} {check.check}: {escape(check.message)}")
     diff = check.details.get("diff")
     if not check.passed and isinstance(diff, list):
@@ -285,7 +290,7 @@ def run_cmd(
     seq_mode: SequenceMode = sequence_mode.value
     checks = result.check(tool_sequence(expected, mode=seq_mode))
     approx = result.trajectory.count(StepStatus.APPROXIMATE)
-    passed = result.ok and all(c.passed for c in checks) and not (strict and approx)
+    passed = result.ok and not any(c.blocking for c in checks) and not (strict and approx)
 
     if json_output:
         print(json.dumps(_report(cassette_path, agent_ref, result, checks, passed), indent=2))
@@ -334,6 +339,8 @@ def _print_scenario(scenario: ScenarioReport) -> None:
         )
     for check in scenario.failed_checks:
         console.print(f"    [red]{escape(check.check)}:[/] {escape(check.message)}")
+    for check in scenario.advisory_failures:
+        console.print(f"    [yellow]{escape(check.check)} (advisory):[/] {escape(check.message)}")
 
 
 def _store_sink(store: Store, suite_path: Path) -> RunSink:
@@ -522,7 +529,11 @@ def runs_cmd(
     for check in run.checks:
         _print_check(
             CheckResult(
-                check=check.check, passed=check.passed, message=check.message, details=check.details
+                check=check.check,
+                passed=check.passed,
+                message=check.message,
+                details=check.details,
+                advisory=check.advisory,
             )
         )
 

@@ -16,8 +16,9 @@ policy and a list of checks::
 
 Paths are relative to the suite file. A scenario's checks are the defaults'
 checks followed by its own. A scenario passes when the agent finished without
-error, every check passed and (with ``fail_on_approximate``) no step was served
-approximately. The suite passes when every scenario does.
+error, every check passed (advisory checks are reported but never fail it) and
+(with ``fail_on_approximate``) no step was served approximately. The suite
+passes when every scenario does.
 """
 
 from __future__ import annotations
@@ -150,7 +151,13 @@ class ScenarioReport(BaseModel):
 
     @property
     def failed_checks(self) -> list[CheckResult]:
-        return [c for c in self.checks if not c.passed]
+        """Checks that failed the scenario (advisory failures are not among them)."""
+        return [c for c in self.checks if c.blocking]
+
+    @property
+    def advisory_failures(self) -> list[CheckResult]:
+        """Checks that failed but are advisory, so the scenario still passed them."""
+        return [c for c in self.checks if not c.passed and c.advisory]
 
 
 class SuiteReport(BaseModel):
@@ -308,7 +315,7 @@ def _run_scenario(
         agent=agent_ref,
         mode=mode,
         policy=policy,
-        passed=result.ok and all(c.passed for c in check_results),
+        passed=result.ok and not any(c.blocking for c in check_results),
         error=result.error,
         checks=check_results,
         steps=StepCounts(total=len(result.trajectory.steps), by_status=by_status),
@@ -359,6 +366,7 @@ def to_json(report: SuiteReport) -> str:
     data = report.model_dump(mode="json")
     for scenario, model in zip(data["scenarios"], report.scenarios, strict=True):
         scenario["failed_checks"] = [c.check for c in model.failed_checks]
+        scenario["advisory_failures"] = [c.check for c in model.advisory_failures]
     data["failed"] = [s.name for s in report.failed]
     data["broken"] = [s.name for s in report.broken]
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
@@ -385,13 +393,19 @@ def to_markdown(report: SuiteReport) -> str:
         "|---|---|---|---|---|---|",
     ]
     for s in report.scenarios:
-        passed_checks = sum(1 for c in s.checks if c.passed)
+        passed_checks = sum(1 for c in s.checks if not c.blocking)
         steps = ", ".join(f"{n} {status}" for status, n in sorted(s.steps.by_status.items()))
         result = "✅ pass" if s.passed else ("❌ fail" if s.ran else "⚠️ did not run")
         lines.append(
             f"| `{_cell(s.name)}` | {s.mode} | {result} "
             f"| {passed_checks}/{len(s.checks)} | {_cell(steps) or '—'} | ${s.cost_usd:.4f} |"
         )
+    advisory = [s for s in report.scenarios if s.advisory_failures]
+    if advisory:
+        lines += ["", "Advisory (reported, not gating):", ""]
+        for s in advisory:
+            for c in s.advisory_failures:
+                lines.append(f"- `{_cell(s.name)}` **{c.check}**: {_cell(c.message)}")
     for s in failed:
         lines += ["", f"### {'❌' if s.ran else '⚠️'} `{s.name}`", ""]
         lines.append(f"Cassette `{s.cassette}`, agent `{s.agent}`, {s.mode} / {s.policy}.")
