@@ -145,6 +145,20 @@ def test_run_json_report(cassette_path: Path) -> None:
     assert bad_report["checks"][0]["passed"] is False
 
 
+def test_run_fails_when_the_agent_raises_even_if_checks_pass(cassette_path: Path) -> None:
+    agent = "examples.toy_agent.mutants:crash_after_answer"
+    result = invoke("run", str(cassette_path), "--agent", agent)
+    assert result.exit_code == 1
+    assert "FAIL run: agent raised RuntimeError: crashed after answering" in result.output
+    assert "PASS tool_sequence" in result.output
+
+    # The warning log goes to stderr; the report alone is on stdout.
+    report = json.loads(invoke("run", str(cassette_path), "--json", "--agent", agent).stdout)
+    assert report["passed"] is False
+    assert report["error"]["type"] == "RuntimeError"
+    assert report["checks"][0]["passed"] is True
+
+
 def test_run_expect_override_mismatch(cassette_path: Path) -> None:
     result = invoke("run", str(cassette_path), "--expect", "lookup_order")
     assert result.exit_code == 1

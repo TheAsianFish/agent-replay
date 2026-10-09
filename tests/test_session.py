@@ -10,8 +10,9 @@ import pytest
 from anthropic.types import Message
 from pydantic import BaseModel
 
-from agent_replay.cassette import Cassette, Kind
+from agent_replay.cassette import Cassette, Kind, Usage
 from agent_replay.errors import RecordedException, ReplayError, UnrecordedCallError
+from agent_replay.pricing import cost_usd
 from agent_replay.record.anthropic import wrap
 from agent_replay.record.tools import Tool, tool
 from agent_replay.session import RecordingSession, ReplaySession, current_session
@@ -152,6 +153,19 @@ def test_usage_and_cost_known_model() -> None:
     assert model.usage is not None
     assert (model.usage.input_tokens, model.usage.output_tokens) == (1000, 500)
     assert model.cost_usd == pytest.approx((1000 * 4 + 500 * 20) / 1e6)
+
+
+def test_cost_prices_cache_reads_and_writes_at_their_own_rates() -> None:
+    usage = Usage(
+        input_tokens=1000,
+        output_tokens=500,
+        cache_read_input_tokens=20_000,
+        cache_creation_input_tokens=4_000,
+    )
+    expected = (1000 * 4 + 500 * 20 + 20_000 * 0.20 + 4_000 * 5.00) / 1e6
+    assert cost_usd("claude-opus-5-5", usage) == pytest.approx(expected)
+    assert cost_usd("claude-opus-5-5", Usage()) == 0.0
+    assert cost_usd(None, usage) is None
 
 
 def test_cost_none_for_unknown_model() -> None:

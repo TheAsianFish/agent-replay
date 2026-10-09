@@ -115,3 +115,8 @@ def test_exact_and_subsequence_properties(data: st.DataObject) -> None:
     run = run_with(actual)
     assert tool_sequence(actual)(run).passed
     assert tool_sequence(sub, mode="in_order")(run).passed
+    # Negative cases: exact needs the whole sequence, and no sequence contains a
+    # longer one.
+    assert tool_sequence(sub)(run).passed == (sub == actual)
+    assert not tool_sequence([*actual, "a"], mode="in_order")(run).passed
+    assert not tool_sequence(["z", *sub], mode="in_order")(run).passed

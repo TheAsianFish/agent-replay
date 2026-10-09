@@ -12,7 +12,7 @@ from agent_replay.checks import tool_sequence
 from agent_replay.runner import load_agent, record, replay
 from examples.toy_agent import agent as toy
 from examples.toy_agent.fake_model import make_client
-from examples.toy_agent.mutants import first_tool_only
+from examples.toy_agent.mutants import crash_after_answer, first_tool_only
 
 CASSETTES = Path(__file__).parents[1] / "examples" / "toy_agent" / "cassettes"
 EXPECTED_TOOLS = {
@@ -61,6 +61,20 @@ def test_mutant_that_drops_parallel_tool_calls_fails_tool_sequence():
     # recorded policy lookup was never asked for: both are surfaced.
     assert result.trajectory.count(StepStatus.APPROXIMATE) == 2
     assert [e.name for e in result.unconsumed] == ["get_refund_policy"]
+
+
+def test_agent_that_raises_after_a_correct_trajectory_still_fails_the_run():
+    cassette = Cassette.load(CASSETTES / "refund_eligible.jsonl")
+
+    result = replay(cassette, crash_after_answer)
+    [check] = result.check(tool_sequence(cassette.tool_names()))
+
+    assert check.passed  # the tools were called exactly as recorded...
+    assert not result.ok  # ...but the agent did not return, and that decides the run
+    assert result.error is not None
+    assert (result.error.type, result.error.module) == ("RuntimeError", "builtins")
+    assert result.error.message.startswith("crashed after answering")
+    assert result.output is None
 
 
 def test_changed_prompt_is_served_approximately_but_keeps_the_tool_sequence(monkeypatch):
