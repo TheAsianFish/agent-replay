@@ -87,6 +87,12 @@ uv run replay run live.jsonl
 ```
 
 `make demo` runs the passing and failing replays and asserts both exit codes.
+In `full` mode the model's replies are frozen, so what the check catches is
+the agent's own code diverging from the recording: the broken variant never
+calls `get_refund_policy`, and the recorded tool list says it must. A live
+model might paper over the same bug by asking for the policy again on the
+next turn, which is exactly why `full` mode is the cheap, strict test of the
+orchestration code rather than of the model.
 
 ## Instrumenting an agent
 
@@ -138,11 +144,14 @@ as `module:function`, importable from the working directory.
   atomically.
 - **Full replay.** Every model and tool call is served from the cassette. Each
   call name has its own cursor: the n-th `lookup_order` call gets the n-th
-  recorded result. The request fingerprint is then compared with the
-  recording. A match is `exact`, a mismatch is `approximate` (served, but
-  flagged). A call with nothing left to serve stops the run with an
-  `UnrecordedCallError` that tells you to re-record. The run fails even if
-  the agent's own `except Exception` swallows that error. Recorded exceptions
+  recorded result, counting in the order the calls started (envelopes in the
+  file are in finishing order; the two differ only for calls that overlapped).
+  The request fingerprint is then compared with the recording. A match is
+  `exact`, a mismatch is `approximate` (served, but flagged). A call with
+  nothing left to serve stops the run with an `UnrecordedCallError` that tells
+  you to re-record, and a recorded response that no longer fits the tool's
+  annotated return type fails the run the same way. Both fail the run even if
+  the agent's own `except Exception` swallows the error. Recorded exceptions
   are re-raised as instances of the original class (when it is already
   imported) with the original message, so `except KeyError:` and error
   tool results replay exactly.
@@ -150,7 +159,12 @@ as `module:function`, importable from the working directory.
   that calls a tool or the model) is recorded with a `parent_span_id`. On
   replay the parent is served whole and its body does not run. Tools run from a
   thread pool are still intercepted: when a worker thread has no session in its
-  context and exactly one session is active, that session is used.
+  context and exactly one session is active, that session is used. One case is
+  not attributed yet: a tool that fans out to worker threads from inside
+  another tool records those inner calls as top-level, because the parent span
+  does not travel into the workers, so the cassette replays with them left
+  over. Keep thread fan-out in the agent loop until that lands with the
+  async work.
 - **Not recorded yet:** streaming, `messages.parse`, `client.beta` and async
   clients. Inside a session they raise a clear error instead of silently
   going live.

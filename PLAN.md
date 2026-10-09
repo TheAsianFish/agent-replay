@@ -264,6 +264,15 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     async clients raise inside a session instead of going live unrecorded; M2
     records them. (f) Not done: `@tool` on methods (no descriptor support yet),
     and Ctrl-C during a live recording discards the partial cassette.
+    (g) Review follow-ups: the trajectory is ordered by call start on both
+    record and replay (envelopes stay in finishing order), so parallel tools
+    that finished out of order still pass their own cassette; replay decode
+    failures, non-finite floats and invalid Unicode are fatal like unrecorded
+    calls; sets are recorded in a deterministic order; unrecorded client
+    surfaces fail on call, not on `hasattr`. Known limitation for M2: a tool
+    that fans out to worker threads from inside another tool records the inner
+    calls as top-level (the parent span is not carried into the workers), so
+    such a cassette replays with those calls left over.
 - [ ] M2: Replay engine and checks library — modes `full`, `model-live`, `tools-live`; fingerprint matching with cursor fallback and the `approximate` flag; unrecorded-call policies `strict | fallback | synth`; clock and random capture; sync, async and streaming; Ollama adapter; checks `required_tools`, `forbidden_tools`, `max_tool_calls`, `arg_schema`, `output_schema`, `rule`, `budget`; SQLite store; `replay ci` with exit codes and JSON + Markdown reports; `examples/retail_agent` on vendored τ-bench retail data with fake-model cassettes committed. Done when every mode and policy has integration tests, the example agent records and replays, and `replay ci` fails on a seeded regression.
 - [ ] M3: Judge, cost and the stats interface — `judge` check with rubric YAML, `claude-opus-5-5` through structured outputs, Ollama fallback, fingerprint cache, "advisory until calibrated" semantics; pricing table and cost/latency baselines (`replay baseline`); `stats.py` interface with `NotImplementedError` bodies, `stats_baseline.py`, `tests/test_stats.py` (hand cases, edge cases, oracle property tests), `eval/sprt_sim.py`. Done when judge checks run offline against a fake judge in tests, cost deltas gate correctly, and the stats tests pass against the baseline where applicable and are marked expected-fail for the unimplemented module.
 - [ ] M4: Flakiness engine and mutation study — `replay flake` running repeated `model-live` replays with bounded concurrency and rate limiting; Wilson gate and SPRT early stop through the stats interface; flaky vs failing classification; `eval/mutations/` with 25+ mutations and 5 benign refactors; `make eval-mutations` and `make bench-sprt` (simulation) run offline in CI and write RESULTS.md. Done when RESULTS.md holds measured mutation detection rates per check type and per mode, and simulated SPRT savings, with commands and raw output.
