@@ -6,18 +6,37 @@ Ollama provider to ``FakeOllama``, and suites use the retail example's fake judg
 
 from __future__ import annotations
 
+import json
+import re
+import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import anthropic
+import httpx2
+import ollama
 import pytest
 import yaml
 from pydantic import JsonValue
 
 from agent_replay import Cassette, Kind, RunResult, Step, StepStatus, Trajectory, replay
 from agent_replay.cassette import ErrorInfo
-from agent_replay.errors import ConfigError
-from agent_replay.judge import JudgeInput, Rubric
+from agent_replay.errors import ConfigError, JudgeError
+from agent_replay.fake import FakeAnthropic, FakeRequest, Reply
+from agent_replay.fake_ollama import FakeOllama
+from agent_replay.judge import (
+    AnthropicJudge,
+    CriterionVerdict,
+    FakeJudge,
+    JudgeInput,
+    JudgeOutput,
+    OllamaJudge,
+    Rubric,
+    make_provider,
+)
 from agent_replay.judge.transcript import clip
+from agent_replay.pricing import cost_usd
 from examples.retail_agent import agent as retail_agent
 from examples.retail_agent import tools as retail_tools
 
@@ -225,3 +244,311 @@ def test_errors_appear_in_the_transcript():
     assert "Error (ValueError): no such order" in text
     assert "<agent_error>\nThe agent did not finish: RuntimeError: gave up" in text
     assert "(the agent made no tool calls)" in JudgeInput.from_run(make_run()).render()
+
+
+# --- providers ------------------------------------------------------------------
+
+JUDGE_ENV = (
+    "REPLAY_JUDGE_PROVIDER",
+    "REPLAY_JUDGE_MODEL",
+    "REPLAY_JUDGE_EFFORT",
+    "REPLAY_JUDGE_MIN_KAPPA",
+    "REPLAY_JUDGE_CACHE",
+    "REPLAY_JUDGE_OFFLINE",
+)
+
+
+@pytest.fixture(autouse=True)
+def _clean_judge_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in JUDGE_ENV:
+        monkeypatch.delenv(name, raising=False)
+
+
+def answer(*verdicts: tuple[str, str], reasoning: str = "because") -> str:
+    return json.dumps(
+        {"criteria": [{"id": i, "reasoning": reasoning, "verdict": v} for i, v in verdicts]}
+    )
+
+
+GOOD_ANSWER = answer(("resolved", "pass"), ("policy", "fail"))
+
+
+class SpyAnthropic:
+    """FakeAnthropic behind ``messages.create`` that records requests and can tweak replies.
+
+    The fake reports its model as ``fake:<model>`` (never priced); ``priced``
+    restores the requested model so the cost path runs.
+    """
+
+    def __init__(
+        self,
+        text: str | Callable[[FakeRequest], str],
+        *,
+        priced: bool = True,
+        stop: str | None = None,
+    ) -> None:
+        policy = text if callable(text) else (lambda _req: text)
+        self._fake = FakeAnthropic(lambda req: Reply(text=policy(req)))
+        self.requests: list[dict[str, Any]] = []
+        self.priced = priced
+        self.stop = stop
+        self.messages = self
+
+    def create(self, **kwargs: Any) -> anthropic.types.Message:
+        self.requests.append(kwargs)
+        message = self._fake.messages.create(**kwargs)
+        update: dict[str, Any] = {}
+        if self.priced:
+            update["model"] = kwargs["model"]
+        if self.stop is not None:
+            update["stop_reason"] = self.stop
+        return message.model_copy(update=update)
+
+
+def a_transcript() -> JudgeInput:
+    return JudgeInput.from_run(make_run((("lookup", {"id": "A1"}, {"status": "ok"}, None),)))
+
+
+def test_the_anthropic_judge_request():
+    client = SpyAnthropic(GOOD_ANSWER)
+    judge = AnthropicJudge(client)
+    rubric, judge_input = make_rubric(), a_transcript()
+
+    judge.evaluate(rubric, judge_input)
+
+    [request] = client.requests
+    assert request["model"] == "claude-opus-5-5"
+    assert request["max_tokens"] == 8000
+    assert request["output_config"]["effort"] == "low"
+    fmt = request["output_config"]["format"]
+    assert fmt["type"] == "json_schema"
+    assert "criteria" in fmt["schema"]["properties"]
+    assert fmt["schema"]["additionalProperties"] is False
+    [system] = request["system"]
+    assert system["cache_control"] == {"type": "ephemeral"}
+    assert system["text"].startswith("You are an impartial evaluator")
+    assert rubric.render() in system["text"]  # the stable content, cached across runs
+    assert request["messages"] == [{"role": "user", "content": judge_input.render()}]
+    for forbidden in ("thinking", "budget_tokens", "tool_choice", "tools", "output_format"):
+        assert forbidden not in request
+    assert judge.judge_id == "anthropic:claude-opus-5-5:effort=low"
+
+
+def test_the_anthropic_judge_parses_and_prices_the_verdict():
+    ticks = iter([1.0, 1.25])
+    client = SpyAnthropic(GOOD_ANSWER)
+    judge = AnthropicJudge(
+        client, model="claude-opus-5-5", effort="high", timer=lambda: next(ticks)
+    )
+
+    response = judge.evaluate(make_rubric(), a_transcript())
+
+    assert [(v.id, v.verdict) for v in response.verdicts] == [
+        ("resolved", "pass"),
+        ("policy", "fail"),
+    ]
+    assert response.verdicts[0].reasoning == "because"
+    assert response.latency_ms == 250.0
+    assert response.usage is not None
+    assert response.usage.input_tokens > 0
+    assert response.cost_usd == cost_usd("claude-opus-5-5", response.usage)
+    assert response.cost_usd is not None
+    assert response.cost_usd > 0
+    assert client.requests[0]["output_config"]["effort"] == "high"
+    assert judge.judge_id == "anthropic:claude-opus-5-5:effort=high"
+
+
+def test_an_unpriced_judge_model_has_no_cost():
+    response = AnthropicJudge(SpyAnthropic(GOOD_ANSWER, priced=False)).evaluate(
+        make_rubric(), a_transcript()
+    )
+
+    assert response.cost_usd is None
+
+
+def test_verdicts_come_back_in_rubric_order():
+    reordered = answer(("policy", "pass"), ("resolved", "fail"))
+
+    response = AnthropicJudge(SpyAnthropic(reordered)).evaluate(make_rubric(), a_transcript())
+
+    assert [v.id for v in response.verdicts] == ["resolved", "policy"]
+
+
+@pytest.mark.parametrize(
+    ("text", "stop", "fragment"),
+    [
+        (GOOD_ANSWER, "refusal", "refused"),
+        (GOOD_ANSWER[:40], "max_tokens", "max_tokens=8000"),
+        (GOOD_ANSWER, "model_context_window_exceeded", "context window"),
+        ("not json", None, "does not match the verdict schema"),
+        (json.dumps({"criteria": [{"id": "resolved", "verdict": "pass"}]}), None, "reasoning"),
+        (answer(("resolved", "pass")), None, "missing policy"),
+        (
+            answer(("resolved", "pass"), ("policy", "pass"), ("policy", "fail")),
+            None,
+            "repeated policy",
+        ),
+        (answer(("resolved", "pass"), ("policy", "pass"), ("tone", "pass")), None, "unknown tone"),
+        (answer(("resolved", "maybe"), ("policy", "pass")), None, "verdict"),
+    ],
+)
+def test_bad_judge_answers_are_judge_errors(text, stop, fragment):
+    judge = AnthropicJudge(SpyAnthropic(text, stop=stop))
+
+    with pytest.raises(JudgeError, match=fragment):
+        judge.evaluate(make_rubric(), a_transcript())
+
+
+def test_sdk_errors_become_judge_errors():
+    class Failing:
+        def __init__(self) -> None:
+            self.messages = self
+
+        def create(self, **_kwargs: Any) -> None:
+            request = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+            raise anthropic.APIConnectionError(request=request)
+
+    with pytest.raises(JudgeError, match="APIConnectionError") as info:
+        AnthropicJudge(Failing()).evaluate(make_rubric(), a_transcript())
+    assert "REPLAY_JUDGE_OFFLINE" in str(info.value)
+
+
+def test_a_missing_api_key_is_a_judge_error_on_first_use(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    judge = AnthropicJudge()  # constructing never needs a key
+
+    with pytest.raises(JudgeError, match="ANTHROPIC_API_KEY"):
+        judge.evaluate(make_rubric(), a_transcript())
+
+
+def test_anthropic_judge_settings_come_from_the_environment(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("REPLAY_JUDGE_MODEL", "claude-sonnet-5-5")
+    monkeypatch.setenv("REPLAY_JUDGE_EFFORT", "medium")
+    judge = AnthropicJudge(SpyAnthropic(GOOD_ANSWER))
+
+    assert judge.judge_id == "anthropic:claude-sonnet-5-5:effort=medium"
+    assert AnthropicJudge(model="claude-opus-5-5", effort="max").judge_id.endswith("effort=max")
+    monkeypatch.setenv("REPLAY_JUDGE_EFFORT", "extreme")
+    with pytest.raises(ConfigError, match=r"REPLAY_JUDGE_EFFORT='extreme'.*low, medium"):
+        AnthropicJudge()
+    with pytest.raises(ConfigError, match="effort='none'"):
+        AnthropicJudge(effort="none")
+    with pytest.raises(ConfigError, match="max_tokens"):
+        AnthropicJudge(effort="low", max_tokens=0)
+
+
+class SpyOllama(FakeOllama):
+    def __init__(self, text: str) -> None:
+        super().__init__(lambda _req: Reply(text=text))
+        self.requests: list[dict[str, Any]] = []
+
+    def chat(self, model: str = "", messages: Any = None, **kwargs: Any) -> Any:  # type: ignore[override]
+        self.requests.append({"model": model, "messages": messages, **kwargs})
+        return super().chat(model, messages, **kwargs)
+
+
+def test_the_ollama_judge():
+    client = SpyOllama(GOOD_ANSWER)
+    judge = OllamaJudge(client)
+    rubric, judge_input = make_rubric(), a_transcript()
+
+    response = judge.evaluate(rubric, judge_input)
+
+    assert judge.judge_id == "ollama:qwen3:8b"
+    assert [v.verdict for v in response.verdicts] == ["pass", "fail"]
+    assert response.cost_usd == 0.0
+    assert response.usage is not None
+    assert response.usage.input_tokens > 0
+    [request] = client.requests
+    assert request["model"] == "qwen3:8b"
+    assert request["format"] == JudgeOutput.model_json_schema()
+    assert request["options"] == {"temperature": 0}
+    assert [m["role"] for m in request["messages"]] == ["system", "user"]
+    assert rubric.render() in request["messages"][0]["content"]
+    assert request["messages"][1]["content"] == judge_input.render()
+
+
+def test_ollama_judge_failures_name_the_fix():
+    class Down(FakeOllama):
+        def chat(self, *_args: Any, **_kwargs: Any) -> Any:  # type: ignore[override]
+            raise ConnectionError("Failed to connect to Ollama")
+
+    class NoModel(FakeOllama):
+        def chat(self, *_args: Any, **_kwargs: Any) -> Any:  # type: ignore[override]
+            raise ollama.ResponseError("model 'qwen3:8b' not found", 404)
+
+    with pytest.raises(JudgeError, match="ollama serve"):
+        OllamaJudge(Down(lambda _r: Reply())).evaluate(make_rubric(), a_transcript())
+    with pytest.raises(JudgeError, match="ollama pull qwen3:8b"):
+        OllamaJudge(NoModel(lambda _r: Reply())).evaluate(make_rubric(), a_transcript())
+    with pytest.raises(JudgeError, match="verdict schema"):
+        OllamaJudge(SpyOllama("{}")).evaluate(make_rubric(), a_transcript())
+
+
+def test_the_ollama_judge_without_the_package(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setitem(sys.modules, "ollama", None)
+
+    with pytest.raises(JudgeError, match=re.escape("pip install 'agent-replay[ollama]'")):
+        OllamaJudge(model="llama3").evaluate(make_rubric(), a_transcript())
+
+
+def test_the_fake_judge():
+    def decide(rubric: Rubric, judge_input: JudgeInput) -> dict[str, bool | tuple[bool, str]]:
+        return {"resolved": judge_input.output == "done", "policy": (False, "no lookup")}
+
+    judge = FakeJudge(decide, name="rules")
+    response = judge.evaluate(make_rubric(), a_transcript())
+
+    assert judge.judge_id == "fake:rules"
+    assert judge.calls == 1
+    assert response.verdicts == (
+        CriterionVerdict(id="resolved", reasoning="decided by the fake judge", verdict="pass"),
+        CriterionVerdict(id="policy", reasoning="no lookup", verdict="fail"),
+    )
+    assert response.cost_usd == 0.0
+    assert all(v.passed for v in FakeJudge().evaluate(make_rubric(), a_transcript()).verdicts)
+    with pytest.raises(JudgeError, match="missing policy"):
+        FakeJudge(lambda _r, _i: {"resolved": True}).evaluate(make_rubric(), a_transcript())
+
+
+def a_provider() -> FakeJudge:
+    return FakeJudge(name="from-factory")
+
+
+def a_failing_factory() -> FakeJudge:
+    raise RuntimeError("boom")
+
+
+def test_make_provider(monkeypatch: pytest.MonkeyPatch):
+    assert isinstance(make_provider(), AnthropicJudge)
+    assert isinstance(make_provider("ollama", model="llama3"), OllamaJudge)
+    assert make_provider("fake").judge_id == "fake:default"
+    assert make_provider("tests.test_judge:a_provider").judge_id == "fake:from-factory"
+    assert make_provider("anthropic", model="claude-sonnet-5-5", effort="high").judge_id == (
+        "anthropic:claude-sonnet-5-5:effort=high"
+    )
+    monkeypatch.setenv("REPLAY_JUDGE_PROVIDER", "ollama")
+    assert isinstance(make_provider(), OllamaJudge)
+    monkeypatch.setenv("REPLAY_JUDGE_PROVIDER", "openai")
+    with pytest.raises(
+        ConfigError, match=r"REPLAY_JUDGE_PROVIDER='openai'.*anthropic, ollama, fake"
+    ):
+        make_provider()
+
+
+@pytest.mark.parametrize(
+    ("spec", "kwargs", "fragment"),
+    [
+        ("gpt", {}, "provider='gpt' is not a judge provider"),
+        ("ollama", {"effort": "low"}, "effort applies to the anthropic judge only"),
+        ("fake", {"model": "x"}, "model applies to the anthropic and ollama judges"),
+        ("tests.nope:factory", {}, "cannot load judge provider"),
+        ("tests.test_judge:RUBRIC_DATA", {}, "is not callable"),
+        ("tests.test_judge:make_rubric", {}, "returned Rubric"),
+        ("tests.test_judge:a_failing_factory", {}, "raised RuntimeError: boom"),
+    ],
+)
+def test_make_provider_errors(spec, kwargs, fragment):
+    with pytest.raises(ConfigError, match=re.escape(fragment)):
+        make_provider(spec, **kwargs)
