@@ -6,6 +6,7 @@ so agent code and the recorder cannot tell it apart from the API. Token counts
 are synthetic (about four characters per token) and only exist so token and
 budget code paths have something to work with; responses report the model as
 ``fake:<requested model>``, which has no price, so fake runs never show a cost.
+:class:`FakeAsyncAnthropic` is the same model behind ``await messages.create``.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 
 import anthropic
-from anthropic import Anthropic
+from anthropic import Anthropic, AsyncAnthropic
 from anthropic.types import Message
 from pydantic import JsonValue
 
@@ -111,14 +112,14 @@ def scripted(replies: Sequence[Reply]) -> Policy:
     return policy
 
 
-class _FakeMessages:
+class _FakeModel:
+    """The policy and turn counter behind a fake client's ``messages``."""
+
     def __init__(self, policy: Policy) -> None:
         self._policy = policy
         self._turn = 0
 
-    def create(self, **kwargs: Any) -> Message:
-        if kwargs.get("stream"):
-            raise NotImplementedError("FakeAnthropic does not stream")
+    def reply(self, kwargs: dict[str, Any]) -> Message:
         payload = to_jsonable(
             {
                 k: v
@@ -166,12 +167,46 @@ class _FakeMessages:
         )
 
 
+class _FakeMessages:
+    def __init__(self, model: _FakeModel) -> None:
+        self._model = model
+
+    def create(self, **kwargs: Any) -> Message:
+        if kwargs.get("stream"):
+            raise NotImplementedError("FakeAnthropic does not stream")
+        return self._model.reply(kwargs)
+
+
+class _FakeAsyncMessages:
+    def __init__(self, model: _FakeModel) -> None:
+        self._model = model
+
+    async def create(self, **kwargs: Any) -> Message:
+        if kwargs.get("stream"):
+            raise NotImplementedError("FakeAsyncAnthropic does not stream")
+        return self._model.reply(kwargs)
+
+
 class FakeAnthropic:
     """Deterministic fake of the ``anthropic.Anthropic`` client (``messages.create`` only)."""
 
     def __init__(self, policy: Policy) -> None:
-        self.messages = _FakeMessages(policy)
+        self.messages = _FakeMessages(_FakeModel(policy))
 
     def as_anthropic(self) -> Anthropic:
         """This object, typed as the client it imitates, for agents annotated with it."""
         return cast(Anthropic, self)
+
+
+class FakeAsyncAnthropic:
+    """:class:`FakeAnthropic` for async agents: ``await client.messages.create(...)``.
+
+    Same policy contract, ids and token accounting as the sync fake.
+    """
+
+    def __init__(self, policy: Policy) -> None:
+        self.messages = _FakeAsyncMessages(_FakeModel(policy))
+
+    def as_anthropic(self) -> AsyncAnthropic:
+        """This object, typed as the client it imitates, for agents annotated with it."""
+        return cast(AsyncAnthropic, self)

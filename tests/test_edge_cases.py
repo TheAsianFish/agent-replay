@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import inspect
 from pathlib import Path
 
 import anthropic
@@ -219,9 +220,9 @@ def test_beta_namespace_raises_inside_a_session():
     assert client.beta is not None  # fine outside a session
 
 
-def test_async_clients_are_rejected():
-    with pytest.raises(TypeError, match="async"):
-        wrap(anthropic.AsyncAnthropic(api_key="test-key"))
+def test_async_clients_get_an_async_proxy():
+    client = wrap(anthropic.AsyncAnthropic(api_key="test-key"))
+    assert inspect.iscoroutinefunction(client.messages.create)
 
 
 def test_sdk_sentinels_are_dropped_from_the_request():
