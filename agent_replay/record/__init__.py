@@ -6,9 +6,10 @@ from typing import cast
 
 from agent_replay.record._base import ProviderAdapter, WrappedClient
 from agent_replay.record.anthropic import ANTHROPIC
+from agent_replay.record.ollama import OLLAMA
 from agent_replay.record.tools import Tool, tool
 
-ADAPTERS: list[ProviderAdapter] = [ANTHROPIC]
+ADAPTERS: list[ProviderAdapter] = [ANTHROPIC, OLLAMA]
 """Registered providers, asked in order; the first that accepts a client wraps it."""
 
 
