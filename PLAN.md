@@ -281,9 +281,11 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     cassette, so `replay run --save` turns a `model-live` run into a new
     recording.
     (b) **Matching.** A served call takes the first unconsumed envelope with
-    the same kind, name and fingerprint (`exact`), else the oldest one
-    (`approximate`). Nested envelopes are servable only when their parent's
-    kind runs live in the mode.
+    the same kind, name and fingerprint (`exact`), else the oldest one at the
+    same nesting level (`approximate`): a call made inside a live tool never
+    takes a top-level recording as an approximation, or the reverse. Nested
+    envelopes are servable only when every ancestor's kind runs live in the
+    mode.
     (c) **Policies.** `synth` builds the smallest value that validates against
     the tool's return type. It cannot invent a model reply, so an unrecorded
     model call under `synth` fails as under `strict`. `fallback` without a
@@ -306,8 +308,12 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     replays.
     (h) **`replay ci`** suites are TOML (stdlib `tomllib`, no new dependency).
     There is a `--cassette-dir` override, and the Markdown summary goes to
-    `$GITHUB_STEP_SUMMARY`. The store records suites, runs, steps and checks.
-    The `budget` check takes absolute limits; baselines are M3.
+    `$GITHUB_STEP_SUMMARY`. Exit codes: 0 passed, 1 regression, 2 broken
+    suite, which includes a scenario that could not run at all (missing
+    cassette, unimportable agent, bad check, no client); reports carry
+    `ran` per scenario and the cassette that was replayed. The store records
+    suites, runs, steps and checks. The `budget` check takes absolute limits
+    and only bites outside `full` + `strict`; baselines are M3.
     (i) **The retail example** vendors six τ-bench test tasks, single-turn,
     with τ-bench's ground truth as `rule` checks. Committed are fake-model
     cassettes and six live `claude-opus-5-5` recordings, all of which reached
@@ -317,7 +323,12 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     fallback passing, cancelled calls leaving no envelope, synth failures
     escaping or producing invalid stubs, tracebacks on bad CLI input, Ollama
     stream/plain mismatches, and two meanings of `envelope_seq`. It also
-    covered five claims a mutation sweep showed were untested.
+    covered five claims a mutation sweep showed were untested. A second
+    review pass fixed three more: a nested call under a `fallback` parent
+    taking a top-level envelope as an approximation, config errors exiting
+    1 instead of 2, and reports naming the suite's cassette rather than the
+    one replayed; it added tests for the `fail_on_approximate` boundary,
+    `choice` length and the tools-live policies.
     (j) **Known limitations.** Retail cassettes are large (60–120 KB each),
     because `system` and `tools` repeat in every model envelope; a
     deduplicated layout would be a v3 with a migration. A `with` block

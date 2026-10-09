@@ -1,0 +1,620 @@
+{
+  "suite": "examples/retail_agent/replay.toml",
+  "passed": true,
+  "started_at": "2026-10-09T02:22:37.382043Z",
+  "duration_ms": 67795.042,
+  "git_sha": "f4a0a48f850280320845512df12e6c6395d24be6",
+  "suite_id": null,
+  "scenarios": [
+    {
+      "name": "cancel_pending_laptop",
+      "cassette": "examples/retail_agent/cassettes/live/cancel_pending_laptop.jsonl",
+      "agent": "examples.retail_agent.agent:run",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": true,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "6 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "cancel_pending_order"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "cancel_pending_order"
+            ]
+          }
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {}
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "6 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 6,
+            "tool": null
+          }
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0460956,
+            "max_cost_usd": null,
+            "tokens": 26886,
+            "max_tokens": null,
+            "model_calls": 5,
+            "max_model_calls": 8,
+            "p95_latency_ms": 1930.141,
+            "max_p95_latency_ms": null
+          }
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {}
+        },
+        {
+          "check": "arg_schema:cancel_pending_order",
+          "passed": true,
+          "message": "1 call(s) to cancel_pending_order match the JSON schema",
+          "details": {
+            "tool": "cancel_pending_order",
+            "calls": 1,
+            "failures": []
+          }
+        }
+      ],
+      "steps": {
+        "total": 11,
+        "by_status": {
+          "live": 5,
+          "exact": 6
+        }
+      },
+      "unconsumed": [],
+      "output": "I couldn't return your laptop order #W2417020 because it hadn't been delivered yet, so I cancelled it as you asked, and the full $2,674.40 has been refunded to your gift card right away.",
+      "cost_usd": 0.0460956,
+      "tokens": 26886,
+      "duration_ms": 8599.415,
+      "run_id": null,
+      "failed_checks": []
+    },
+    {
+      "name": "modify_address_suite",
+      "cassette": "examples/retail_agent/cassettes/live/modify_address_suite.jsonl",
+      "agent": "examples.retail_agent.agent:run",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": true,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "3 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_order_details",
+              "modify_pending_order_address"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_order_details",
+              "modify_pending_order_address"
+            ]
+          }
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {}
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "3 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 3,
+            "tool": null
+          }
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.040358,
+            "max_cost_usd": null,
+            "tokens": 16097,
+            "max_tokens": null,
+            "model_calls": 3,
+            "max_model_calls": 8,
+            "p95_latency_ms": 9664.474,
+            "max_p95_latency_ms": null
+          }
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {}
+        },
+        {
+          "check": "required_tools",
+          "passed": true,
+          "message": "all 2 required tool(s) were called",
+          "details": {
+            "required": [
+              "get_order_details",
+              "modify_pending_order_address"
+            ],
+            "missing": []
+          }
+        }
+      ],
+      "steps": {
+        "total": 6,
+        "by_status": {
+          "live": 3,
+          "exact": 3
+        }
+      },
+      "unconsumed": [],
+      "output": "I've changed order #W8665881 to ship to 123 Elm Street, Suite 641, Austin, TX 78712, USA, and the rest of the address is the same as before.",
+      "cost_usd": 0.040358,
+      "tokens": 16097,
+      "duration_ms": 16088.161,
+      "run_id": null,
+      "failed_checks": []
+    },
+    {
+      "name": "return_damaged_bicycle",
+      "cassette": "examples/retail_agent/cassettes/live/return_damaged_bicycle.jsonl",
+      "agent": "examples.retail_agent.agent:run",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": true,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "7 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "return_delivered_order_items"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "return_delivered_order_items"
+            ]
+          }
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {}
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "7 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 7,
+            "tool": null
+          }
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0526262,
+            "max_cost_usd": null,
+            "tokens": 28846,
+            "max_tokens": null,
+            "model_calls": 5,
+            "max_model_calls": 8,
+            "p95_latency_ms": 2562.263,
+            "max_p95_latency_ms": null
+          }
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {}
+        },
+        {
+          "check": "arg_schema:return_delivered_order_items",
+          "passed": true,
+          "message": "1 call(s) to return_delivered_order_items match the JSON schema",
+          "details": {
+            "tool": "return_delivered_order_items",
+            "calls": 1,
+            "failures": []
+          }
+        }
+      ],
+      "steps": {
+        "total": 12,
+        "by_status": {
+          "live": 5,
+          "exact": 7
+        }
+      },
+      "unconsumed": [],
+      "output": "I've started the return for your bicycle from order #W3916020, and $1,917.21 will be refunded to your original Mastercard ending in 8484 — watch for an email explaining how to send it back.",
+      "cost_usd": 0.0526262,
+      "tokens": 28846,
+      "duration_ms": 10371.657,
+      "run_id": null,
+      "failed_checks": []
+    },
+    {
+      "name": "exchange_waterproof_boots",
+      "cassette": "examples/retail_agent/cassettes/live/exchange_waterproof_boots.jsonl",
+      "agent": "examples.retail_agent.agent:run",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": true,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "8 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_product_details",
+              "exchange_delivered_order_items"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_product_details",
+              "exchange_delivered_order_items"
+            ]
+          }
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {}
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "8 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 8,
+            "tool": null
+          }
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0649054,
+            "max_cost_usd": null,
+            "tokens": 38934,
+            "max_tokens": null,
+            "model_calls": 6,
+            "max_model_calls": 8,
+            "p95_latency_ms": 3124.639,
+            "max_p95_latency_ms": null
+          }
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {}
+        },
+        {
+          "check": "required_tools",
+          "passed": true,
+          "message": "all 2 required tool(s) were called",
+          "details": {
+            "required": [
+              "get_product_details",
+              "exchange_delivered_order_items"
+            ],
+            "missing": []
+          }
+        }
+      ],
+      "steps": {
+        "total": 14,
+        "by_status": {
+          "live": 6,
+          "exact": 8
+        }
+      },
+      "unconsumed": [],
+      "output": "I've requested the exchange on order #W7181492: your size 12 leather hiking boots will be swapped for the same boots in a waterproof version, you'll get a $23.99 refund to your PayPal, and you'll receive an email explaining how to send back the old pair.",
+      "cost_usd": 0.0649054,
+      "tokens": 38934,
+      "duration_ms": 16424.901,
+      "run_id": null,
+      "failed_checks": []
+    },
+    {
+      "name": "lookup_latest_order_total",
+      "cassette": "examples/retail_agent/cassettes/live/lookup_latest_order_total.jsonl",
+      "agent": "examples.retail_agent.agent:run",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": true,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "5 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details"
+            ]
+          }
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {}
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "5 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 5,
+            "tool": null
+          }
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0440702,
+            "max_cost_usd": null,
+            "tokens": 20442,
+            "max_tokens": null,
+            "model_calls": 4,
+            "max_model_calls": 8,
+            "p95_latency_ms": 2267.737,
+            "max_p95_latency_ms": null
+          }
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {}
+        },
+        {
+          "check": "forbidden_tools",
+          "passed": true,
+          "message": "no forbidden tool was called",
+          "details": {
+            "forbidden": [
+              "cancel_pending_order",
+              "modify_pending_order_address",
+              "return_delivered_order_items",
+              "exchange_delivered_order_items"
+            ],
+            "calls": []
+          }
+        },
+        {
+          "check": "output_schema",
+          "passed": true,
+          "message": "output matches the JSON schema",
+          "details": {}
+        }
+      ],
+      "steps": {
+        "total": 9,
+        "by_status": {
+          "live": 4,
+          "exact": 5
+        }
+      },
+      "unconsumed": [],
+      "output": "I couldn't tell which of your 3 orders is the most recent because our records don't show order dates. Here's what you paid for each, all charged to your Mastercard ending in 1065:\n- **#W3445693** (delivered; sneakers, cycling helmet and air purifier): $919.67\n- **#W4219264** (pending; jigsaw puzzle and 2 wristwatches): $3,916.77\n- **#W6729841** (pending; Bluetooth speaker and air purifier): $829.43",
+      "cost_usd": 0.0440702,
+      "tokens": 20442,
+      "duration_ms": 6458.569,
+      "run_id": null,
+      "failed_checks": []
+    },
+    {
+      "name": "transfer_swapped_refunds",
+      "cassette": "examples/retail_agent/cassettes/live/transfer_swapped_refunds.jsonl",
+      "agent": "examples.retail_agent.agent:run",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": true,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "5 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_email",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "transfer_to_human_agents"
+            ],
+            "actual": [
+              "find_user_id_by_email",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "transfer_to_human_agents"
+            ]
+          }
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {}
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "5 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 5,
+            "tool": null
+          }
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.045274,
+            "max_cost_usd": null,
+            "tokens": 26237,
+            "max_tokens": null,
+            "model_calls": 5,
+            "max_model_calls": 8,
+            "p95_latency_ms": 2671.829,
+            "max_p95_latency_ms": null
+          }
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {}
+        },
+        {
+          "check": "required_tools",
+          "passed": true,
+          "message": "all 1 required tool(s) were called",
+          "details": {
+            "required": [
+              "transfer_to_human_agents"
+            ],
+            "missing": []
+          }
+        },
+        {
+          "check": "forbidden_tools",
+          "passed": true,
+          "message": "no forbidden tool was called",
+          "details": {
+            "forbidden": [
+              "cancel_pending_order",
+              "modify_pending_order_address",
+              "return_delivered_order_items",
+              "exchange_delivered_order_items"
+            ],
+            "calls": []
+          }
+        }
+      ],
+      "steps": {
+        "total": 10,
+        "by_status": {
+          "live": 5,
+          "exact": 4,
+          "approximate": 1
+        }
+      },
+      "unconsumed": [],
+      "output": "I've transferred you to a human agent, because I can only refund a return to the order's original payment method or an existing gift card, so I couldn't swap the credit card and PayPal refunds between your two orders.",
+      "cost_usd": 0.045274,
+      "tokens": 26237,
+      "duration_ms": 9850.319,
+      "run_id": null,
+      "failed_checks": []
+    }
+  ],
+  "failed": [],
+  "broken": []
+}

@@ -81,10 +81,10 @@ $ echo $?
 The same suite runs against six real `claude-opus-5-5` recordings, offline
 (`--cassette-dir examples/retail_agent/cassettes/live`). It can also run with
 the model live and only the tools frozen: `--mode model-live --client
-anthropic` (needs `ANTHROPIC_API_KEY`). In the one run recorded in
-[RESULTS.md](RESULTS.md) that passed 6/6 for $0.10. `make ci-demo` runs the
-suite in all three modes and asserts that each of the three seeded
-regressions makes it exit 1.
+anthropic` (needs `ANTHROPIC_API_KEY`). The two runs recorded in
+[RESULTS.md](RESULTS.md) passed 6/6, for $0.10 with a warm prompt cache and
+$0.29 with a cold one. `make ci-demo` runs the suite in all three modes and
+asserts that each of the three seeded regressions makes it exit 1.
 
 A single cassette, with the smaller toy agent:
 

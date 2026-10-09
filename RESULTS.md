@@ -65,7 +65,8 @@ runs with confidence intervals are M4's job.
   `max_tokens=4096`, top-level `cache_control={"type": "ephemeral"}`. Cost uses
   `agent_replay/pricing.py` (captured 2026-10-08: $4 / $20 per MTok input /
   output, cache reads $0.20, 5-minute cache writes $5).
-- **Date:** 2026-10-09. Total spend for both steps: $0.398.
+- **Date:** 2026-10-09. Total spend: $0.691 (recording $0.2950, first
+  model-live run $0.1032, second model-live run $0.2933).
 
 ### Step 1: record each task live
 
@@ -129,14 +130,39 @@ PASS transfer_swapped_refunds (model-live; 1 approximate, 4 exact, 5 live)
 6/6 scenario(s) passed: passed
 ```
 
-From the JSON report: $0.1032 and 157,409 tokens for the six scenarios, 50.9 s
-wall clock. Every check passed on every scenario (6 or 7 per scenario: the
-exact recorded tool sequence, the two τ-bench rules, the call and budget
-limits, and the scenario's schema or tool checks). The one `approximate` step
-is a `transfer_to_human_agents` call whose free-text `summary` argument was
-worded differently from the recording; it was still served.
+From that run's JSON report (not kept): $0.1032 and 157,409 tokens for the
+six scenarios, 50.9 s wall clock. Every check passed on every scenario (6 or
+7 per scenario: the exact recorded tool sequence, the two τ-bench rules, the
+call and budget limits, and the scenario's schema or tool checks). The one
+`approximate` step is a `transfer_to_human_agents` call whose free-text
+`summary` argument was worded differently from the recording; it was still
+served.
 
-What this does and does not show: in this one sample Opus 5.5 made the same
+**Second `model-live` run**, made during review with the prompt cache cold,
+so the report can be checked from the repo. Its JSON report is committed as
+[`eval/results/m2_model_live.json`](eval/results/m2_model_live.json)
+(the report's `git_sha` is the `$GITHUB_SHA` of the runner it ran on, not a
+commit of this repository).
+
+```
+$ uv run replay ci examples/retail_agent/replay.toml --no-store --cassette-dir examples/retail_agent/cassettes/live --mode model-live --client anthropic --json eval/results/m2_model_live.json
+PASS cancel_pending_laptop (model-live; 6 exact, 5 live)
+PASS modify_address_suite (model-live; 3 exact, 3 live)
+PASS return_damaged_bicycle (model-live; 7 exact, 5 live)
+PASS exchange_waterproof_boots (model-live; 8 exact, 6 live)
+PASS lookup_latest_order_total (model-live; 5 exact, 4 live)
+PASS transfer_swapped_refunds (model-live; 1 approximate, 4 exact, 5 live)
+6/6 scenario(s) passed: passed
+
+real	1m9.436s
+```
+
+Summed from the committed report: $0.2933 and 157,442 tokens, 67.8 s for the
+suite; every check passed. The cost is higher than the first run's because
+the cache was cold (cache writes are billed at $5 per MTok, reads at $0.20).
+The same scenario had the one `approximate` step again.
+
+What this does and does not show: in these two samples Opus 5.5 made the same
 tool calls, in the same order, as in its own recording on all six tasks.
 How often that holds over repeated runs is the flakiness question, measured
 with intervals in M4.
@@ -146,7 +172,7 @@ with intervals in M4.
 `make ci-demo` (also a CI step) replays the retail suite against the
 committed fake-model cassettes and against three deliberately broken agents
 in `examples/retail_agent/mutants.py`. Each mutant must make `replay ci` exit 1.
-Per-scenario outcomes are asserted in `tests/test_ci.py`:
+Per-scenario outcomes are asserted in `tests/test_ci.py` (which checks `skips_order_lookup` catch `tool_sequence` as well is asserted in `tests/test_retail_agent.py`):
 
 | Agent | Scenarios failed | Checks that caught it |
 |---|---|---|
@@ -163,4 +189,4 @@ rates per check type and per mode over 25+ mutations are M4.
 Nothing yet. Key-requiring evaluations (judge kappa, LLMBar, flake suite) are
 listed here, with exact commands, when their harnesses exist (M3 to M6). The
 M2 live smoke test above can be re-run with the two commands in its section
-(about $0.40 with `claude-opus-5-5`).
+(about $0.30 each with `claude-opus-5-5` and a cold prompt cache).
