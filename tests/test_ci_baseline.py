@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import types
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,7 +13,15 @@ import pytest
 from typer.testing import CliRunner
 
 from agent_replay.baseline import BaselineFile, ScenarioBaseline, aggregate, measure
-from agent_replay.ci import Overrides, RunSink, ScenarioReport, run_suite, to_json, to_markdown
+from agent_replay.ci import (
+    Overrides,
+    RunSink,
+    ScenarioReport,
+    measure_suite,
+    run_suite,
+    to_json,
+    to_markdown,
+)
 from agent_replay.cli import app
 from agent_replay.errors import ConfigError
 from agent_replay.runner import RunResult
@@ -202,3 +212,152 @@ def test_markdown_cost_cell_against_a_zero_baseline(tmp_path: Path) -> None:
     scenarios = tuple(s.model_copy(update={"baseline": zero}) for s in report.scenarios)
     markdown = to_markdown(report.model_copy(update={"scenarios": scenarios}))
     assert "$0.0000 (baseline $0)" in markdown
+
+
+# --- replay baseline ----------------------------------------------------------------------
+
+
+def failing_agent(client: object, task: str) -> str:
+    raise RuntimeError("the agent broke")
+
+
+@pytest.fixture
+def broken_agent(monkeypatch: pytest.MonkeyPatch) -> str:
+    module = types.ModuleType("baseline_agents_fixture")
+    module.failing_agent = failing_agent  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "baseline_agents_fixture", module)
+    return "baseline_agents_fixture:failing_agent"
+
+
+def comparable(baseline: BaselineFile) -> dict[str, object]:
+    return baseline.model_dump(exclude={"created_at", "git_sha", "suite"})
+
+
+def test_measure_suite_matches_what_the_checks_measure() -> None:
+    baseline = measure_suite(SUITE, overrides=Overrides(cassette_dir=LIVE), clock=lambda: CREATED)
+    assert baseline.created_at == CREATED
+    assert (baseline.mode, baseline.policy) == ("full", "strict")
+    assert baseline.suite == str(SUITE)
+    assert comparable(baseline) == comparable(live_baseline())
+    assert sum(b.cost_usd for b in baseline.scenarios.values()) == pytest.approx(0.295, abs=0.001)
+
+
+def test_measure_suite_ignores_the_suites_own_baseline_and_checks(tmp_path: Path) -> None:
+    """The first baseline of a suite with relative limits can be recorded."""
+    suite = live_suite(tmp_path, baseline="not-yet-recorded.json")
+    with pytest.raises(ConfigError):
+        run_suite(suite)
+    baseline = measure_suite(suite)
+    assert len(baseline.scenarios) == 6
+
+
+def test_measure_suite_measures_a_run_that_fails_its_checks() -> None:
+    """A mutant that fails checks but finishes is still a measurement: no checks run."""
+    baseline = measure_suite(
+        SUITE, overrides=Overrides(agent="examples.retail_agent.mutants:wrong_write_argument")
+    )
+    assert len(baseline.scenarios) == 6
+
+
+def test_measure_suite_rejects_zero_runs() -> None:
+    with pytest.raises(ConfigError, match="at least 1"):
+        measure_suite(SUITE, runs=0)
+
+
+def test_baseline_cli_writes_what_measure_suite_computes(tmp_path: Path) -> None:
+    out = tmp_path / "out" / "baseline.json"
+    result = invoke("baseline", str(SUITE), "--cassette-dir", str(LIVE), "-o", str(out))
+
+    assert result.exit_code == 0, result.output
+    written = BaselineFile.load(out)
+    expected = measure_suite(SUITE, overrides=Overrides(cassette_dir=LIVE))
+    assert comparable(written) == comparable(expected)
+    assert written.suite == str(SUITE)
+    assert out.read_text(encoding="utf-8") == written.dumps()
+    assert "cancel_pending_laptop" in result.output
+    assert "$0.0461" in result.output
+    assert " ms" in result.output
+    assert "Wrote the baseline of 6 scenario(s)" in result.output
+
+
+def test_baseline_cli_runs_aggregates_several_replays(tmp_path: Path) -> None:
+    out = tmp_path / "baseline.json"
+    result = invoke(
+        "baseline", str(SUITE), "--cassette-dir", str(LIVE), "-o", str(out), "--runs", "3"
+    )
+
+    assert result.exit_code == 0, result.output
+    written = BaselineFile.load(out)
+    single = measure_suite(SUITE, overrides=Overrides(cassette_dir=LIVE))
+    for name, b in written.scenarios.items():
+        assert b.runs == 3
+        # Full replays are deterministic, so the median of three is the single run.
+        assert b.model_copy(update={"runs": 1}) == single.scenarios[name]
+
+
+def test_baseline_cli_records_the_mode_and_policy(tmp_path: Path) -> None:
+    out = tmp_path / "baseline.json"
+    result = invoke(
+        "baseline", str(SUITE), "-o", str(out), "--mode", "tools-live", "--policy", "synth"
+    )
+    assert result.exit_code == 0, result.output
+    written = BaselineFile.load(out)
+    assert (written.mode, written.policy) == ("tools-live", "synth")
+
+
+@pytest.mark.parametrize("args", [("--runs", "0"), ("--runs", "x"), ("--mode", "nope"), ()])
+def test_baseline_cli_bad_arguments_exit_2(tmp_path: Path, args: tuple[str, ...]) -> None:
+    out = tmp_path / "baseline.json"
+    output = ("-o", str(out)) if args else ()
+    result = invoke("baseline", str(SUITE), *output, *args)
+    assert result.exit_code == 2, result.output
+    assert not out.exists()
+
+
+def test_baseline_cli_broken_suite_or_scenario_exits_2(tmp_path: Path) -> None:
+    out = tmp_path / "baseline.json"
+    missing = invoke("baseline", str(tmp_path / "nope.toml"), "-o", str(out))
+    assert missing.exit_code == 2
+    assert "does not exist" in missing.output
+
+    partial = tmp_path / "cassettes"
+    partial.mkdir()
+    (partial / "cancel_pending_laptop.jsonl").write_bytes(
+        (LIVE / "cancel_pending_laptop.jsonl").read_bytes()
+    )
+    result = invoke("baseline", str(SUITE), "--cassette-dir", str(partial), "-o", str(out))
+    assert result.exit_code == 2, result.output
+    assert "could not run" in result.output
+    assert "modify_address_suite" in result.output
+    assert not out.exists()
+
+    no_client = invoke("baseline", str(SUITE), "--mode", "model-live", "-o", str(out))
+    assert no_client.exit_code == 2
+    assert "needs a client" in no_client.output
+    assert not out.exists()
+
+
+def test_baseline_cli_agent_error_exits_1_and_writes_nothing(
+    tmp_path: Path, broken_agent: str
+) -> None:
+    out = tmp_path / "baseline.json"
+    kept = tmp_path / "kept.json"
+    kept.write_text("previous", encoding="utf-8")
+
+    result = invoke("baseline", str(SUITE), "--agent", broken_agent, "-o", str(out))
+    again = invoke("baseline", str(SUITE), "--agent", broken_agent, "-o", str(kept))
+
+    assert result.exit_code == 1, result.output
+    flat = " ".join(result.output.split())
+    assert "the agent failed in cancel_pending_laptop (RuntimeError: the agent broke)" in flat
+    assert not out.exists()
+    assert again.exit_code == 1
+    assert kept.read_text(encoding="utf-8") == "previous"
+
+
+def test_baseline_cli_unwritable_output_exits_2(tmp_path: Path) -> None:
+    (tmp_path / "file").write_text("x", encoding="utf-8")
+    target = tmp_path / "file" / "b.json"
+    result = invoke("baseline", str(SUITE), "--cassette-dir", str(LIVE), "-o", str(target))
+    assert result.exit_code == 2
+    assert "cannot write the baseline" in " ".join(result.output.split())

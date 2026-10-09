@@ -93,3 +93,7 @@ class StoreError(ReplayError):
 
 class ConfigError(ReplayError):
     """A check or suite configuration table is invalid."""
+
+
+class MeasurementError(ReplayError):
+    """A run measured for a baseline ended in an error, so there is nothing to measure."""

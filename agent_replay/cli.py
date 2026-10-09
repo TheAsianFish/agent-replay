@@ -28,10 +28,17 @@ from agent_replay._logging import configure_logging
 from agent_replay.cassette import Cassette, Kind
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
-from agent_replay.ci import Overrides, RunSink, ScenarioReport, SuiteReport, run_suite
+from agent_replay.ci import (
+    Overrides,
+    RunSink,
+    ScenarioReport,
+    SuiteReport,
+    measure_suite,
+    run_suite,
+)
 from agent_replay.ci import to_json as report_json
 from agent_replay.ci import to_markdown as report_markdown
-from agent_replay.errors import ReplayError
+from agent_replay.errors import MeasurementError, ReplayError
 from agent_replay.pricing import prices
 from agent_replay.record import wrap
 from agent_replay.runner import RunResult, load_agent, make_client, record, replay
@@ -482,6 +489,73 @@ def ci_cmd(
         )
         raise typer.Exit(EXIT_USAGE)
     raise typer.Exit(EXIT_OK if report.passed else EXIT_FAILED)
+
+
+@app.command("baseline")
+def baseline_cmd(
+    suite_path: Annotated[
+        Path, typer.Argument(metavar="SUITE", help="Suite file (replay.toml) listing scenarios.")
+    ],
+    output: Annotated[Path, typer.Option("--output", "-o", help="Baseline file to write.")],
+    runs: Annotated[
+        int, typer.Option(min=1, help="Replays per scenario; the baseline is their median.")
+    ] = 1,
+    agent: Annotated[
+        str | None,
+        typer.Option(help="Replay every scenario against this agent (module:function)."),
+    ] = None,
+    mode: Annotated[Mode | None, typer.Option(help="Override every scenario's mode.")] = None,
+    policy: Annotated[Policy | None, typer.Option(help="Override every scenario's policy.")] = None,
+    client: Annotated[
+        str | None,
+        typer.Option(help="Live model client for model-live: 'anthropic' or module:factory."),
+    ] = None,
+    cassette_dir: Annotated[
+        Path | None,
+        typer.Option(help="Read each scenario's cassette (by file name) from this directory."),
+    ] = None,
+) -> None:
+    """Measure every scenario in SUITE and write a cost and latency baseline.
+
+    Replays each scenario --runs times without running checks and records the
+    median cost, tokens, model calls and p95 model latency per scenario, for
+    budget checks' relative limits (max_cost_increase_pct and friends). Exit 2
+    when a scenario cannot run, 1 when the agent fails a run (nothing is
+    written).
+    """
+    overrides = Overrides(
+        agent=agent,
+        mode=mode.value if mode else None,
+        policy=policy.value if policy else None,
+        client=client,
+        cassette_dir=cassette_dir,
+    )
+    try:
+        baseline = measure_suite(suite_path, overrides=overrides, runs=runs)
+    except MeasurementError as exc:
+        console.print(f"[bold red]failed:[/] {escape(str(exc))}")
+        raise typer.Exit(EXIT_FAILED) from exc
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+    try:
+        baseline.dump(output)
+    except OSError as exc:
+        raise _fail(
+            f"cannot write the baseline to {output}: {exc}; pick a writable -o path"
+        ) from exc
+    table = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+    for column in ("scenario", "runs", "cost", "tokens", "model calls", "p95 latency"):
+        table.add_column(column)
+    for name, b in sorted(baseline.scenarios.items()):
+        p95 = f"{b.p95_latency_ms:.0f} ms" if b.p95_latency_ms is not None else "—"
+        table.add_row(
+            escape(name), str(b.runs), f"${b.cost_usd:.4f}", str(b.tokens), str(b.model_calls), p95
+        )
+    console.print(table)
+    console.print(
+        f"Wrote the baseline of {len(baseline.scenarios)} scenario(s) to "
+        f"[bold]{escape(str(output))}[/]"
+    )
 
 
 @app.command("runs")

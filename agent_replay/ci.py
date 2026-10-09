@@ -37,12 +37,12 @@ from typing import Any
 import structlog
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
-from agent_replay.baseline import BaselineFile, ScenarioBaseline
+from agent_replay.baseline import BaselineFile, RunMetrics, ScenarioBaseline, aggregate, measure
 from agent_replay.cassette import Cassette, ErrorInfo
 from agent_replay.checks.base import Check, CheckResult
 from agent_replay.checks.budget import RELATIVE_LIMITS
 from agent_replay.checks.spec import build_check
-from agent_replay.errors import ConfigError, ReplayError
+from agent_replay.errors import ConfigError, MeasurementError, ReplayError
 from agent_replay.runner import RunResult, load_agent, make_client, replay
 from agent_replay.session import Policy, ReplayMode
 from agent_replay.trajectory import StepStatus
@@ -399,6 +399,64 @@ def _checks(
         except ReplayError as exc:
             raise ConfigError(f"{where}: {exc}") from exc
     return checks
+
+
+def measure_suite(
+    path: Path,
+    *,
+    overrides: Overrides | None = None,
+    runs: int = 1,
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    timer: Callable[[], float] = time.perf_counter,
+) -> BaselineFile:
+    """Replay every scenario ``runs`` times, without checks, and aggregate a baseline.
+
+    A baseline is a measurement, so no check runs (this also lets a suite whose
+    budget checks need a baseline record its first one). Scenarios resolve
+    exactly as in :func:`run_suite`; the suite's own baseline file is not read.
+    Raises :class:`ConfigError` for a broken suite or a scenario that cannot
+    run, and :class:`MeasurementError` when the agent ends any run in an error:
+    nothing is measured from a failing run.
+    """
+    if runs < 1:
+        raise ConfigError(f"runs must be at least 1, got {runs}")
+    suite = load_suite(path)
+    overrides = overrides or Overrides()
+    base_dir = path.parent
+    created_at = clock()
+    log.info("baseline.start", suite=str(path), scenarios=len(suite.scenario), runs=runs)
+    measured: dict[str, list[RunMetrics]] = {}
+    broken: list[str] = []
+    errored: list[str] = []
+    for scenario in suite.scenario:
+        for _ in range(runs):
+            report, result = _run_scenario(
+                scenario, suite.defaults, overrides, base_dir, timer, with_checks=False
+            )
+            if result is None or result.error is not None:
+                assert report.error is not None
+                problem = f"{scenario.name} ({report.error.type}: {report.error.message})"
+                (broken if result is None else errored).append(problem)
+                break
+            measured.setdefault(scenario.name, []).append(measure(result))
+    if broken:
+        raise ConfigError(
+            "cannot measure a baseline: scenario(s) could not run: " + "; ".join(broken)
+        )
+    if errored:
+        raise MeasurementError(
+            "cannot measure a baseline: the agent failed in " + "; ".join(errored) + ". A "
+            "baseline is measured from runs that finish; fix the agent or the scenario first"
+        )
+    log.info("baseline.done", scenarios=len(measured))
+    return BaselineFile(
+        suite=str(path),
+        created_at=created_at,
+        git_sha=git_sha(base_dir),
+        mode=overrides.mode or suite.defaults.mode,
+        policy=overrides.policy or suite.defaults.policy,
+        scenarios={name: aggregate(m) for name, m in measured.items()},
+    )
 
 
 def git_sha(cwd: Path) -> str | None:
