@@ -1,7 +1,7 @@
 # Targets for later milestones (eval, bench, ui, serve, dashboard lint/type)
 # are added with the code they run.
 
-.PHONY: setup lint format type test test-live check cassettes retail-cassettes demo
+.PHONY: setup lint format type test test-live check cassettes retail-cassettes demo ci-demo
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -49,3 +49,18 @@ demo:
 	uv run replay run examples/toy_agent/cassettes/refund_eligible.jsonl
 	uv run replay run examples/toy_agent/cassettes/refund_eligible.jsonl \
 		--agent examples.toy_agent.mutants:first_tool_only; test $$? -eq 1
+
+RETAIL_SUITE = examples/retail_agent/replay.toml
+
+# replay ci on the retail suite: passes in every mode (the fake model plays the
+# live one), and each seeded regression fails it (expected exit 1).
+ci-demo:
+	uv run replay ci $(RETAIL_SUITE) --no-store
+	uv run replay ci $(RETAIL_SUITE) --no-store --mode tools-live
+	uv run replay ci $(RETAIL_SUITE) --no-store --mode model-live \
+		--client examples.retail_agent.fake_model:make_client
+	for mutant in wrong_write_argument skips_order_lookup first_tool_only; do \
+		uv run replay ci $(RETAIL_SUITE) --no-store \
+			--agent examples.retail_agent.mutants:$$mutant > /dev/null; \
+		test $$? -eq 1 || { echo "mutant $$mutant was not caught"; exit 1; }; \
+	done

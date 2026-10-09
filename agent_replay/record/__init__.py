@@ -19,7 +19,8 @@ def wrap[C](client: C) -> C:
     Outside a session the proxy calls straight through. Wrapping twice is a
     no-op. Supports ``anthropic.Anthropic`` and ``AsyncAnthropic`` (and anything
     exposing the same ``messages.create``, such as
-    :class:`agent_replay.fake.FakeAnthropic`). Raises :class:`TypeError` for
+    :class:`agent_replay.fake.FakeAnthropic`), and ``ollama.Client`` /
+    ``AsyncClient`` (with the ``ollama`` extra). Raises :class:`TypeError` for
     anything else.
     """
     if isinstance(client, WrappedClient):
