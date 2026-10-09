@@ -381,4 +381,4 @@ def test_the_committed_live_baseline_is_what_replay_baseline_measures() -> None:
     committed = BaselineFile.load(RETAIL / "baseline-live.json")
     measured = measure_suite(SUITE, overrides=Overrides(cassette_dir=LIVE))
     assert comparable(committed) == comparable(measured)
-    assert committed.suite == "examples/retail_agent/replay.toml"
+    assert committed.suite == "examples/retail_agent/replay-live.toml"
