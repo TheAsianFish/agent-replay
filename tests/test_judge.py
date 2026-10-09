@@ -704,6 +704,7 @@ def calibration(
             "rubric": rubric.name,
             "rubric_fingerprint": rubric.fingerprint,
             "judge_id": judge_id,
+            "prompt_version": PROMPT_VERSION,
             "created_at": "2026-10-09T00:00:00Z",
             "n_items": 120,
             "method": "Cohen's kappa, 95% bootstrap CI (2000 resamples)",
@@ -1216,3 +1217,13 @@ def test_an_offline_cache_miss_breaks_the_suite_instead_of_passing(
     warm = run_suite(suite)
     assert all(s.ran for s in warm.scenarios)
     assert warm.passed
+
+
+def test_a_report_for_another_judge_prompt_version_does_not_gate():
+    rubric = make_rubric()
+    report = calibration(rubric)
+
+    assert all(g.gating for g in gating(report, rubric, FAKE_ID, 0.6).values())
+    gates = gating(report, rubric, FAKE_ID, 0.6, prompt_version="999")
+    assert not any(g.gating for g in gates.values())
+    assert all("recalibrate after the prompt change" in g.reason for g in gates.values())

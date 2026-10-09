@@ -294,7 +294,8 @@ checks = [{ type = "judge", rubric = "rubric.yaml", cache_dir = "judge-cache" }]
   so judge it live. The retail live
   suite does exactly that (`examples/retail_agent/judge-cache/`).
 - **Advisory until calibrated.** A criterion can fail the build only if a
-  calibration report exists for this exact rubric fingerprint and judge id,
+  calibration report exists for this exact rubric fingerprint, judge id and
+  judge prompt version,
   and that criterion's kappa lower bound is at least
   `REPLAY_JUDGE_MIN_KAPPA` (0.6). Otherwise its failure is reported as
   advisory (`ADVISORY FAIL` in the CLI, an "Advisory" list in the Markdown
@@ -506,8 +507,8 @@ statistics rather than retries. PLAN.md has the full component map.
 - **The judge reports before it gates.** A judge nobody has compared with
   humans would make CI fail on a number nobody validated, so failures are
   advisory until calibrated, per criterion, and a report only counts for the
-  rubric fingerprint and judge id it measured (editing the rubric or changing
-  the model or effort voids it). The alternative, trusting the judge, is what
+  rubric fingerprint, judge id and judge prompt version it measured (editing
+  the rubric, the judge prompt, the model or the effort voids it). The alternative, trusting the judge, is what
   this project exists to avoid.
 - **Structured outputs through `messages.create`.** The judge sends the
   same JSON-schema `output_config` that `messages.parse` would, but reads

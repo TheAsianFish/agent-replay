@@ -26,6 +26,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agent_replay.errors import ConfigError
 from agent_replay.judge.rubric import Rubric
+from agent_replay.judge.verdict import PROMPT_VERSION
 
 DEFAULT_MIN_KAPPA = 0.6
 
@@ -50,6 +51,9 @@ class CalibrationReport(BaseModel):
     rubric: str
     rubric_fingerprint: str
     judge_id: str
+    prompt_version: str
+    """The judge prompt (``agent_replay.judge.verdict.PROMPT_VERSION``) the labels were
+    compared against; a new prompt can change verdicts, so it needs a new report."""
     created_at: datetime
     n_items: int = Field(ge=0)
     method: str
@@ -108,9 +112,18 @@ def resolve_min_kappa(value: float | None) -> float:
 
 
 def gating(
-    report: CalibrationReport | None, rubric: Rubric, judge_id: str, min_kappa: float
+    report: CalibrationReport | None,
+    rubric: Rubric,
+    judge_id: str,
+    min_kappa: float,
+    *,
+    prompt_version: str = PROMPT_VERSION,
 ) -> dict[str, CriterionGate]:
-    """For each rubric criterion, whether its failure may fail the run, and why."""
+    """For each rubric criterion, whether its failure may fail the run, and why.
+
+    A report counts only for the rubric fingerprint, judge id and judge prompt
+    version it measured; any other combination is uncalibrated.
+    """
 
     def everywhere(reason: str) -> dict[str, CriterionGate]:
         return {i: CriterionGate(gating=False, reason=reason) for i in rubric.ids}
@@ -126,6 +139,11 @@ def gating(
         return everywhere(
             f"the calibration report is for judge {report.judge_id}, not {judge_id}; "
             "recalibrate with this judge or switch back to that one"
+        )
+    if report.prompt_version != prompt_version:
+        return everywhere(
+            f"the calibration report was made with judge prompt version "
+            f"{report.prompt_version}, not {prompt_version}; recalibrate after the prompt change"
         )
     gates: dict[str, CriterionGate] = {}
     for criterion_id in rubric.ids:
