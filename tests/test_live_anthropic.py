@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import pytest
 
@@ -20,9 +21,10 @@ pytestmark = [
 def test_real_recording_replays_offline_exactly():
     import anthropic  # noqa: PLC0415
 
-    result, cassette = record(
-        toy.run, "Order A1001 arrived damaged. Can I get a refund?", client=anthropic.Anthropic()
-    )
+    with anthropic.Anthropic() as client:  # closed, so no socket outlives the test
+        result, cassette = record(
+            toy.run, "Order A1001 arrived damaged. Can I get a refund?", client=client
+        )
 
     assert result.ok, result.error
     model_calls = [e for e in cassette.envelopes if e.kind is Kind.MODEL]
@@ -36,3 +38,39 @@ def test_real_recording_replays_offline_exactly():
     assert replayed.ok, replayed.error
     assert replayed.output == result.output
     assert {s.status for s in replayed.trajectory.steps} == {StepStatus.EXACT}
+
+
+def _stream_agent(client: Any, task: str) -> str:
+    with client.messages.stream(
+        model="claude-opus-5-5",
+        max_tokens=256,
+        output_config={"effort": "low"},
+        messages=[{"role": "user", "content": task}],
+    ) as stream:
+        text: str = stream.get_final_text()
+    return text
+
+
+def test_real_stream_records_and_replays_offline():
+    import anthropic  # noqa: PLC0415
+
+    with anthropic.Anthropic() as client:
+        result, cassette = record(
+            _stream_agent, "In one short sentence, what is a cassette tape?", client=client
+        )
+
+    assert result.ok, result.error
+    [envelope] = cassette.envelopes
+    assert isinstance(envelope.request, dict)
+    assert envelope.request["stream"] is True
+    assert envelope.usage is not None
+    assert envelope.usage.output_tokens > 0
+    assert envelope.cost_usd is not None
+    assert envelope.cost_usd > 0
+    assert isinstance(result.output, str)
+    assert result.output
+
+    replayed = replay(Cassette.loads(cassette.dumps()), _stream_agent)
+    assert replayed.ok, replayed.error
+    assert replayed.output == result.output
+    assert [s.status for s in replayed.trajectory.steps] == [StepStatus.EXACT]

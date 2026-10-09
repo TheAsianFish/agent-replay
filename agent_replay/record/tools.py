@@ -5,16 +5,23 @@ from __future__ import annotations
 import functools
 import inspect
 import typing
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any, overload
 
 from anthropic.types import ToolParam
-from pydantic import JsonValue, PydanticSchemaGenerationError, TypeAdapter, create_model
+from pydantic import (
+    JsonValue,
+    PydanticSchemaGenerationError,
+    PydanticUserError,
+    TypeAdapter,
+    create_model,
+)
 
 from agent_replay._json import fingerprint, to_jsonable
 from agent_replay.cassette import Kind
 from agent_replay.errors import ReplayError
 from agent_replay.session import Call, current_session
+from agent_replay.synth import SynthError, stub_from_schema
 
 
 class Tool[**P, R]:
@@ -24,6 +31,11 @@ class Tool[**P, R]:
     active. Arguments are recorded by parameter name (defaults applied), and on
     replay the recorded JSON result is validated back into the function's
     annotated return type, so ``-> Order`` returns an ``Order`` both times.
+
+    An ``async def`` tool stays a coroutine function: calling it returns an
+    awaitable, which inside a session goes through ``session.intercept_async``
+    when awaited, so tools run with ``asyncio.gather`` are recorded with their
+    nesting (each task copies the context holding the parent span).
     """
 
     def __init__(
@@ -38,6 +50,10 @@ class Tool[**P, R]:
                 raise TypeError(f"tool {self.name!r}: *args and **kwargs are not supported")
         functools.update_wrapper(self, fn)
         self.__name__ = self.name
+        self.is_async = inspect.iscoroutinefunction(fn)
+        if self.is_async:
+            # So inspect.iscoroutinefunction(tool) is true, as it is for the function.
+            inspect.markcoroutinefunction(self)
 
     # Type hints are resolved lazily: decorating must never break an import
     # (forward references, annotations pydantic cannot schematise), because
@@ -45,7 +61,7 @@ class Tool[**P, R]:
     @functools.cached_property
     def _hints(self) -> dict[str, Any]:
         try:
-            return typing.get_type_hints(self.fn)
+            return typing.get_type_hints(self.fn, include_extras=True)
         except NameError as exc:
             raise ReplayError(f"tool {self.name!r}: cannot resolve type hints ({exc})") from exc
 
@@ -80,6 +96,20 @@ class Tool[**P, R]:
                     "pass JSON-compatible values"
                 )
             ) from exc
+        if self.is_async:
+            # The awaited value is what gets recorded; get_type_hints on an
+            # ``async def`` already gives its awaited return type for decoding.
+            acall: Call[Any] = Call(
+                kind=Kind.TOOL,
+                name=self.name,
+                request=request,
+                fingerprint=fingerprint(Kind.TOOL, self.name, request),
+                ainvoke=lambda: typing.cast(Awaitable[Any], self.fn(*args, **kwargs)),
+                encode=to_jsonable,
+                decode=decode,
+                synth=self._synth,
+            )
+            return typing.cast(R, session.intercept_async(acall))
         call: Call[R] = Call(
             kind=Kind.TOOL,
             name=self.name,
@@ -88,8 +118,24 @@ class Tool[**P, R]:
             invoke=lambda: self.fn(*args, **kwargs),
             encode=to_jsonable,
             decode=decode,
+            synth=self._synth,
         )
         return session.intercept(call)
+
+    def _synth(self) -> JsonValue:
+        """A stub result for the ``synth`` policy, built from the return annotation."""
+        adapter = self._returns
+        if adapter is None:
+            return None
+        try:
+            # Validation mode: the stub is validated back into the type, so it must
+            # use field names and aliases as the type accepts them.
+            return stub_from_schema(adapter.json_schema(mode="validation"))
+        except (SynthError, PydanticUserError) as exc:
+            raise ReplayError(
+                f"tool {self.name!r}: cannot synthesise a result ({exc}); record this call "
+                "or replay with --policy fallback"
+            ) from exc
 
     def _decoder(self) -> Callable[[JsonValue], R]:
         adapter = self._returns

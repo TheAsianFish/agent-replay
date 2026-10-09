@@ -116,15 +116,15 @@ def test_single_line_rejected(cassette: Cassette) -> None:
         Cassette.loads(lines_of(cassette)[0])
 
 
-def test_schema_version_2(cassette: Cassette) -> None:
+def test_future_schema_version_rejected(cassette: Cassette) -> None:
     lines = lines_of(cassette)
     header = json.loads(lines[0])
-    header["schema_version"] = 2
+    header["schema_version"] = 3
     lines[0] = json.dumps(header)
     with pytest.raises(CassetteError, match=r"upgrade") as info:
         Cassette.loads("\n".join(lines), source="x.jsonl")
     assert "x.jsonl" in str(info.value)
-    assert "2" in str(info.value)
+    assert "3" in str(info.value)
 
 
 def test_truncated_file_missing_footer(cassette: Cassette) -> None:
@@ -231,3 +231,70 @@ def test_round_trip_random_cassettes(calls: list[tuple[str, dict[str, Any]]]) ->
     cassette = session.finish(output=calls)
     assert Cassette.loads(cassette.dumps()) == cassette
     assert cassette.tool_names() == ["echo"] * len(calls)
+
+
+# --- schema versions ----------------------------------------------------------
+
+LIVE_V1 = Path(__file__).parents[1] / "examples/toy_agent/cassettes/live_opus_refund_eligible.jsonl"
+
+
+def as_v1(cassette: Cassette) -> str:
+    lines = lines_of(cassette)
+    header = json.loads(lines[0])
+    header["schema_version"] = 1
+    return "\n".join([json.dumps(header), *lines[1:]])
+
+
+def test_v1_cassette_is_migrated_to_v2_on_load() -> None:
+    raw_header = json.loads(LIVE_V1.read_text(encoding="utf-8").split("\n")[0])
+    assert (
+        raw_header["schema_version"] == 1
+    )  # committed in v1 on purpose: keeps the migration honest
+
+    cassette = Cassette.load(LIVE_V1)
+
+    assert cassette.header.schema_version == 2
+    assert cassette.header.cassette_id == raw_header["cassette_id"]
+    assert [e.kind.value for e in cassette.envelopes] == [
+        "model", "tool", "tool", "model", "tool", "model"
+    ]  # fmt: skip
+
+
+def test_v1_round_trip_keeps_every_field(cassette: Cassette) -> None:
+    migrated = Cassette.loads(as_v1(cassette))
+    assert migrated == cassette
+
+
+def test_migrated_cassette_is_written_as_v2(cassette: Cassette) -> None:
+    migrated = Cassette.loads(as_v1(cassette))
+    assert json.loads(migrated.dumps().split("\n")[0])["schema_version"] == 2
+
+
+def test_v1_cassette_cannot_contain_v2_kinds(cassette: Cassette) -> None:
+    lines = as_v1(cassette).split("\n")
+    envelope = json.loads(lines[1])
+    envelope["kind"] = "clock"
+    lines[1] = json.dumps(envelope)
+    with pytest.raises(CassetteError, match=r":2: invalid v1 envelope"):
+        Cassette.loads("\n".join(lines))
+
+
+def test_v1_header_errors_name_the_version(cassette: Cassette) -> None:
+    lines = as_v1(cassette).split("\n")
+    header = json.loads(lines[0])
+    header["surprise"] = True
+    lines[0] = json.dumps(header)
+    with pytest.raises(CassetteError, match=r":1: invalid v1 header"):
+        Cassette.loads("\n".join(lines))
+
+
+@pytest.mark.parametrize("line", ["[1, 2]", '"text"', "{not json"])
+def test_header_must_be_a_json_object(cassette: Cassette, line: str) -> None:
+    lines = lines_of(cassette)
+    lines[0] = line
+    with pytest.raises(CassetteError, match=r":1: invalid header"):
+        Cassette.loads("\n".join(lines))
+
+
+def test_in_start_order_includes_nested_envelopes(cassette: Cassette) -> None:
+    assert [e.span_id for e in cassette.in_start_order()] == ["s0", "s1", "s2"]

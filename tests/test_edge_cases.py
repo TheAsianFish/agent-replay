@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import inspect
 from pathlib import Path
 
 import anthropic
@@ -204,7 +205,7 @@ def _client():
     return wrap(FakeAnthropic(scripted([Reply(text="hi")])))
 
 
-@pytest.mark.parametrize("attr", ["parse", "stream", "with_raw_response"])
+@pytest.mark.parametrize("attr", ["with_raw_response", "with_streaming_response"])
 def test_unrecorded_message_methods_raise_inside_a_session(attr):
     client = _client()
     with RecordingSession() as session, pytest.raises(ReplayError, match="not recorded yet"):
@@ -219,9 +220,9 @@ def test_beta_namespace_raises_inside_a_session():
     assert client.beta is not None  # fine outside a session
 
 
-def test_async_clients_are_rejected():
-    with pytest.raises(TypeError, match="async"):
-        wrap(anthropic.AsyncAnthropic(api_key="test-key"))
+def test_async_clients_get_an_async_proxy():
+    client = wrap(anthropic.AsyncAnthropic(api_key="test-key"))
+    assert inspect.iscoroutinefunction(client.messages.create)
 
 
 def test_sdk_sentinels_are_dropped_from_the_request():

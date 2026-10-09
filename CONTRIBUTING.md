@@ -37,8 +37,10 @@ make type         mypy --strict agent_replay examples
 make test         pytest -q (offline; sockets blocked; fake model + committed cassettes)
 make test-live    pytest -m live (needs ANTHROPIC_API_KEY; records with claude-opus-5-5)
 make check        lint + type + test (what CI runs)
-make cassettes    re-record the toy agent's committed cassettes with the fake model
-make demo         the README quickstart: replay passes, the mutant fails
+make cassettes    re-record the toy agent's committed cassettes (Anthropic and Ollama fakes)
+make retail-cassettes  re-record the retail example's cassettes with its fake model
+make demo         the toy quickstart: replay passes, the mutant fails
+make ci-demo      replay ci on the retail suite in every mode; each seeded regression must exit 1
 ```
 
 Planned with later milestones (not in the Makefile yet): `make eval`, `make bench`,

@@ -6,6 +6,9 @@ so agent code and the recorder cannot tell it apart from the API. Token counts
 are synthetic (about four characters per token) and only exist so token and
 budget code paths have something to work with; responses report the model as
 ``fake:<requested model>``, which has no price, so fake runs never show a cost.
+:class:`FakeAsyncAnthropic` is the same model behind ``await messages.create``.
+Both stream (``create(stream=True)`` and ``messages.stream(...)``), delivering
+the same message as raw events, so streaming agents record offline too.
 """
 
 from __future__ import annotations
@@ -15,11 +18,15 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 
 import anthropic
-from anthropic import Anthropic
-from anthropic.types import Message
+from anthropic import Anthropic, AsyncAnthropic
+from anthropic.lib._parse._response import parse_response
+from anthropic.lib.streaming import AsyncMessageStreamManager, MessageStreamManager
+from anthropic.types import Message, ParsedMessage
 from pydantic import JsonValue
 
 from agent_replay._json import canonical_json, to_jsonable
+from agent_replay.record._streams import AsyncSyntheticStream, SyntheticStream, events_from_message
+from agent_replay.record.anthropic import wire_output_format
 
 
 @dataclass(frozen=True)
@@ -111,19 +118,20 @@ def scripted(replies: Sequence[Reply]) -> Policy:
     return policy
 
 
-class _FakeMessages:
+class _FakeModel:
+    """The policy and turn counter behind a fake client's ``messages``."""
+
     def __init__(self, policy: Policy) -> None:
         self._policy = policy
         self._turn = 0
 
-    def create(self, **kwargs: Any) -> Message:
-        if kwargs.get("stream"):
-            raise NotImplementedError("FakeAnthropic does not stream")
+    def reply(self, kwargs: dict[str, Any]) -> Message:
+        # ``stream`` only changes the delivery, so it does not count towards usage.
         payload = to_jsonable(
             {
                 k: v
                 for k, v in kwargs.items()
-                if not isinstance(v, anthropic.NotGiven | anthropic.Omit)
+                if k != "stream" and not isinstance(v, anthropic.NotGiven | anthropic.Omit)
             }
         )
         assert isinstance(payload, dict)
@@ -166,12 +174,74 @@ class _FakeMessages:
         )
 
 
+class _FakeMessages:
+    def __init__(self, model: _FakeModel) -> None:
+        self._model = model
+
+    def create(self, **kwargs: Any) -> Any:
+        message = self._model.reply(kwargs)
+        if kwargs.get("stream"):
+            return SyntheticStream(events_from_message(message))
+        return message
+
+    def stream(self, **kwargs: Any) -> MessageStreamManager[Any]:
+        wire, output_format = wire_output_format(kwargs)
+        return MessageStreamManager(
+            lambda: self.create(**wire, stream=True), output_format=output_format
+        )
+
+    def parse(self, **kwargs: Any) -> ParsedMessage[Any]:
+        wire, output_format = wire_output_format(kwargs)
+        return parse_response(output_format=output_format, response=self._model.reply(wire))
+
+
+class _FakeAsyncMessages:
+    def __init__(self, model: _FakeModel) -> None:
+        self._model = model
+
+    async def create(self, **kwargs: Any) -> Any:
+        message = self._model.reply(kwargs)
+        if kwargs.get("stream"):
+            return AsyncSyntheticStream(events_from_message(message))
+        return message
+
+    def stream(self, **kwargs: Any) -> AsyncMessageStreamManager[Any]:
+        wire, output_format = wire_output_format(kwargs)
+        return AsyncMessageStreamManager(
+            self.create(**wire, stream=True), output_format=output_format
+        )
+
+    async def parse(self, **kwargs: Any) -> ParsedMessage[Any]:
+        wire, output_format = wire_output_format(kwargs)
+        return parse_response(output_format=output_format, response=self._model.reply(wire))
+
+
 class FakeAnthropic:
-    """Deterministic fake of the ``anthropic.Anthropic`` client (``messages.create`` only)."""
+    """Deterministic fake of the ``anthropic.Anthropic`` client.
+
+    Supports ``messages.create`` (with or without ``stream=True``),
+    ``messages.stream(...)`` and ``messages.parse(...)``; a streamed reply is the
+    same message delivered as raw stream events, with the same ids and usage.
+    For ``parse``, the policy's reply text must be the JSON the output format expects.
+    """
 
     def __init__(self, policy: Policy) -> None:
-        self.messages = _FakeMessages(policy)
+        self.messages = _FakeMessages(_FakeModel(policy))
 
     def as_anthropic(self) -> Anthropic:
         """This object, typed as the client it imitates, for agents annotated with it."""
         return cast(Anthropic, self)
+
+
+class FakeAsyncAnthropic:
+    """:class:`FakeAnthropic` for async agents: ``await client.messages.create(...)``.
+
+    Same policy contract, ids and token accounting as the sync fake.
+    """
+
+    def __init__(self, policy: Policy) -> None:
+        self.messages = _FakeAsyncMessages(_FakeModel(policy))
+
+    def as_anthropic(self) -> AsyncAnthropic:
+        """This object, typed as the client it imitates, for agents annotated with it."""
+        return cast(AsyncAnthropic, self)

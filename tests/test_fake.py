@@ -9,7 +9,7 @@ from anthropic.types import Message
 
 from agent_replay.cassette import Kind
 from agent_replay.fake import FakeAnthropic, FakeRequest, Reply, ToolCall, scripted
-from agent_replay.record.anthropic import wrap
+from agent_replay.record import wrap
 from agent_replay.session import RecordingSession
 
 MESSAGES: list[dict[str, Any]] = [{"role": "user", "content": "hi there"}]
@@ -64,9 +64,13 @@ def test_scripted_returns_in_order_then_raises() -> None:
         policy(req)
 
 
-def test_stream_not_supported() -> None:
-    with pytest.raises(NotImplementedError):
-        create(FakeAnthropic(scripted([Reply(text="x")])), stream=True)
+def test_streamed_reply_is_the_same_message_as_events() -> None:
+    plain = create(FakeAnthropic(scripted([Reply(text="x", tool_calls=[ToolCall("t", {"a": 1})])])))
+    client = FakeAnthropic(scripted([Reply(text="x", tool_calls=[ToolCall("t", {"a": 1})])]))
+    with client.messages.stream(model="claude-opus-5-5", max_tokens=10, messages=MESSAGES) as s:
+        assert list(s.text_stream) == ["x"]
+        streamed = s.get_final_message()
+    assert streamed.model_dump(exclude_none=True) == plain.model_dump(exclude_none=True)
 
 
 def _request(messages: list[dict[str, Any]]) -> FakeRequest:

@@ -17,14 +17,21 @@ classifiers = [
 ]
 dependencies = [
     "anthropic>=1.12,<2",
+    "jsonschema>=4.23,<5",
     "pydantic>=2.9,<3",
     "rich>=13",
+    "sqlalchemy>=2.1,<3",
     "structlog>=24",
     "typer>=0.12",
 ]
 
 [project.scripts]
 replay = "agent_replay.cli:main"
+
+[project.optional-dependencies]
+ollama = [
+    "ollama>=0.6,<0.7",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -39,12 +46,13 @@ dev = [
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "ruff>=0.16.10",
+    "types-jsonschema>=4.26.0.20261006",
 ]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["examples/toy_agent/cassettes"]
+extend-exclude = ["examples/toy_agent/cassettes", "examples/retail_agent/cassettes"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "PT", "TID", "ANN", "S", "PL"]

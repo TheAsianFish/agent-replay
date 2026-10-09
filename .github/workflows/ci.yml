@@ -35,6 +35,8 @@ jobs:
         run: uv run pytest -q
       - name: Quickstart (replay passes, mutant fails)
         run: make demo
+      - name: replay ci on the retail suite (every mode passes, every mutant fails)
+        run: make ci-demo
 
   live:
     name: Live API tests
