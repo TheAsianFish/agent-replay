@@ -1,7 +1,8 @@
 # Targets for later milestones (eval, bench, ui, serve, dashboard lint/type)
 # are added with the code they run.
 
-.PHONY: setup lint format type test test-live check cassettes retail-cassettes demo ci-demo
+.PHONY: setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
+	bench-sprt
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -18,7 +19,7 @@ format:
 	uv run ruff format .
 
 type:
-	uv run mypy agent_replay examples
+	uv run mypy agent_replay examples eval
 
 test:
 	uv run pytest -q
@@ -64,3 +65,7 @@ ci-demo:
 			--agent examples.retail_agent.mutants:$$mutant > /dev/null; \
 		test $$? -eq 1 || { echo "mutant $$mutant was not caught"; exit 1; }; \
 	done
+
+# Simulate the sequential CI gate over a grid of true pass rates (offline, ~seconds).
+bench-sprt:
+	uv run python eval/sprt_sim.py --out eval/results/sprt_sim.json
