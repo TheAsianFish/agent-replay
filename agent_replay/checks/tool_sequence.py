@@ -28,6 +28,13 @@ def _is_subsequence(needle: Sequence[str], haystack: Sequence[str]) -> bool:
     return _matched_prefix(needle, haystack) == len(needle)
 
 
+def _common_prefix(a: Sequence[str], b: Sequence[str]) -> int:
+    """Length of the longest common prefix of ``a`` and ``b``."""
+    return next(
+        (i for i, (x, y) in enumerate(zip(a, b, strict=False)) if x != y), min(len(a), len(b))
+    )
+
+
 def _diff(expected: Sequence[str], actual: Sequence[str]) -> list[str]:
     """Line diff of the two sequences: ``"  x"`` kept, ``"- x"`` missing, ``"+ x"`` extra."""
     lines: list[str] = []
@@ -73,9 +80,9 @@ class ToolSequence:
         elif exact:
             diff = _diff(expected, actual)
             details["diff"] = list(diff)
-            # Leading unchanged lines are the common prefix, so this is a position
-            # in both sequences.
-            first = next(i for i, line in enumerate(diff) if not line.startswith("  "))
+            # The first differing position is the end of the common prefix; the
+            # diff's first change can come later when difflib aligns a later block.
+            first = _common_prefix(expected, actual)
             missing = [line[2:] for line in diff if line.startswith("- ")]
             extra = [line[2:] for line in diff if line.startswith("+ ")]
             parts = [f"tool call #{first + 1} differs"]

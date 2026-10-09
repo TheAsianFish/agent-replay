@@ -485,3 +485,17 @@ def test_record_to_an_unwritable_path_is_a_usage_error(in_root):
     assert out.exit_code == 2, out.output
     assert "cannot write" in out.output
     assert "Traceback" not in out.output
+
+
+# --- tool_sequence reports the first differing position ----------------------------
+
+
+def test_exact_mismatch_reports_the_first_differing_call():
+    def agent(_c, _t):
+        return [plain(1), inner(1), inner(1), inner(1), plain(2), outer(1)]
+
+    _, cassette = record(agent, "t", client=NO_MODEL)
+    result = replay(cassette, agent)
+    [check] = result.check(tool_sequence(["plain", "outer"]))
+    assert not check.passed
+    assert check.message.startswith("tool call #2 differs")
