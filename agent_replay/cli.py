@@ -24,7 +24,7 @@ from agent_replay.cassette import Cassette
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
 from agent_replay.errors import ReplayError
-from agent_replay.record.anthropic import wrap
+from agent_replay.record import wrap
 from agent_replay.runner import RunResult, load_agent, load_object, record, replay
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 

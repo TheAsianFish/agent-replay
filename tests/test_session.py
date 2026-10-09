@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from agent_replay.cassette import Cassette, Kind, Usage
 from agent_replay.errors import RecordedException, ReplayError, UnrecordedCallError
 from agent_replay.pricing import cost_usd
-from agent_replay.record.anthropic import wrap
+from agent_replay.record import wrap
 from agent_replay.record.tools import Tool, tool
 from agent_replay.session import RecordingSession, ReplaySession, current_session
 from agent_replay.trajectory import StepStatus

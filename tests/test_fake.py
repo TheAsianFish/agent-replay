@@ -9,7 +9,7 @@ from anthropic.types import Message
 
 from agent_replay.cassette import Kind
 from agent_replay.fake import FakeAnthropic, FakeRequest, Reply, ToolCall, scripted
-from agent_replay.record.anthropic import wrap
+from agent_replay.record import wrap
 from agent_replay.session import RecordingSession
 
 MESSAGES: list[dict[str, Any]] = [{"role": "user", "content": "hi there"}]

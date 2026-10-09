@@ -8,7 +8,7 @@ traffic, and the SDK layer hands us typed messages and usage for free.
 from __future__ import annotations
 
 import inspect
-from typing import Any, NoReturn, cast
+from typing import Any, NoReturn
 
 import anthropic
 from anthropic.types import Message
@@ -17,6 +17,7 @@ from pydantic import JsonValue
 from agent_replay._json import fingerprint, to_jsonable
 from agent_replay.cassette import Kind, Usage
 from agent_replay.errors import ReplayError
+from agent_replay.record._base import WrappedClient
 from agent_replay.session import Call, current_session
 
 MODEL_CALL = "anthropic.messages.create"
@@ -133,7 +134,7 @@ class _MessagesProxy:
         return getattr(self._inner, name)
 
 
-class _ClientProxy:
+class _ClientProxy(WrappedClient):
     def __init__(self, inner: Any) -> None:
         self._inner = inner
         self.messages = _MessagesProxy(inner.messages)
@@ -151,18 +152,40 @@ class _ClientProxy:
         return self._inner.__exit__(*exc_info)
 
 
-def wrap[C](client: C) -> C:
-    """Return ``client`` with ``messages.create`` routed through the active session.
+class _Offline:
+    """Stands in for the Anthropic client when replay serves the model and none was given."""
 
-    Outside a session the proxy calls straight through. Wrapping twice is a no-op.
-    Works with ``anthropic.Anthropic`` and anything exposing the same
-    ``messages.create`` (such as :class:`agent_replay.fake.FakeAnthropic`).
-    """
-    if isinstance(client, _ClientProxy):
-        return client
-    create = getattr(getattr(client, "messages", None), "create", None)
-    if create is None:
-        raise TypeError(f"cannot wrap {type(client).__name__}: it has no messages.create")
-    if isinstance(client, anthropic.AsyncAnthropic) or inspect.iscoroutinefunction(create):
-        raise TypeError("async clients are not supported yet; wrap anthropic.Anthropic")
-    return cast(C, _ClientProxy(client))
+    class _Messages:
+        def create(self, **_: object) -> object:
+            raise ReplayError(
+                "this replay has no live model client, so an unrecorded model call cannot run; "
+                "pass one (--client anthropic, or replay(..., client=...)) to use the fallback "
+                "policy for model calls, or re-record"
+            )
+
+    def __init__(self) -> None:
+        self.messages = self._Messages()
+
+
+class AnthropicAdapter:
+    """The :class:`~agent_replay.record.ProviderAdapter` for the ``anthropic`` SDK."""
+
+    name = "anthropic"
+
+    def accepts(self, client: object) -> bool:
+        return callable(getattr(getattr(client, "messages", None), "create", None))
+
+    def wrap(self, client: object) -> WrappedClient:
+        create = getattr(getattr(client, "messages", None), "create", None)
+        if isinstance(client, anthropic.AsyncAnthropic) or inspect.iscoroutinefunction(create):
+            raise TypeError("async clients are not supported yet; wrap anthropic.Anthropic")
+        return _ClientProxy(client)
+
+    def owns(self, call_name: str) -> bool:
+        return call_name.startswith("anthropic.")
+
+    def offline_client(self, *, is_async: bool) -> object:
+        return _Offline()
+
+
+ANTHROPIC = AnthropicAdapter()

@@ -15,6 +15,7 @@ from agent_replay._json import fingerprint, to_jsonable
 from agent_replay.cassette import Kind
 from agent_replay.errors import ReplayError
 from agent_replay.session import Call, current_session
+from agent_replay.synth import SynthError, stub_from_schema
 
 
 class Tool[**P, R]:
@@ -88,8 +89,22 @@ class Tool[**P, R]:
             invoke=lambda: self.fn(*args, **kwargs),
             encode=to_jsonable,
             decode=decode,
+            synth=self._synth,
         )
         return session.intercept(call)
+
+    def _synth(self) -> JsonValue:
+        """A stub result for the ``synth`` policy, built from the return annotation."""
+        adapter = self._returns
+        if adapter is None:
+            return None
+        try:
+            return stub_from_schema(adapter.json_schema(mode="serialization"))
+        except (SynthError, PydanticSchemaGenerationError) as exc:
+            raise ReplayError(
+                f"tool {self.name!r}: cannot synthesise a result ({exc}); record this call "
+                "or replay with --policy fallback"
+            ) from exc
 
     def _decoder(self) -> Callable[[JsonValue], R]:
         adapter = self._returns
