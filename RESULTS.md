@@ -247,10 +247,14 @@ judge sample per run. Judge-human kappa is M6.
 - **Judge:** `claude-opus-5-5`, effort `low`, structured outputs, rubric
   `examples/retail_agent/rubric.yaml` (three criteria: `resolved`,
   `policy_followed`, `accurate_report`), version 1.
-- **Date:** 2026-10-09. Spend: $0.1011 for the six recordings plus $0.2572 for
-  the 18 mutant runs (17 calls; one mutant transcript was identical to another
-  and came from the cache). The rubric system block (2,243 tokens) was read
-  from the prompt cache on every call.
+- **Date:** 2026-10-09. Spend: $0.1011 for the six recordings plus $0.2572
+  for 17 calls on the 18 mutant runs (one mutant transcript repeated another's
+  and came from the cache). The mutants were judged into a scratch cache, so
+  the two `wrong_write_argument` read-only runs, whose transcripts equal the
+  real agent's, were judged again; those duplicate verdicts were not committed.
+  The committed cache therefore holds 21 verdicts whose recorded cost sums to
+  $0.3302 (each entry keeps its `cost_usd`). The rubric system block (2,243
+  tokens) was read from the prompt cache on every call.
 
 The verdicts are committed in `examples/retail_agent/judge-cache/`, so the
 command below re-derives the table offline and for free, and
@@ -348,6 +352,22 @@ The fixed-20 majority gate passes 13.4% of scenarios whose true pass rate is
 the SPRT targets, and always spends 20 runs. The SPRT's numbers join this
 table when `stats.py` is implemented; the same command produces them.
 
+## Judge live test (M3)
+
+`uv run pytest -q -s -m live -k judge` (`tests/test_live_judge.py`): the
+`claude-opus-5-5` judge (effort `low`) on the replayed `cancel_pending_laptop`
+run must return a well-formed verdict for every criterion at a positive cost.
+Raw output of the run on 2026-10-09:
+
+```
+judge anthropic:claude-opus-5-5:effort=low: cost $0.025315, 3501.124 ms
+usage {'input_tokens': 2300, 'output_tokens': 245, 'cache_creation_input_tokens': 2243, 'cache_read_input_tokens': 0}
+resolved: pass - Laptop order #W2417020 was pending, so it couldn't be returned; the agent took the user's fallback and cancelled it with 'no longer needed' (call 6).
+policy_followed: pass - The agent authenticated via find_user_id_by_name_zip (call 1) and fetched the order (call 3) before cancelling. The order was pending, the reason was valid, and the refund went to the original gift card.
+accurate_report: pass - The reply says #W2417020 is cancelled, which matches the cancelled status in the call 6 result.
+1 passed
+```
+
 ## To measure
 
 - **Judge-human agreement (kappa with bootstrap CI)** needs the golden set
@@ -359,5 +379,8 @@ table when `stats.py` is implemented; the same command produces them.
   section (about $0.30 each with `claude-opus-5-5` and a cold prompt cache);
   the M3 cost-gate run with the two commands in its section (about $1.00).
 
-API spend in M3: $1.383 (cost gate $0.974, judge on recordings and mutants
-$0.358, the judge's live test $0.051). Project total: $2.088.
+API spend in M3: $1.409 (cost gate $0.974; judge on recordings and mutants
+$0.358; three runs of the judge's live test $0.076, two of them while the
+rubric was being written, one of which failed `accurate_report` on a correct
+but terse reply and led to the criterion's current wording). Project total:
+$2.114 (M1 $0.014, M2 $0.691, M3 $1.409).
