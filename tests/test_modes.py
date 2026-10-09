@@ -648,3 +648,15 @@ def test_envelope_seq_points_into_the_source_cassette_only() -> None:
             assert source.envelopes[step.envelope_seq].fingerprint == step.fingerprint
         else:  # performed live
             assert step.envelope_seq is None
+
+
+def test_a_sync_agent_returning_a_coroutine_is_awaited() -> None:
+    async def body(client: Any, task: str) -> str:
+        return f"{ping(1)}:{task}"
+
+    def agent(client: Any, task: str) -> Any:
+        return body(client, task)  # e.g. a lambda or functools.partial around async code
+
+    result = replay(record_pings(1), agent, task="t")
+    assert result.ok, result.error
+    assert result.output == "2:t"

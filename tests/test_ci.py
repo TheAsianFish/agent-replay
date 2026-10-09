@@ -422,3 +422,35 @@ def test_an_unwritable_step_summary_only_warns(
     result = invoke("ci", str(SUITE), "--no-store")
     assert result.exit_code == 0, result.output
     assert "cannot append to GITHUB_STEP_SUMMARY" in result.output
+
+
+# --- review regressions: claims the mutation sweep showed were untested ---------------
+
+
+def test_an_agent_error_fails_the_scenario_even_when_every_check_passes(tmp_path: Path) -> None:
+    body = TOY_SUITE.replace(
+        'cassette = "', 'agent = "examples.toy_agent.mutants:crash_after_answer"\ncassette = "'
+    )
+    [scenario] = run_suite(write_suite(tmp_path, body)).scenarios
+
+    assert all(c.passed for c in scenario.checks)
+    assert scenario.error is not None
+    assert not scenario.passed
+
+
+def test_scenario_mode_and_policy_override_the_defaults(tmp_path: Path) -> None:
+    body = TOY_SUITE + 'mode = "tools-live"\npolicy = "synth"\n'
+    [scenario] = run_suite(write_suite(tmp_path, body)).scenarios
+
+    assert (scenario.mode, scenario.policy) == ("tools-live", "synth")
+    assert scenario.steps.by_status == {"exact": 3, "live": 3}
+
+
+def test_the_store_counts_approximate_steps(tmp_path: Path) -> None:
+    db = f"sqlite:///{tmp_path / 'r.db'}"
+    invoke("ci", str(write_suite(tmp_path, TOY_SUITE)), "--db", db, "--agent",
+           "examples.toy_agent.mutants:first_tool_only")  # fmt: skip
+    with Store.open(db) as store:
+        [run] = store.list_runs()
+    assert run.approximate_count == 2
+    assert run.unconsumed_count == 1
