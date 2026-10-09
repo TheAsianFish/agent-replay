@@ -86,6 +86,8 @@ class Overrides(_Config):
     mode: ReplayMode | None = None
     policy: Policy | None = None
     client: str | None = None
+    cassette_dir: Path | None = None
+    """Read every scenario's cassette (by file name) from this directory instead."""
 
 
 def load_suite(path: Path) -> Suite:
@@ -232,7 +234,11 @@ def _run_scenario(
 ) -> tuple[ScenarioReport, RunResult | None]:
     mode = overrides.mode or scenario.mode or defaults.mode
     policy = overrides.policy or scenario.policy or defaults.policy
-    cassette_path = base_dir / scenario.cassette
+    cassette_path = (
+        overrides.cassette_dir / Path(scenario.cassette).name
+        if overrides.cassette_dir is not None
+        else base_dir / scenario.cassette
+    )
     agent_ref = overrides.agent or scenario.agent or defaults.agent
     started = timer()
 

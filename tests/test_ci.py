@@ -362,3 +362,15 @@ def test_run_tools_live_and_policy_flags() -> None:
     result = invoke("run", cassette, "--mode", "tools-live", "--policy", "synth")
     assert result.exit_code == 0, result.output
     assert "mode tools-live, policy synth" in result.output
+
+
+def test_cassette_dir_override_reads_cassettes_by_file_name(tmp_path: Path) -> None:
+    shutil.copytree(RETAIL_CASSETTES, tmp_path / "other")
+    (tmp_path / "other" / "modify_address_suite.jsonl").unlink()
+
+    report = run_suite(SUITE, overrides=Overrides(cassette_dir=tmp_path / "other"))
+
+    failed = {s.name: s for s in report.scenarios if not s.passed}
+    assert set(failed) == {"modify_address_suite"}
+    assert failed["modify_address_suite"].error is not None
+    assert str(tmp_path / "other") in failed["modify_address_suite"].error.message

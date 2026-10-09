@@ -373,6 +373,10 @@ def ci_cmd(
         str | None,
         typer.Option(help="Live model client for model-live: 'anthropic' or module:factory."),
     ] = None,
+    cassette_dir: Annotated[
+        Path | None,
+        typer.Option(help="Read each scenario's cassette (by file name) from this directory."),
+    ] = None,
     json_path: Annotated[
         Path | None, typer.Option("--json", help="Write the JSON report here.")
     ] = None,
@@ -398,6 +402,7 @@ def ci_cmd(
         mode=mode.value if mode else None,
         policy=policy.value if policy else None,
         client=client,
+        cassette_dir=cassette_dir,
     )
     try:
         store = Store.open(db) if use_store else None
