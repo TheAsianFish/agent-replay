@@ -47,7 +47,7 @@ class TestCanonicalJson:
 
     @pytest.mark.parametrize("bad", [float("nan"), float("inf")])
     def test_rejects_non_finite(self, bad: float) -> None:
-        with pytest.raises(ValueError):  # noqa: PT011
+        with pytest.raises(TypeError, match="not finite"):
             canonical_json({"x": bad})
 
 

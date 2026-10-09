@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from typer.testing import CliRunner
 
 from agent_replay import Cassette, RecordingSession, ReplayError, StepStatus, tool, wrap
+from agent_replay._json import canonical_json, fingerprint, to_jsonable
 from agent_replay.checks import tool_sequence
 from agent_replay.cli import app
 from agent_replay.fake import FakeAnthropic, Reply, scripted
@@ -207,14 +208,14 @@ def _client():
 def test_unrecorded_message_methods_raise_inside_a_session(attr):
     client = _client()
     with RecordingSession() as session, pytest.raises(ReplayError, match="not recorded yet"):
-        getattr(client.messages, attr)
+        getattr(client.messages, attr)(model="m", max_tokens=1, messages=[])
     assert session.fatal is not None
 
 
 def test_beta_namespace_raises_inside_a_session():
     client = wrap(anthropic.Anthropic(api_key="test-key"))
     with RecordingSession(), pytest.raises(ReplayError, match=r"client\.beta"):
-        _ = client.beta
+        client.beta.messages.create(model="m", max_tokens=1, messages=[])
     assert client.beta is not None  # fine outside a session
 
 
@@ -310,3 +311,98 @@ def test_strict_fails_when_steps_were_approximate(in_root):
     assert lenient.exit_code == 0
     assert strict.exit_code == 1
     assert "strict" in strict.output
+
+
+# --- values JSON cannot carry exactly -------------------------------------------
+
+
+@pytest.mark.parametrize("value", [float("inf"), float("-inf"), float("nan")])
+def test_non_finite_floats_cannot_be_converted(value):
+    with pytest.raises(TypeError, match="not finite"):
+        to_jsonable({"x": [1, value]})
+
+
+def test_non_finite_tool_argument_fails_the_run():
+    @tool
+    def scale(factor: float) -> float:
+        return factor
+
+    result, cassette = record(lambda c, t: scale(float("inf")), "t", client=NO_MODEL)
+    assert result.error is not None
+    assert result.error.type == "ReplayError"
+    assert "not finite" in result.error.message
+    assert cassette.footer.status == "error"
+    assert Cassette.loads(cassette.dumps()) == cassette
+
+
+def test_non_finite_tool_result_fails_the_run():
+    @tool
+    def ratio() -> float:
+        return float("nan")
+
+    result, cassette = record(lambda c, t: ratio(), "t", client=NO_MODEL)
+    assert result.error is not None
+    assert "not finite" in result.error.message
+    assert Cassette.loads(cassette.dumps()) == cassette
+
+
+def test_non_finite_agent_output_fails_the_run():
+    result, cassette = record(lambda c, t: {"score": float("inf")}, "t", client=NO_MODEL)
+    assert result.error is not None
+    assert "not finite" in result.error.message
+    assert cassette.footer.output is None
+    assert Cassette.loads(cassette.dumps()) == cassette
+
+
+def test_sets_are_recorded_in_a_deterministic_order():
+    request = {"tags": {"zeta", "alpha", "mu"}, "ids": frozenset({3, 1, 2})}
+    assert to_jsonable(request) == {"tags": ["alpha", "mu", "zeta"], "ids": [1, 2, 3]}
+    assert fingerprint("tool", "t", request) == fingerprint(
+        "tool", "t", {"tags": ["alpha", "mu", "zeta"], "ids": [1, 2, 3]}
+    )
+
+
+@pytest.mark.parametrize("value", ["\udcff", {"\udcff": 1}, ["ok", "\ud800"]])
+def test_lone_surrogates_are_a_type_error(value):
+    with pytest.raises(TypeError, match="valid Unicode"):
+        fingerprint("tool", "t", {"x": value})
+    with pytest.raises(TypeError, match="valid Unicode"):
+        canonical_json(value)
+
+
+def test_lone_surrogate_in_a_tool_argument_fails_the_run():
+    @tool
+    def echo(text: str) -> str:
+        return text
+
+    def agent(_c, _t):
+        try:
+            return echo("bad \udcff byte")
+        except Exception:
+            return "swallowed"
+
+    with RecordingSession() as session:
+        output = agent(None, "t")
+    assert output == "swallowed"
+    assert isinstance(session.fatal, ReplayError)
+    assert "valid Unicode" in str(session.fatal)
+    assert session.finish(output=output).footer.status == "error"
+
+
+def test_nested_sdk_sentinels_are_dropped_from_the_request():
+    client = _client()
+    with RecordingSession() as session:
+        reply = client.messages.create(
+            model="m",
+            max_tokens=10,
+            messages=[{"role": "user", "content": "x"}],
+            output_config={"effort": anthropic.omit, "format": anthropic.NOT_GIVEN},
+            metadata={"user_id": anthropic.omit},
+        )
+    assert isinstance(reply, Message)
+    cassette = session.finish()
+    assert cassette.footer.status == "ok"
+    [envelope] = cassette.envelopes
+    assert isinstance(envelope.request, dict)
+    assert envelope.request["output_config"] == {}
+    assert envelope.request["metadata"] == {}
