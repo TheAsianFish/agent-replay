@@ -12,7 +12,9 @@ Two fields are recorded but left out of the request fingerprint:
 
 - ``keep_alive`` says how long the server keeps the model loaded; it never
   changes the answer.
-- ``stream`` changes how the answer is delivered, not what it is.
+- ``stream`` changes how the answer is delivered, not what it is. Either
+  recording serves either kind of call: chunks are merged into one response
+  for a plain call, and a plain response becomes a single chunk for a stream.
 
 ``options`` stays in the fingerprint: temperature, seed, ``num_ctx`` and the like
 change what the model produces, so a replay with different options should show
@@ -136,7 +138,35 @@ def _encode(response: ChatResponse) -> JsonValue:
 def _decode(data: JsonValue) -> ChatResponse:
     from ollama import ChatResponse  # noqa: PLC0415 - optional dependency
 
+    if isinstance(data, list):  # recorded as a stream, asked for whole
+        data = _merge_chunks(data)
     return ChatResponse.model_validate(data)
+
+
+def _merge_chunks(chunks: list[JsonValue]) -> JsonValue:
+    """One response from streamed chunks: text and tool calls joined, the rest from the last."""
+    if not chunks or not all(isinstance(c, dict) for c in chunks):
+        raise TypeError("a streamed chat is recorded as a non-empty list of chunk objects")
+    parts = [c for c in chunks if isinstance(c, dict)]
+    merged = dict(parts[-1])
+    message = dict(_as_dict(merged.get("message")))
+    for field in ("content", "thinking"):
+        text = "".join(str(_as_dict(p.get("message")).get(field) or "") for p in parts)
+        if text:
+            message[field] = text
+    calls = [call for p in parts for call in _as_list(_as_dict(p.get("message")).get("tool_calls"))]
+    if calls:
+        message["tool_calls"] = calls
+    merged["message"] = message
+    return merged
+
+
+def _as_dict(value: JsonValue) -> dict[str, JsonValue]:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_list(value: JsonValue) -> list[JsonValue]:
+    return value if isinstance(value, list) else []
 
 
 def _encode_chunks(chunks: list[ChatResponse]) -> JsonValue:
@@ -144,6 +174,8 @@ def _encode_chunks(chunks: list[ChatResponse]) -> JsonValue:
 
 
 def _decode_chunks(data: JsonValue) -> list[ChatResponse]:
+    if isinstance(data, dict):  # recorded whole, asked for as a stream
+        return [_decode(data)]
     if not isinstance(data, list):
         raise TypeError("a streamed chat is recorded as a list of chunks")
     return [_decode(c) for c in data]

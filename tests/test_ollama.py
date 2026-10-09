@@ -348,3 +348,26 @@ def test_committed_ollama_cassette_matches_a_fresh_recording():
 def test_ollama_toy_agent_runs_unchanged_without_a_session():
     output = ollama_agent.run(make_client(), "I'd like a refund for order A1002, please.")
     assert output.startswith("Sorry, order A1002 was delivered 45 days ago")
+
+
+def _answer(client, task, *, stream):
+    reply = client.chat("llama3.2", [{"role": "user", "content": task}], stream=stream)
+    if stream:
+        return "".join(chunk.message.content or "" for chunk in reply)
+    return reply.message.content
+
+
+@pytest.mark.parametrize("recorded_stream", [True, False])
+def test_a_recording_serves_both_streaming_and_plain_calls(recorded_stream):
+    def recorded(client, task):
+        return _answer(client, task, stream=recorded_stream)
+
+    def switched(client, task):
+        return _answer(client, task, stream=not recorded_stream)
+
+    first, cassette = record(recorded, "1 + 2?", client=FakeOllama(_two_turns))
+    result = replay(Cassette.loads(cassette.dumps()), switched)
+
+    assert result.ok, result.error
+    assert result.output == first.output
+    assert [s.status for s in result.trajectory.steps] == [StepStatus.EXACT]
