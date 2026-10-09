@@ -6,18 +6,24 @@ import asyncio
 import importlib
 import subprocess
 import sys
+from pathlib import Path
 
 import ollama
 import pytest
 from ollama import ChatResponse, Message
 
 from agent_replay import Cassette, Kind, StepStatus, tool, wrap
+from agent_replay.checks import tool_sequence
 from agent_replay.fake import FakeAnthropic, Reply, ToolCall, scripted
 from agent_replay.fake_ollama import FakeAsyncOllama, FakeOllama, FakeOllamaRequest
 from agent_replay.record import WrappedClient, adapter_for_calls
 from agent_replay.record.anthropic import ANTHROPIC
 from agent_replay.record.ollama import OLLAMA
-from agent_replay.runner import record, replay
+from agent_replay.runner import load_agent, record, replay
+from examples.toy_agent import ollama_agent
+from examples.toy_agent.ollama_fake import make_client
+
+COMMITTED = Path(__file__).parents[1] / "examples/toy_agent/cassettes/ollama_refund_eligible.jsonl"
 
 
 def _two_turns(request: FakeOllamaRequest) -> Reply:
@@ -305,3 +311,40 @@ def test_adapter_module_imports_without_ollama(monkeypatch):
     finally:
         monkeypatch.undo()
         importlib.reload(module)
+
+
+# --- the toy agent on Ollama ----------------------------------------------------------
+
+
+def test_committed_ollama_cassette_replays_offline_without_a_client():
+    cassette = Cassette.load(COMMITTED)
+    assert cassette.header.agent == "examples.toy_agent.ollama_agent:run"
+
+    # No client: the runner picks the Ollama offline stand-in from the envelope names.
+    result = replay(cassette, load_agent(cassette.header.agent))
+
+    assert result.ok, result.error
+    assert result.output == "Done: I refunded $42.50 for order A1001 (reference RF-A1001)."
+    assert {s.status for s in result.trajectory.steps} == {StepStatus.EXACT}
+    assert result.unconsumed == ()
+    [check] = result.check(tool_sequence(["lookup_order", "get_refund_policy", "issue_refund"]))
+    assert check.passed, check.message
+
+
+def test_committed_ollama_cassette_matches_a_fresh_recording():
+    """Fails when the agent or fake model changed without re-recording (`make cassettes`)."""
+    committed = Cassette.load(COMMITTED)
+    assert committed.header.task is not None
+
+    _, fresh = record(ollama_agent.run, committed.header.task, client=make_client())
+
+    def comparable(c: Cassette) -> list[dict[str, object]]:
+        return [e.model_dump(exclude={"latency_ms"}) for e in c.envelopes]
+
+    assert comparable(fresh) == comparable(committed), "re-record with `make cassettes`"
+    assert fresh.footer == committed.footer
+
+
+def test_ollama_toy_agent_runs_unchanged_without_a_session():
+    output = ollama_agent.run(make_client(), "I'd like a refund for order A1002, please.")
+    assert output.startswith("Sorry, order A1002 was delivered 45 days ago")

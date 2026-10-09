@@ -35,6 +35,10 @@ cassettes:
 		-o examples/toy_agent/cassettes/refund_eligible.jsonl
 	$(TOY_RECORD) -t "I'd like a refund for order A1002, please." \
 		-o examples/toy_agent/cassettes/refund_denied.jsonl
+	uv run replay record examples.toy_agent.ollama_agent:run \
+		--client examples.toy_agent.ollama_fake:make_client --force \
+		-t "Order A1001 arrived damaged. Can I get a refund?" \
+		-o examples/toy_agent/cassettes/ollama_refund_eligible.jsonl
 
 # Re-record the retail agent's committed cassettes (one per task) with the fake model.
 retail-cassettes:
