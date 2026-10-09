@@ -290,6 +290,17 @@ def test_core_bootstrap_percentile_indices() -> None:
 
 
 @CORE_XFAIL
+def test_core_bootstrap_percentile_indices_floor_and_ceil_not_round() -> None:
+    # alpha = 0.3 puts both cut points on a half: lo = sorted[floor(1.5)] = sorted[1] = 2
+    # and hi = sorted[ceil(8.5) - 1] = sorted[8] = 9. Rounding instead gives (3, 8).
+    calls = iter(range(1, 11))
+    assert stats.bootstrap_ci(lambda _a, _b: next(calls), [0], [0], n_resamples=10, alpha=0.3) == (
+        2,
+        9,
+    )
+
+
+@CORE_XFAIL
 def test_core_bootstrap_drops_nan_resamples() -> None:
     # Every other resample is NaN; the five finite values 1..5 remain, so with
     # alpha = 0.4: lo = sorted[floor(0.2 * 5)] = 2, hi = sorted[ceil(0.8 * 5) - 1] = 4.
