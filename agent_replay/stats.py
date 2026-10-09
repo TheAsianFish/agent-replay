@@ -11,6 +11,10 @@ Three things in agent-replay are only as good as the statistics underneath:
 
 This module holds the chance-corrected and exact methods and uses the standard
 library only (``math``, ``random``, ``statistics.NormalDist``, ``typing``).
+Every ``ValueError`` message names the offending argument (``n_resamples``,
+``alpha``, ``successes``, ``p_fail`` and so on), or says ``empty`` for empty
+label sequences and ``length`` for a length mismatch; the tests match on that
+word, never on the rest of the wording.
 :mod:`agent_replay.stats_baseline` is the naive reference behind the same
 interface (raw agreement, normal-approximation intervals, a fixed-k majority
 gate) that this module is measured against; :mod:`agent_replay.stats_impl`
@@ -77,9 +81,12 @@ def bootstrap_ci(
     """Paired percentile bootstrap confidence interval for ``stat(a, b)``.
 
     With ``n = len(a)`` and ``rng = random.Random(seed)``, draw ``n_resamples``
-    resamples; each is ``n`` indices drawn uniformly from ``range(n)`` with
-    replacement, and the *same* indices select from ``a`` and from ``b`` (the
-    pairs stay together). ``stat`` is computed on every resample; NaN results
+    resamples; each is ``n`` indices ``rng.randrange(n)``, drawn one after the
+    other, and the *same* indices select from ``a`` and from ``b`` (the pairs
+    stay together). Drawing them that way, and in that order, is part of the
+    specification: :mod:`agent_replay.stats_baseline` draws the same indices,
+    so the two intervals differ only in how the interval is formed.
+    ``stat`` is computed on every resample; NaN results
     (for example kappa on a resample where it is undefined) are dropped, and
     the ``m`` remaining values are sorted. The interval is::
 

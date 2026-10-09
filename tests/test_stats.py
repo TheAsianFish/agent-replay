@@ -164,17 +164,17 @@ def test_baseline_constant_raters_agree_fully(weights: stats.Weights) -> None:
 
 
 def test_kappa_rejects_empty(impl: ModuleType) -> None:
-    with pytest.raises(ValueError, match="non-empty"):
+    with pytest.raises(ValueError, match="empty"):
         impl.cohens_kappa([], [])
 
 
 def test_kappa_rejects_unequal_lengths(impl: ModuleType) -> None:
-    with pytest.raises(ValueError, match="same order"):
+    with pytest.raises(ValueError, match="length"):
         impl.cohens_kappa([0, 1], [0])
 
 
 def test_kappa_rejects_unknown_weights(impl: ModuleType) -> None:
-    with pytest.raises(ValueError, match="quadratic"):
+    with pytest.raises(ValueError, match="weights"):
         impl.cohens_kappa([0, 1], [0, 1], weights="cubic")
 
 
@@ -247,8 +247,8 @@ def test_bootstrap_all_nan_resamples(impl: ModuleType) -> None:
 @pytest.mark.parametrize(
     ("a", "b", "kwargs", "match"),
     [
-        ([], [], {}, "non-empty"),
-        ([0, 1], [0], {}, "same order"),
+        ([], [], {}, "empty"),
+        ([0, 1], [0], {}, "length"),
         ([0, 1], [0, 1], {"n_resamples": 0}, "n_resamples"),
         ([0, 1], [0, 1], {"alpha": 0.0}, "alpha"),
         ([0, 1], [0, 1], {"alpha": 1.0}, "alpha"),
@@ -356,9 +356,12 @@ def test_baseline_wald_hand_computed() -> None:
     assert stats_baseline.wilson_interval(10, 10) == (1.0, 1.0)
 
 
-def test_interval_endpoints_exact(impl: ModuleType) -> None:
-    assert impl.wilson_interval(0, 7)[0] == 0.0
-    assert impl.wilson_interval(7, 7)[1] == 1.0
+@pytest.mark.parametrize("trials", [7, 10, 13])
+def test_interval_endpoints_exact(impl: ModuleType, trials: int) -> None:
+    # The raw formula lands a few ulp off at some sizes (about 3e-17 low at
+    # (0, 10), 1 - 1e-16 at (13, 13)); the spec wants exactly 0.0 and 1.0.
+    assert impl.wilson_interval(0, trials)[0] == 0.0
+    assert impl.wilson_interval(trials, trials)[1] == 1.0
 
 
 def test_interval_no_trials_is_uninformative(impl: ModuleType) -> None:
@@ -368,9 +371,9 @@ def test_interval_no_trials_is_uninformative(impl: ModuleType) -> None:
 @pytest.mark.parametrize(
     ("successes", "trials", "confidence", "match"),
     [
-        (-1, 10, 0.95, "non-negative"),
-        (0, -1, 0.95, "non-negative"),
-        (11, 10, 0.95, "cannot exceed"),
+        (-1, 10, 0.95, "successes"),
+        (0, -1, 0.95, "trials"),
+        (11, 10, 0.95, "successes"),
         (5, 10, 0.0, "confidence"),
         (5, 10, 1.0, "confidence"),
         (5, 10, 1.5, "confidence"),
@@ -501,17 +504,17 @@ def test_baseline_gate_majority_threshold() -> None:
 def test_gate_update_after_decision_raises(impl: ModuleType) -> None:
     gate = impl.SequentialGate(0.5, 0.9, max_runs=1)
     assert gate.update(False) == "fail"
-    with pytest.raises(RuntimeError, match="create a new SequentialGate"):
+    with pytest.raises(RuntimeError):
         gate.update(True)
 
 
 @pytest.mark.parametrize(
     ("args", "kwargs", "match"),
     [
-        ((0.9, 0.5), {}, "p_fail < p_pass"),
-        ((0.5, 0.5), {}, "p_fail < p_pass"),
-        ((0.0, 0.5), {}, "p_fail < p_pass"),
-        ((0.5, 1.0), {}, "p_fail < p_pass"),
+        ((0.9, 0.5), {}, "p_fail|p_pass"),
+        ((0.5, 0.5), {}, "p_fail|p_pass"),
+        ((0.0, 0.5), {}, "p_fail"),
+        ((0.5, 1.0), {}, "p_pass"),
         ((0.5, 0.9), {"alpha": 0.0}, "alpha"),
         ((0.5, 0.9), {"alpha": 1.0}, "alpha"),
         ((0.5, 0.9), {"beta": 0.0}, "beta"),

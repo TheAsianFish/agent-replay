@@ -39,8 +39,8 @@ def _check_pairs(a: Sequence[int], b: Sequence[int]) -> None:
         raise ValueError("need at least one labelled item; pass non-empty label sequences")
     if len(a) != len(b):
         raise ValueError(
-            f"the raters labelled different numbers of items ({len(a)} vs {len(b)}); "
-            "pass one label per item from each rater, in the same order"
+            f"a and b differ in length ({len(a)} vs {len(b)}); pass one label per item "
+            "from each rater, in the same order"
         )
 
 
