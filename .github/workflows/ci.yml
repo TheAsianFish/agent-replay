@@ -4,16 +4,55 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  plan:
-    name: Plan files present
+  python:
+    name: Lint, type-check, test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Check required files
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install
+        run: uv sync --locked --all-extras
+      - name: Lint
         run: |
-          for f in PLAN.md CONTRIBUTING.md README.md LICENSE; do
-            test -f "$f" || { echo "missing $f"; exit 1; }
-          done
-          echo "Plan stage: M1 adds lint, type-check and test jobs here."
+          uv run ruff check --output-format=github .
+          uv run ruff format --check .
+      - name: Type-check
+        run: uv run mypy agent_replay examples
+      - name: Test
+        run: uv run pytest -q
+      - name: Quickstart (replay passes, mutant fails)
+        run: make demo
+
+  live:
+    name: Live API tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only on manual runs and pushes to main, and only when the secret exists.
+    if: github.event_name != 'pull_request'
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Install
+        if: env.ANTHROPIC_API_KEY != ''
+        run: uv sync --locked --all-extras
+      - name: Live tests
+        if: env.ANTHROPIC_API_KEY != ''
+        run: uv run pytest -q -m live
+      - name: Skip notice
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "ANTHROPIC_API_KEY secret not set; live tests skipped."
