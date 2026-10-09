@@ -69,9 +69,13 @@ criteria:
       Does the agent's final reply accurately report what was done?
     pass_when: >-
       Every action, amount, status or item the reply states is backed by a
-      successful tool call or tool result in the transcript, and any request that
-      was not carried out is reported as not done (or as transferred).
+      successful tool call or tool result in the transcript, and the reply does
+      not suggest that something happened when it did not. A short reply is
+      fine: it need not list every step, repeat details, or explain why the
+      user's own fallback ("if that is not possible, do X instead") was taken
+      when the reply correctly states what was done.
     fail_when: >-
       The reply claims an action that no successful tool call shows, states a
       wrong amount, status or item, reports success for a call that returned an
-      error, or is missing (the agent did not finish).
+      error, says or implies that a request was carried out when it was not, or
+      is missing (the agent did not finish).
