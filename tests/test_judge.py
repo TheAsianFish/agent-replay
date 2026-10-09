@@ -19,6 +19,7 @@ import ollama
 import pytest
 import yaml
 from pydantic import JsonValue
+from structlog.testing import capture_logs
 
 from agent_replay import Cassette, Kind, RunResult, Step, StepStatus, Trajectory, replay
 from agent_replay.cassette import ErrorInfo
@@ -26,15 +27,19 @@ from agent_replay.errors import ConfigError, JudgeError
 from agent_replay.fake import FakeAnthropic, FakeRequest, Reply
 from agent_replay.fake_ollama import FakeOllama
 from agent_replay.judge import (
+    PROMPT_VERSION,
     AnthropicJudge,
+    CacheEntry,
     CriterionVerdict,
     FakeJudge,
+    JudgeCache,
     JudgeInput,
     JudgeOutput,
     OllamaJudge,
     Rubric,
     make_provider,
 )
+from agent_replay.judge.cache import cache_key
 from agent_replay.judge.transcript import clip
 from agent_replay.pricing import cost_usd
 from examples.retail_agent import agent as retail_agent
@@ -552,3 +557,118 @@ def test_make_provider(monkeypatch: pytest.MonkeyPatch):
 def test_make_provider_errors(spec, kwargs, fragment):
     with pytest.raises(ConfigError, match=re.escape(fragment)):
         make_provider(spec, **kwargs)
+
+
+# --- cache ----------------------------------------------------------------------
+
+
+def test_a_cache_hit_skips_the_provider(tmp_path: Path):
+    cache = JudgeCache(tmp_path / "cache")
+    provider = FakeJudge(lambda _r, _i: {"resolved": True, "policy": (False, "no lookup")})
+    rubric, judge_input = make_rubric(), a_transcript()
+
+    first, hit_first = cache.verdict(provider, rubric, judge_input)
+    second, hit_second = cache.verdict(provider, rubric, judge_input)
+
+    assert (hit_first, hit_second) == (False, True)
+    assert provider.calls == 1
+    assert second == first
+    key = cache_key(provider.judge_id, rubric, judge_input)
+    path = tmp_path / "cache" / key[:2] / f"{key}.json"
+    assert cache.path(key) == path
+    entry = CacheEntry.model_validate_json(path.read_text(encoding="utf-8"))
+    assert entry.judge_id == "fake:default"
+    assert entry.rubric_fingerprint == rubric.fingerprint
+    assert entry.input_fingerprint == judge_input.fingerprint
+    assert entry.prompt_version == PROMPT_VERSION
+    assert [v.verdict for v in entry.verdicts] == ["pass", "fail"]
+    assert list(tmp_path.glob("cache/*/*.tmp")) == []  # written atomically
+
+
+def test_the_cache_key_covers_judge_rubric_and_transcript(tmp_path: Path):
+    cache = JudgeCache(tmp_path)
+    provider = FakeJudge()
+    rubric, judge_input = make_rubric(), a_transcript()
+    other_input = JudgeInput.from_run(make_run(output="something else"))
+
+    for args in [
+        (provider, rubric, judge_input),
+        (FakeJudge(name="other"), rubric, judge_input),
+        (provider, make_rubric(version=2), judge_input),
+        (provider, rubric, other_input),
+    ]:
+        assert cache.verdict(*args)[1] is False
+    assert cache.verdict(provider, rubric, judge_input)[1] is True
+    assert provider.calls == 3
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "{not json",
+        '{"key": "x"}',
+        None,  # a valid entry whose verdicts do not cover the rubric
+    ],
+)
+def test_a_corrupt_cache_file_is_a_logged_miss(tmp_path: Path, content: str | None):
+    cache = JudgeCache(tmp_path)
+    provider = FakeJudge()
+    rubric, judge_input = make_rubric(), a_transcript()
+    cache.verdict(provider, rubric, judge_input)
+    path = cache.path(cache_key(provider.judge_id, rubric, judge_input))
+    if content is None:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["verdicts"] = data["verdicts"][:1]
+        content = json.dumps(data)
+    path.write_text(content, encoding="utf-8")
+
+    with capture_logs() as logs:
+        _, hit = cache.verdict(provider, rubric, judge_input)
+
+    assert hit is False
+    assert provider.calls == 2
+    assert [entry["event"] for entry in logs] == ["judge.cache_corrupt"]
+    assert cache.verdict(provider, rubric, judge_input)[1] is True  # rewritten
+
+
+def test_an_unwritable_cache_still_returns_the_verdict(tmp_path: Path):
+    blocker = tmp_path / "file"
+    blocker.write_text("not a directory", encoding="utf-8")
+    cache = JudgeCache(blocker / "cache")
+
+    with capture_logs() as logs:
+        response, hit = cache.verdict(FakeJudge(), make_rubric(), a_transcript())
+
+    assert hit is False
+    assert len(response.verdicts) == 2
+    assert "judge.cache_write_failed" in [entry["event"] for entry in logs]
+
+
+def test_offline_mode_judges_only_from_the_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    provider = FakeJudge()
+    rubric, judge_input = make_rubric(), a_transcript()
+    offline = JudgeCache(tmp_path, offline=True)
+
+    with pytest.raises(JudgeError, match=r"not in the judge cache.*commit the cache directory"):
+        offline.verdict(provider, rubric, judge_input)
+    assert provider.calls == 0
+
+    JudgeCache(tmp_path).verdict(provider, rubric, judge_input)
+    assert offline.verdict(provider, rubric, judge_input)[1] is True
+    assert provider.calls == 1
+
+    monkeypatch.setenv("REPLAY_JUDGE_OFFLINE", "true")
+    assert JudgeCache(tmp_path).offline is True
+    monkeypatch.setenv("REPLAY_JUDGE_OFFLINE", "0")
+    assert JudgeCache(tmp_path).offline is False
+    monkeypatch.setenv("REPLAY_JUDGE_OFFLINE", "sometimes")
+    with pytest.raises(ConfigError, match="REPLAY_JUDGE_OFFLINE='sometimes' is not a boolean"):
+        JudgeCache(tmp_path)
+
+
+def test_the_cache_directory_comes_from_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    assert JudgeCache().directory == Path(".replay/judge-cache")
+    monkeypatch.setenv("REPLAY_JUDGE_CACHE", str(tmp_path / "shared"))
+    assert JudgeCache().directory == tmp_path / "shared"

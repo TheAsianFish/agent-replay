@@ -4,6 +4,7 @@ A judge verdict is advisory until a calibration report shows it agrees with
 human labels (PLAN.md decision 5).
 """
 
+from agent_replay.judge.cache import CacheEntry, JudgeCache
 from agent_replay.judge.providers import (
     AnthropicJudge,
     FakeJudge,
@@ -24,9 +25,11 @@ __all__ = [
     "PROMPT_VERSION",
     "AgentError",
     "AnthropicJudge",
+    "CacheEntry",
     "Criterion",
     "CriterionVerdict",
     "FakeJudge",
+    "JudgeCache",
     "JudgeInput",
     "JudgeOutput",
     "JudgeProvider",
