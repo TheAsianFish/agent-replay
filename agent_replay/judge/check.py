@@ -10,7 +10,7 @@ import structlog
 from pydantic import JsonValue
 
 from agent_replay.checks.base import CheckResult
-from agent_replay.errors import ConfigError, JudgeError
+from agent_replay.errors import ConfigError, JudgeCacheMiss, JudgeError
 from agent_replay.judge.cache import JudgeCache, env_flag
 from agent_replay.judge.calibration import (
     CalibrationReport,
@@ -91,6 +91,8 @@ class Judge:
         judge_input = JudgeInput.from_run(run, max_chars=self.max_chars)
         try:
             response, cached = self._verdict(judge_input)
+        except JudgeCacheMiss:
+            raise  # the suite's committed cache is stale: a broken suite, not a verdict
         except Exception as exc:  # a custom provider's bug must not crash the suite either
             reason = str(exc) if isinstance(exc, JudgeError) else f"{type(exc).__name__}: {exc}"
             log.warning("judge.error", check=self.name, error=reason)

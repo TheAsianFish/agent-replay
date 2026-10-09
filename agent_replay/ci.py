@@ -42,7 +42,7 @@ from agent_replay.cassette import Cassette, ErrorInfo
 from agent_replay.checks.base import Check, CheckResult
 from agent_replay.checks.budget import RELATIVE_LIMITS
 from agent_replay.checks.spec import build_check
-from agent_replay.errors import ConfigError, MeasurementError, ReplayError
+from agent_replay.errors import ConfigError, JudgeCacheMiss, MeasurementError, ReplayError
 from agent_replay.runner import RunResult, load_agent, make_client, replay
 from agent_replay.session import Policy, ReplayMode
 from agent_replay.trajectory import StepStatus
@@ -329,7 +329,10 @@ def _run_scenario(
     except ReplayError as exc:
         return failed(exc, agent_ref or "?")
 
-    check_results = tuple(result.check(*checks))
+    try:
+        check_results = tuple(result.check(*checks))
+    except JudgeCacheMiss as exc:
+        return failed(exc, agent_ref)
     strict = with_checks and (
         scenario.fail_on_approximate
         if scenario.fail_on_approximate is not None

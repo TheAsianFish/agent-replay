@@ -102,3 +102,12 @@ class MeasurementError(ReplayError):
 class JudgeError(ReplayError):
     """The judge could not produce a verdict: provider failure, bad output, or a cache miss
     in offline mode."""
+
+
+class JudgeCacheMiss(JudgeError):
+    """Offline mode is on and the judge cache has no verdict for this run.
+
+    Not a regression and not an advisory verdict: the committed cache no longer
+    covers the suite (the rubric, judge, prompt or the run's transcript changed),
+    so ``replay ci`` reports the scenario as unable to run (exit 2).
+    """

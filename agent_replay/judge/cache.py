@@ -5,7 +5,8 @@ model, settings), the rubric fingerprint, the transcript fingerprint and the
 prompt version. A ``full``-mode replay produces the same transcript every time,
 so after the first run it is judged for free and deterministically. Commit the
 cache directory and CI can judge offline (``REPLAY_JUDGE_OFFLINE=1``): a miss
-then fails instead of calling the provider.
+then raises :class:`JudgeCacheMiss` instead of calling the provider, and
+``replay ci`` exits 2 so a stale committed cache cannot pass unnoticed.
 
 Layout: ``<directory>/<key[:2]>/<key>.json``, one verdict per file, written
 atomically. A corrupt file counts as a miss.
@@ -25,7 +26,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from agent_replay._json import canonical_json
 from agent_replay.cassette import Usage
-from agent_replay.errors import ConfigError, JudgeError
+from agent_replay.errors import ConfigError, JudgeCacheMiss, JudgeError
 from agent_replay.judge.providers import JudgeProvider
 from agent_replay.judge.rubric import Rubric
 from agent_replay.judge.transcript import JudgeInput
@@ -187,7 +188,7 @@ class JudgeCache:
             else:
                 return entry.response().model_copy(update={"verdicts": verdicts}), True
         if self.offline:
-            raise JudgeError(
+            raise JudgeCacheMiss(
                 f"this run's verdict is not in the judge cache {str(self.directory)!r} (judge "
                 f"{provider.judge_id}, rubric {rubric.name!r}) and offline mode is on; run once "
                 "with the provider available, or commit the cache directory"

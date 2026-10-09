@@ -1194,3 +1194,25 @@ def test_judge_spec_builds_a_judge(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     assert offline.cache is not None
     assert offline.cache.directory == tmp_path / "c"
     assert offline.cache.offline is True
+
+
+@pytest.mark.usefixtures("_retail_cwd")
+def test_an_offline_cache_miss_breaks_the_suite_instead_of_passing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    suite = judge_suite(tmp_path)
+    monkeypatch.setenv("REPLAY_JUDGE_OFFLINE", "1")
+
+    cold = run_suite(suite)
+
+    assert [s.ran for s in cold.scenarios] == [False, False]
+    assert all(s.error is not None and s.error.type == "JudgeCacheMiss" for s in cold.scenarios)
+    result = cli.invoke(app, ["ci", str(suite), "--no-store"], env={"COLUMNS": "200"})
+    assert result.exit_code == 2, result.output
+
+    monkeypatch.delenv("REPLAY_JUDGE_OFFLINE")
+    run_suite(suite)  # fills the cache
+    monkeypatch.setenv("REPLAY_JUDGE_OFFLINE", "1")
+    warm = run_suite(suite)
+    assert all(s.ran for s in warm.scenarios)
+    assert warm.passed

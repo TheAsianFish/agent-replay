@@ -287,8 +287,11 @@ checks = [{ type = "judge", rubric = "rubric.yaml", cache_dir = "judge-cache" }]
   model, effort), the rubric's fingerprint, the transcript's fingerprint and
   the prompt version. A `full` replay produces the same transcript, so it is
   judged once and then for free and identically. Commit the cache directory
-  and set `REPLAY_JUDGE_OFFLINE=1` to judge in CI without a key: a miss then
-  reports "verdict unknown" instead of calling the model. The retail live
+  and set `REPLAY_JUDGE_OFFLINE=1` to judge in CI without a key. A miss then
+  never calls the model: the scenario is reported as unable to run (exit 2),
+  so a cache made stale by a rubric, judge or output change cannot pass
+  unnoticed. Offline judging suits `full` replays; `model-live` output varies,
+  so judge it live. The retail live
   suite does exactly that (`examples/retail_agent/judge-cache/`).
 - **Advisory until calibrated.** A criterion can fail the build only if a
   calibration report exists for this exact rubric fingerprint and judge id,
@@ -422,7 +425,7 @@ credentials).
 | `REPLAY_JUDGE_EFFORT` | `low` | Anthropic effort for the judge: `low`, `medium`, `high`, `xhigh`, `max` |
 | `REPLAY_JUDGE_MIN_KAPPA` | `0.6` | Kappa lower bound (0 to 1) a calibrated criterion needs before it may gate |
 | `REPLAY_JUDGE_CACHE` | `.replay/judge-cache` | Verdict cache directory when a judge check sets no `cache_dir` |
-| `REPLAY_JUDGE_OFFLINE` | off | `1` / `true`: judge from the cache only; a miss is "verdict unknown" |
+| `REPLAY_JUDGE_OFFLINE` | off | `1` / `true`: judge from the cache only; a miss breaks the scenario (exit 2) |
 | `REPLAY_PRICES_FILE` | — | JSON `{"model": {"input", "output", "cache_read", "cache_write"}}` in USD per MTok, extending or overriding the built-in price table |
 | `REPLAY_STATS_IMPL` | `baseline` | Statistics implementation: `baseline` (naive reference) or `core` (`agent_replay/stats.py`) |
 

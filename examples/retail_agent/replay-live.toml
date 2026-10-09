@@ -25,7 +25,7 @@ checks = [
   # claude-opus-5-5 grades each run against the rubric. Advisory: there is no
   # calibration report yet, so a failed criterion is reported, never gating.
   # Verdicts are cached in judge-cache/ (committed), so a full replay is judged
-  # offline; set REPLAY_JUDGE_OFFLINE=1 to make a cache miss fail fast.
+  # offline; with REPLAY_JUDGE_OFFLINE=1 a cache miss breaks the scenario (exit 2).
   { type = "judge", rubric = "rubric.yaml", cache_dir = "judge-cache" },
 ]
 

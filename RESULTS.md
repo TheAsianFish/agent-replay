@@ -201,8 +201,10 @@ not a variance estimate (M4).
   agent with `cache_control` removed: same prompts, same tools, every turn pays
   the full input price for the prefix.
 - **Model:** `claude-opus-5-5`, effort `low`, tools served from the cassette.
-  The judge check ran offline (`REPLAY_JUDGE_OFFLINE=1`), so it was reported as
-  "verdict unknown" (advisory) and cost nothing.
+  The judge check ran offline (`REPLAY_JUDGE_OFFLINE=1`) and cost nothing. At
+  the time an offline miss was reported as an advisory "verdict unknown"; it
+  now breaks the scenario (exit 2), so to re-run these commands drop
+  `REPLAY_JUDGE_OFFLINE=1` and the judge runs live (about $0.10 per six runs).
 - **Date:** 2026-10-09. Spend: $0.2921 (agent) + $0.6816 (mutant).
 
 **Commands:**
