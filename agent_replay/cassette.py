@@ -121,6 +121,9 @@ class Cassette(_Strict):
         try:
             with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(self.dumps())
+            # mkstemp creates the file owner-only (0600); give the cassette the
+            # permissions a plain open() would, so it can be shared like any source file.
+            os.chmod(tmp, 0o666 & ~_umask())
             Path(tmp).replace(path)
         except BaseException:
             Path(tmp).unlink(missing_ok=True)
@@ -174,6 +177,12 @@ class Cassette(_Strict):
                 f"cassette {path} does not exist; record one with `replay record`"
             ) from exc
         return cls.loads(text, source=str(path))
+
+
+def _umask() -> int:
+    current = os.umask(0)
+    os.umask(current)
+    return current
 
 
 def _header_error(source: str, line: str, exc: ValidationError) -> str:

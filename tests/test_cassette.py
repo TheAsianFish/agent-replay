@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import stat
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -89,6 +90,14 @@ def test_dump_load_round_trip_and_atomic(tmp_path: Path, cassette: Cassette) -> 
     assert Cassette.load(path) == cassette
     cassette.dump(path)  # overwrite
     assert sorted(p.name for p in path.parent.iterdir()) == ["run.jsonl"]
+
+
+def test_dump_uses_ordinary_file_permissions(tmp_path: Path, cassette: Cassette) -> None:
+    path = tmp_path / "run.jsonl"
+    cassette.dump(path)
+    plain = tmp_path / "plain.txt"
+    plain.write_text("x")  # what a regular open() gives under the current umask
+    assert stat.S_IMODE(path.stat().st_mode) == stat.S_IMODE(plain.stat().st_mode)
 
 
 def test_load_missing_path(tmp_path: Path) -> None:
