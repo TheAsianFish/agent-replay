@@ -19,8 +19,9 @@ from typing import Any, cast
 
 import anthropic
 from anthropic import Anthropic, AsyncAnthropic
+from anthropic.lib._parse._response import parse_response
 from anthropic.lib.streaming import AsyncMessageStreamManager, MessageStreamManager
-from anthropic.types import Message
+from anthropic.types import Message, ParsedMessage
 from pydantic import JsonValue
 
 from agent_replay._json import canonical_json, to_jsonable
@@ -189,6 +190,10 @@ class _FakeMessages:
             lambda: self.create(**wire, stream=True), output_format=output_format
         )
 
+    def parse(self, **kwargs: Any) -> ParsedMessage[Any]:
+        wire, output_format = wire_output_format(kwargs)
+        return parse_response(output_format=output_format, response=self._model.reply(wire))
+
 
 class _FakeAsyncMessages:
     def __init__(self, model: _FakeModel) -> None:
@@ -206,13 +211,18 @@ class _FakeAsyncMessages:
             self.create(**wire, stream=True), output_format=output_format
         )
 
+    async def parse(self, **kwargs: Any) -> ParsedMessage[Any]:
+        wire, output_format = wire_output_format(kwargs)
+        return parse_response(output_format=output_format, response=self._model.reply(wire))
+
 
 class FakeAnthropic:
     """Deterministic fake of the ``anthropic.Anthropic`` client.
 
-    Supports ``messages.create`` (with or without ``stream=True``) and
-    ``messages.stream(...)``; a streamed reply is the same message delivered as
-    raw stream events, with the same ids and usage.
+    Supports ``messages.create`` (with or without ``stream=True``),
+    ``messages.stream(...)`` and ``messages.parse(...)``; a streamed reply is the
+    same message delivered as raw stream events, with the same ids and usage.
+    For ``parse``, the policy's reply text must be the JSON the output format expects.
     """
 
     def __init__(self, policy: Policy) -> None:

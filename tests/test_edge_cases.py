@@ -205,7 +205,7 @@ def _client():
     return wrap(FakeAnthropic(scripted([Reply(text="hi")])))
 
 
-@pytest.mark.parametrize("attr", ["parse", "with_raw_response"])
+@pytest.mark.parametrize("attr", ["with_raw_response", "with_streaming_response"])
 def test_unrecorded_message_methods_raise_inside_a_session(attr):
     client = _client()
     with RecordingSession() as session, pytest.raises(ReplayError, match="not recorded yet"):

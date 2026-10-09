@@ -8,10 +8,18 @@ from typing import Any
 
 import anthropic
 import pytest
+from anthropic.lib._parse._transform import transform_schema
 from anthropic.lib.streaming._messages import accumulate_event
-from anthropic.types import Message, MessageParam, ToolResultBlockParam, ToolUseBlock
+from anthropic.types import (
+    Message,
+    MessageParam,
+    ParsedMessage,
+    ToolResultBlockParam,
+    ToolUseBlock,
+)
 from hypothesis import given
 from hypothesis import strategies as st
+from pydantic import BaseModel
 
 from agent_replay.cassette import Cassette, Kind
 from agent_replay.errors import ReplayError, UnrecordedCallError
@@ -367,3 +375,92 @@ def test_streams_pass_through_outside_a_session() -> None:
     client = wrap(FakeAnthropic(stream_policy))
     with client.messages.stream(**STREAM_KW, messages=_ask(TASK)) as stream:
         assert stream.get_final_text() == "Let me look."
+
+
+# --- messages.parse -----------------------------------------------------------------
+
+
+class Forecast(BaseModel):
+    city: str
+    temp_c: int
+
+
+def forecast_policy(_: FakeRequest) -> Reply:
+    return Reply(text='{"city": "Oslo", "temp_c": 4}')
+
+
+def sync_parse_agent(client: anthropic.Anthropic, task: str) -> dict[str, Any]:
+    reply = client.messages.parse(**STREAM_KW, messages=_ask(task), output_format=Forecast)
+    assert isinstance(reply, ParsedMessage)
+    assert isinstance(reply.parsed_output, Forecast)
+    return reply.parsed_output.model_dump()
+
+
+async def async_parse_agent(client: anthropic.AsyncAnthropic, task: str) -> dict[str, Any]:
+    reply = await client.messages.parse(**STREAM_KW, messages=_ask(task), output_format=Forecast)
+    assert isinstance(reply.parsed_output, Forecast)
+    return reply.parsed_output.model_dump()
+
+
+def stream_parse_agent(client: anthropic.Anthropic, task: str) -> dict[str, Any]:
+    with client.messages.stream(**STREAM_KW, messages=_ask(task), output_format=Forecast) as s:
+        parsed = s.get_final_message().parsed_output
+    assert isinstance(parsed, Forecast)
+    return parsed.model_dump()
+
+
+def config_agent(client: anthropic.Anthropic, task: str) -> str:
+    """The same request as ``sync_parse_agent``, spelled as a raw ``output_config``."""
+    schema = transform_schema(Forecast.model_json_schema())
+    reply = client.messages.create(
+        **STREAM_KW,
+        messages=_ask(task),
+        output_config={"format": {"type": "json_schema", "schema": schema}},
+    )
+    return "".join(b.text for b in reply.content if b.type == "text")
+
+
+@pytest.mark.parametrize(
+    ("agent", "fake"),
+    [
+        (sync_parse_agent, FakeAnthropic),
+        (async_parse_agent, FakeAsyncAnthropic),
+        (stream_parse_agent, FakeAnthropic),
+    ],
+)
+def test_parse_records_the_wire_request_and_replays_a_parsed_message(agent: Any, fake: Any) -> None:
+    result, cassette = record(agent, TASK, client=fake(forecast_policy))
+    assert result.ok, result.error
+    assert result.output == {"city": "Oslo", "temp_c": 4}
+    [model] = cassette.envelopes
+    assert model.name == "anthropic.messages.create"
+    assert isinstance(model.request, dict)
+    assert "output_format" not in model.request
+    assert model.request["output_config"] == {
+        "format": {"type": "json_schema", "schema": transform_schema(Forecast.model_json_schema())}
+    }
+
+    replayed = replay(Cassette.loads(cassette.dumps()), agent)
+    assert replayed.ok, replayed.error
+    assert replayed.output == result.output
+    assert statuses(replayed) == {StepStatus.EXACT}
+
+
+def test_parse_recording_matches_the_equivalent_output_config_exactly() -> None:
+    _, cassette = record(sync_parse_agent, TASK, client=FakeAnthropic(forecast_policy))
+    replayed = replay(cassette, config_agent)
+    assert replayed.ok, replayed.error
+    assert statuses(replayed) == {StepStatus.EXACT}
+
+
+def test_parse_failure_is_recorded_with_its_message_and_replays_the_same() -> None:
+    def bad(_: FakeRequest) -> Reply:
+        return Reply(text="not json")
+
+    result, cassette = record(sync_parse_agent, TASK, client=FakeAnthropic(bad))
+    assert result.error is not None
+    [model] = cassette.envelopes
+    assert model.error is None  # the model answered; parsing it failed in the agent
+    replayed = replay(cassette, sync_parse_agent)
+    assert replayed.error is not None
+    assert replayed.error.type == result.error.type

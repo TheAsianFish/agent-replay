@@ -20,6 +20,13 @@ once the model has finished, rebuilt from the final message by
 identical rebuilt stream, so the agent observes the same events in both. The
 trade-off: a recording run shows no incremental output, and a stream that
 fails part-way fails at ``create`` / ``__enter__`` rather than mid-iteration.
+
+``messages.parse(..., output_format=T)`` (and ``messages.stream(...,
+output_format=T)``) is recorded the same way: the request holds what goes on
+the wire, ``output_config.format`` with ``T``'s JSON schema, and the response
+the plain ``Message``. The ``ParsedMessage`` is rebuilt from it with the SDK's
+own parser on both recording and replay, so a reply that fails to validate
+still has its message (and usage) recorded and fails identically on replay.
 """
 
 from __future__ import annotations
@@ -31,6 +38,7 @@ from types import TracebackType
 from typing import Any, NoReturn, cast
 
 import anthropic
+from anthropic.lib._parse._response import parse_response
 from anthropic.lib._parse._transform import transform_schema
 from anthropic.lib.streaming import AsyncMessageStream, MessageStream
 from anthropic.resources.messages import AsyncMessages
@@ -56,7 +64,7 @@ _UNIDENTIFYING_FIELDS = frozenset({"metadata", "stream"})
 # Client surfaces that would make calls this proxy cannot record yet. Inside a
 # session, calling them raises instead of silently going live; merely looking
 # them up (``hasattr``) is harmless.
-_UNRECORDED_MESSAGES = frozenset({"parse", "with_raw_response", "with_streaming_response"})
+_UNRECORDED_MESSAGES = frozenset({"with_raw_response", "with_streaming_response"})
 _UNRECORDED_CLIENT = frozenset({"beta", "with_raw_response", "with_streaming_response"})
 
 
@@ -66,7 +74,7 @@ def _not_recorded(what: str) -> NoReturn:
     raise session.fail(
         ReplayError(
             f"{what} is not recorded yet, so it cannot run inside a recording or replay "
-            "session; use client.messages.create(...) or client.messages.stream(...)"
+            "session; use client.messages.create(...), .stream(...) or .parse(...)"
         )
     )
 
@@ -309,6 +317,14 @@ class _MessagesProxy(_MessagesBase):
         call = _call(p, invoke=lambda: _drain(self._inner.create(**p.kwargs)))
         return _StreamManager(lambda: session.intercept(call), p.output_format)
 
+    def parse(self, **kwargs: Any) -> Any:
+        session = current_session()
+        if session is None:
+            return self._inner.parse(**kwargs)
+        p = _prepare(session, kwargs, "messages.parse")
+        message = session.intercept(_call(p, invoke=lambda: self._inner.create(**p.kwargs)))
+        return parse_response(output_format=p.output_format, response=message)
+
 
 class _AsyncMessagesProxy(_MessagesBase):
     async def create(self, **kwargs: Any) -> Any:
@@ -333,6 +349,16 @@ class _AsyncMessagesProxy(_MessagesBase):
         p = _prepare(session, {**kwargs, "stream": True}, "messages.stream")
         call = _call(p, ainvoke=lambda: _adrain(self._inner.create(**p.kwargs)))
         return _AsyncStreamManager(lambda: session.intercept_async(call), p.output_format)
+
+    async def parse(self, **kwargs: Any) -> Any:
+        session = current_session()
+        if session is None:
+            return await self._inner.parse(**kwargs)
+        p = _prepare(session, kwargs, "messages.parse")
+        message = await session.intercept_async(
+            _call(p, ainvoke=lambda: self._inner.create(**p.kwargs))
+        )
+        return parse_response(output_format=p.output_format, response=message)
 
 
 class _ClientProxy(WrappedClient):
