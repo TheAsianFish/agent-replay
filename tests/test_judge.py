@@ -49,6 +49,8 @@ from agent_replay.judge.transcript import clip
 from agent_replay.pricing import cost_usd
 from examples.retail_agent import agent as retail_agent
 from examples.retail_agent import tools as retail_tools
+from examples.retail_agent.fake_judge import make_judge as make_retail_judge
+from examples.retail_agent.mutants import skips_order_lookup
 
 ROOT = Path(__file__).parents[1]
 RETAIL = ROOT / "examples" / "retail_agent"
@@ -1015,3 +1017,50 @@ def test_judge_is_exported_from_the_checks_package():
     assert checks.Judge is Judge
     with pytest.raises(AttributeError):
         _ = checks.nonexistent  # type: ignore[attr-defined]
+
+
+# --- the retail example's rubric and fake judge ---------------------------------
+
+RETAIL_RUBRIC = RETAIL / "rubric.yaml"
+FAKE_RETAIL_JUDGE = "examples.retail_agent.fake_judge:make_judge"
+
+
+def test_the_example_rubric_loads():
+    rubric = Rubric.load(RETAIL_RUBRIC)
+
+    assert rubric.name == "retail-resolution"
+    assert rubric.ids == ("resolved", "policy_followed", "accurate_report")
+    assert all(c.pass_when and c.fail_when for c in rubric.criteria)
+
+
+@pytest.mark.parametrize(
+    "task_id",
+    [
+        "cancel_pending_laptop",
+        "modify_address_suite",
+        "return_damaged_bicycle",
+        "exchange_waterproof_boots",
+        "lookup_latest_order_total",
+        "transfer_swapped_refunds",
+    ],
+)
+def test_the_fake_retail_judge_passes_every_recorded_run(task_id: str):
+    result = judge(RETAIL_RUBRIC, provider=make_retail_judge(), cache=None)(replay_retail(task_id))
+
+    assert result.passed, result.message
+    assert result.message == "judge: 3/3 criteria passed (advisory: uncalibrated)"
+
+
+def test_the_fake_retail_judge_catches_a_skipped_order_lookup():
+    run = replay_retail("modify_address_suite", skips_order_lookup)
+
+    result = judge(RETAIL_RUBRIC, provider=make_retail_judge(), cache=None)(run)
+
+    assert not result.passed
+    assert result.advisory
+    criteria = result.details["criteria"]
+    assert isinstance(criteria, dict)
+    assert [i for i, c in criteria.items() if isinstance(c, dict) and c["verdict"] == "fail"] == [
+        "policy_followed"
+    ]
+    assert "without checking the order first" in result.message
