@@ -10,6 +10,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from agent_replay._loading import load_object
+from agent_replay.baseline import ScenarioBaseline
 from agent_replay.checks.base import Check
 from agent_replay.checks.budget import budget
 from agent_replay.checks.rule import rule
@@ -75,6 +76,10 @@ class _BudgetSpec(_Spec):
     max_tokens: int | None = None
     max_model_calls: int | None = None
     max_p95_latency_ms: float | None = None
+    max_cost_increase_pct: float | None = None
+    max_tokens_increase_pct: float | None = None
+    max_model_calls_increase_pct: float | None = None
+    max_p95_latency_increase_pct: float | None = None
 
 
 _Anything = Annotated[
@@ -173,11 +178,13 @@ def build_check(
     *,
     base_dir: Path,
     expected_tools: Sequence[str] | None = None,
+    baseline: ScenarioBaseline | None = None,
 ) -> Check:
     """Turn one config table into a check, keyed on ``spec["type"]``.
 
     ``base_dir`` anchors ``schema_file`` paths; ``expected_tools`` (the cassette's
-    recorded tools) is the default ``expected`` of ``tool_sequence``. Raises
+    recorded tools) is the default ``expected`` of ``tool_sequence``; ``baseline``
+    is what a ``budget`` check's relative limits compare against. Raises
     :class:`ConfigError` naming the offending field.
     """
     try:
@@ -187,14 +194,19 @@ def build_check(
             f"invalid {_describe(spec)}: {_validation_message(exc)}. Fix the config table."
         ) from exc
     try:
-        return _build(parsed, base_dir, expected_tools)
+        return _build(parsed, base_dir, expected_tools, baseline)
     except ConfigError as exc:
         raise ConfigError(f"invalid {_describe(spec)}: {exc}") from exc
     except (ValueError, TypeError) as exc:
         raise ConfigError(f"invalid {_describe(spec)}: {exc}") from exc
 
 
-def _build(parsed: _Anything, base_dir: Path, expected_tools: Sequence[str] | None) -> Check:  # noqa: PLR0911
+def _build(  # noqa: PLR0911
+    parsed: _Anything,
+    base_dir: Path,
+    expected_tools: Sequence[str] | None,
+    baseline: ScenarioBaseline | None = None,
+) -> Check:
     if isinstance(parsed, _ToolSequenceSpec):
         expected = parsed.expected if parsed.expected is not None else expected_tools
         if expected is None:
@@ -223,4 +235,9 @@ def _build(parsed: _Anything, base_dir: Path, expected_tools: Sequence[str] | No
         max_tokens=parsed.max_tokens,
         max_model_calls=parsed.max_model_calls,
         max_p95_latency_ms=parsed.max_p95_latency_ms,
+        max_cost_increase_pct=parsed.max_cost_increase_pct,
+        max_tokens_increase_pct=parsed.max_tokens_increase_pct,
+        max_model_calls_increase_pct=parsed.max_model_calls_increase_pct,
+        max_p95_latency_increase_pct=parsed.max_p95_latency_increase_pct,
+        baseline=baseline,
     )

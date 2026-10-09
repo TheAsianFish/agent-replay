@@ -628,6 +628,32 @@ def test_build_budget(tmp_path: Path) -> None:
         build_check({"type": "budget"}, base_dir=tmp_path)
 
 
+def test_build_budget_with_relative_limits(tmp_path: Path) -> None:
+    spec = {
+        "type": "budget",
+        "max_cost_increase_pct": 25,
+        "max_tokens_increase_pct": 10.5,
+        "max_model_calls_increase_pct": 0,
+        "max_p95_latency_increase_pct": 50,
+    }
+    check = build_check(spec, base_dir=tmp_path, baseline=base())
+    assert isinstance(check, Budget)
+    assert check.baseline == base()
+    assert (
+        check.max_cost_increase_pct,
+        check.max_tokens_increase_pct,
+        check.max_model_calls_increase_pct,
+        check.max_p95_latency_increase_pct,
+    ) == (25, 10.5, 0, 50)
+    assert check(priced_run(0.1)).passed
+    with pytest.raises(ConfigError, match=r"invalid check of type 'budget': relative limits"):
+        build_check(spec, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match=">= 0"):
+        build_check({"type": "budget", "max_cost_increase_pct": -5}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="max_cost_increase"):
+        build_check({"type": "budget", "max_cost_increase": 5}, base_dir=tmp_path)
+
+
 def test_build_arg_schema_from_inline_file_and_model(tmp_path: Path, helpers: str) -> None:
     run = make_run([call(0, {"id": 1}), call(1, {"id": "x"})])
     inline = build_check(

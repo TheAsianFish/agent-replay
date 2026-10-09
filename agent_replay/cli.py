@@ -410,6 +410,13 @@ def ci_cmd(
         Path | None,
         typer.Option(help="Read each scenario's cassette (by file name) from this directory."),
     ] = None,
+    baseline: Annotated[
+        Path | None,
+        typer.Option(
+            help="Baseline file (from `replay baseline`) for budget checks' relative limits; "
+            "replaces the suite's baseline setting."
+        ),
+    ] = None,
     json_path: Annotated[
         Path | None, typer.Option("--json", help="Write the JSON report here.")
     ] = None,
@@ -438,6 +445,7 @@ def ci_cmd(
         policy=policy.value if policy else None,
         client=client,
         cassette_dir=cassette_dir,
+        baseline=baseline,
     )
     try:
         store = Store.open(db) if use_store else None
