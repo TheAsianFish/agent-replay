@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-08 (plan).
+definition of done is met and CI is green. Last updated: 2026-10-09 (M2).
 
 ## Goal
 
@@ -273,7 +273,57 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     that fans out to worker threads from inside another tool records the inner
     calls as top-level (the parent span is not carried into the workers), so
     such a cassette replays with those calls left over.
-- [ ] M2: Replay engine and checks library — modes `full`, `model-live`, `tools-live`; fingerprint matching with cursor fallback and the `approximate` flag; unrecorded-call policies `strict | fallback | synth`; clock and random capture; sync, async and streaming; Ollama adapter; checks `required_tools`, `forbidden_tools`, `max_tool_calls`, `arg_schema`, `output_schema`, `rule`, `budget`; SQLite store; `replay ci` with exit codes and JSON + Markdown reports; `examples/retail_agent` on vendored τ-bench retail data with fake-model cassettes committed. Done when every mode and policy has integration tests, the example agent records and replays, and `replay ci` fails on a seeded regression.
+- [x] M2: Replay engine and checks library — modes `full`, `model-live`, `tools-live`; fingerprint matching with cursor fallback and the `approximate` flag; unrecorded-call policies `strict | fallback | synth`; clock and random capture; sync, async and streaming; Ollama adapter; checks `required_tools`, `forbidden_tools`, `max_tool_calls`, `arg_schema`, `output_schema`, `rule`, `budget`; SQLite store; `replay ci` with exit codes and JSON + Markdown reports; `examples/retail_agent` on vendored τ-bench retail data with fake-model cassettes committed. Done when every mode and policy has integration tests, the example agent records and replays, and `replay ci` fails on a seeded regression.
+  - *M2 notes (2026-10-09).* Built as planned, with these refinements:
+    (a) **One engine.** Recording and the three replay modes are one
+    `Session` class; `SERVED_KINDS[mode]` is the cut point. Clock and random
+    calls are served in every replay mode. Every session emits its own
+    cassette, so `replay run --save` turns a `model-live` run into a new
+    recording.
+    (b) **Matching.** A served call takes the first unconsumed envelope with
+    the same kind, name and fingerprint (`exact`), else the oldest one
+    (`approximate`). Nested envelopes are servable only when their parent's
+    kind runs live in the mode.
+    (c) **Policies.** `synth` builds the smallest value that validates against
+    the tool's return type. It cannot invent a model reply, so an unrecorded
+    model call under `synth` fails as under `strict`. `fallback` without a
+    live client fails with a message naming `--client`.
+    (d) **Schema v2.** v2 adds the `clock` and `random` kinds. v1 is read
+    through frozen v1 models plus a migration; the live toy cassette stays in
+    v1 as the proof.
+    (e) **Streaming.** Streams are recorded as the final message and rebuilt
+    into the SDK's own `MessageStream`, so recording buffers the stream.
+    `stream` is not fingerprinted. `messages.parse` records what goes on the
+    wire. `client.beta` and the raw-response surfaces still raise.
+    (f) **Ollama** records `chat` only (streams as chunk lists, merged for a
+    plain call). `keep_alive` and `stream` are not fingerprinted; `options`
+    are.
+    (g) **Thread fan-out** (the M1 limitation) is fixed for code that submits
+    through `ContextThreadPoolExecutor`. A plain `ThreadPoolExecutor` still
+    records fanned-out calls top-level; this is documented and tested. With
+    several sessions active, a call from a plain pool worker fails all of
+    them rather than passing through, which matters for M4's concurrent
+    replays.
+    (h) **`replay ci`** suites are TOML (stdlib `tomllib`, no new dependency).
+    There is a `--cassette-dir` override, and the Markdown summary goes to
+    `$GITHUB_STEP_SUMMARY`. The store records suites, runs, steps and checks.
+    The `budget` check takes absolute limits; baselines are M3.
+    (i) **The retail example** vendors six τ-bench test tasks, single-turn,
+    with τ-bench's ground truth as `rule` checks. Committed are fake-model
+    cassettes and six live `claude-opus-5-5` recordings, all of which reached
+    the expected database; see RESULTS.md for cost and the one model-live run.
+    The review before merge fixed eight defects, all with regression tests:
+    ambiguous worker-thread calls running live, a swallowed no-client
+    fallback passing, cancelled calls leaving no envelope, synth failures
+    escaping or producing invalid stubs, tracebacks on bad CLI input, Ollama
+    stream/plain mismatches, and two meanings of `envelope_seq`. It also
+    covered five claims a mutation sweep showed were untested.
+    (j) **Known limitations.** Retail cassettes are large (60–120 KB each),
+    because `system` and `tools` repeat in every model envelope; a
+    deduplicated layout would be a v3 with a migration. A `with` block
+    around a stream inside a recording drains it on entry. `@tool` on methods
+    is still unsupported.
+
 - [ ] M3: Judge, cost and the stats interface — `judge` check with rubric YAML, `claude-opus-5-5` through structured outputs, Ollama fallback, fingerprint cache, "advisory until calibrated" semantics; pricing table and cost/latency baselines (`replay baseline`); `stats.py` interface with `NotImplementedError` bodies, `stats_baseline.py`, `tests/test_stats.py` (hand cases, edge cases, oracle property tests), `eval/sprt_sim.py`. Done when judge checks run offline against a fake judge in tests, cost deltas gate correctly, and the stats tests pass against the baseline where applicable and are marked expected-fail for the unimplemented module.
 - [ ] M4: Flakiness engine and mutation study — `replay flake` running repeated `model-live` replays with bounded concurrency and rate limiting; Wilson gate and SPRT early stop through the stats interface; flaky vs failing classification; `eval/mutations/` with 25+ mutations and 5 benign refactors; `make eval-mutations` and `make bench-sprt` (simulation) run offline in CI and write RESULTS.md. Done when RESULTS.md holds measured mutation detection rates per check type and per mode, and simulated SPRT savings, with commands and raw output.
 - [ ] M5: Dashboard — PostgreSQL + Alembic migrations sharing the SQLite models; FastAPI API with structured logging; React 19 + TypeScript strict dashboard (runs, run detail, trace viewer, aligned trace diff from `diff.py`, flakiness trend, calibration report page reading stored reports); Vitest and Playwright smoke test; Docker Compose; `replay serve`. Done when `docker compose up` shows the example data, API tests and UI tests pass in CI, and screenshots are in `docs/`.

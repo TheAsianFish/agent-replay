@@ -190,8 +190,11 @@ for check in result.check(tool_sequence(cassette.tool_names()), budget(max_cost_
   - `fallback` performs the call for real.
   - `synth` answers a tool call with the smallest value that validates
     against the tool's return type, so a `-> Order` tool returns a real
-    `Order`. A model reply cannot be invented, so under `synth` an unrecorded
-    model call fails as under `strict`.
+    `Order`. It understands formats (dates, UUIDs, decimals) and numeric
+    bounds. It refuses what it cannot build safely (regex patterns,
+    multi-item sets), and the run fails with a message naming `fallback`.
+    A model reply cannot be invented, so under `synth` an unrecorded model
+    call fails as under `strict`.
 - **Failures survive `except Exception`.** These all fail the run even if the
   agent swallows the exception:
   - an unrecorded call under `strict`;
@@ -213,7 +216,10 @@ for check in result.check(tool_sequence(cassette.tool_names()), budget(max_cost_
     and non-streaming still matches `exact`.
   - Async tools and `asyncio.gather` keep their spans nested.
   - Thread pools lose the parent span; `replay.ContextThreadPoolExecutor`
-    carries it into the workers.
+    carries it into the workers. A plain pool still works with one active
+    session. With several active (parallel replays in one process), a call
+    from a plain pool worker cannot be attributed, so it fails every session
+    instead of running live.
 - **Not recorded:** `client.beta`, `with_raw_response`,
   `with_streaming_response`, and Ollama methods other than `chat`. Inside a
   session they raise a clear error instead of silently going live.
