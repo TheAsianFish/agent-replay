@@ -480,18 +480,28 @@ def _add_missing_columns(engine: Engine) -> None:
 
     ``create_all`` creates missing tables but leaves existing ones alone. Every
     column added so far is nullable or has a server default, so ``ADD COLUMN``
-    is all an older local store needs until Alembic arrives.
+    is all an older local store needs until Alembic arrives. Two processes can
+    open the same older store at once; when the other one adds the column
+    first, the failed ``ALTER`` is checked against the table again and ignored.
     """
-    inspector = inspect(engine)
-    with engine.begin() as conn:
-        for table in Base.metadata.sorted_tables:
-            present = {c["name"] for c in inspector.get_columns(table.name)}
-            for column in table.columns:
-                if column.name in present:
-                    continue
-                ddl = CreateColumn(column).compile(dialect=engine.dialect)
-                conn.execute(text(f"ALTER TABLE {table.name} ADD COLUMN {ddl}"))
-                log.info("store.column_added", table=table.name, column=column.name)
+    for table in Base.metadata.sorted_tables:
+        for column in table.columns:
+            if column.name in _column_names(engine, table.name):
+                continue
+            ddl = CreateColumn(column).compile(dialect=engine.dialect)
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE {table.name} ADD COLUMN {ddl}"))
+            except SQLAlchemyError:
+                if column.name not in _column_names(engine, table.name):
+                    raise
+                log.info("store.column_added_elsewhere", table=table.name, column=column.name)
+                continue
+            log.info("store.column_added", table=table.name, column=column.name)
+
+
+def _column_names(engine: Engine, table: str) -> set[str]:
+    return {c["name"] for c in inspect(engine).get_columns(table)}
 
 
 def _ensure_parent(url: URL) -> None:
