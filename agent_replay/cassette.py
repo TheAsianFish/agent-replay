@@ -99,13 +99,21 @@ class Cassette(_Strict):
     envelopes: tuple[Envelope, ...]
     footer: Footer
 
-    def top_level(self) -> list[Envelope]:
-        """Envelopes for calls the agent made directly (not nested inside another call)."""
-        return [e for e in self.envelopes if e.parent_span_id is None]
+    def top_level(self, *, order: Literal["finished", "started"] = "finished") -> list[Envelope]:
+        """Envelopes for calls the agent made directly (not nested inside another call).
+
+        ``finished`` is ``seq`` order, the order of the file. ``started`` is span
+        order: what the agent asked for first, which is also the order a replay
+        sees the calls in. They differ only when calls overlapped (thread pools).
+        """
+        top = [e for e in self.envelopes if e.parent_span_id is None]
+        if order == "started":
+            top.sort(key=_span_number)
+        return top
 
     def tool_names(self) -> list[str]:
-        """Names of the tools the agent called directly, in the order the calls finished."""
-        return [e.name for e in self.top_level() if e.kind is Kind.TOOL]
+        """Names of the tools the agent called directly, in the order the calls started."""
+        return [e.name for e in self.top_level(order="started") if e.kind is Kind.TOOL]
 
     def dumps(self) -> str:
         lines = [self.header.model_dump_json()]
@@ -177,6 +185,13 @@ class Cassette(_Strict):
                 f"cassette {path} does not exist; record one with `replay record`"
             ) from exc
         return cls.loads(text, source=str(path))
+
+
+def _span_number(envelope: Envelope) -> tuple[int, int]:
+    """Sort key for start order: the recorder's ``s<n>`` spans, with ``seq`` as the tiebreak."""
+    span = envelope.span_id
+    number = int(span[1:]) if span[:1] == "s" and span[1:].isdigit() else envelope.seq
+    return (number, envelope.seq)
 
 
 def _umask() -> int:

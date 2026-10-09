@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import itertools
+import threading
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -477,3 +480,82 @@ def test_varargs_rejected() -> None:
         tool(star)
     with pytest.raises(TypeError, match="not supported"):
         tool(kw)
+
+
+# --- parallel calls: trajectory order ------------------------------------------
+
+
+def test_parallel_tools_are_ordered_by_start_on_record_and_replay() -> None:
+    """A tool that finished last but started first keeps its place.
+
+    ``slow`` starts first and waits for ``fast`` to finish, so the envelopes
+    (finishing order) read fast, slow while the trajectory and ``tool_names()``
+    (starting order) read slow, fast, which is also what a replay sees.
+    """
+    fast_done = threading.Event()
+
+    @tool
+    def slow() -> str:
+        assert fast_done.wait(5)
+        return "slow"
+
+    @tool
+    def fast() -> str:
+        fast_done.set()
+        return "fast"
+
+    def agent() -> list[str]:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(slow)
+            time.sleep(0.01)  # let ``slow`` start (and get span s0) before ``fast``
+            second = pool.submit(fast)
+            return [first.result(), second.result()]
+
+    session = recorder()
+    with session:
+        assert agent() == ["slow", "fast"]
+    cassette = session.finish()
+
+    assert [e.name for e in cassette.envelopes] == ["fast", "slow"]
+    assert [e.span_id for e in cassette.envelopes] == ["s1", "s0"]
+    assert cassette.tool_names() == ["slow", "fast"]
+    assert session.trajectory.tool_names() == ["slow", "fast"]
+    assert [s.envelope_seq for s in session.trajectory.steps] == [1, 0]
+
+    replayed = ReplaySession(cassette)
+    with replayed:
+        assert agent() == ["slow", "fast"]
+    assert replayed.trajectory.tool_names() == ["slow", "fast"]
+    assert {s.status for s in replayed.trajectory.steps} == {StepStatus.EXACT}
+
+
+def test_same_named_parallel_calls_are_served_in_start_order() -> None:
+    results: dict[int, threading.Event] = {n: threading.Event() for n in range(3)}
+
+    @tool
+    def work(n: int) -> int:
+        # Each call waits for the next one to finish: starts 0,1,2, finishes 2,1,0.
+        if n + 1 in results:
+            assert results[n + 1].wait(5)
+        results[n].set()
+        return n * 10
+
+    def agent() -> list[int]:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+            futures = []
+            for n in range(3):
+                futures.append(pool.submit(work, n))
+                time.sleep(0.01)
+            return [f.result() for f in futures]
+
+    session = recorder()
+    with session:
+        assert agent() == [0, 10, 20]
+    cassette = session.finish()
+    assert [e.request for e in cassette.envelopes] == [{"n": 2}, {"n": 1}, {"n": 0}]
+
+    replayed = ReplaySession(cassette)
+    with replayed:
+        assert agent() == [0, 10, 20]
+    assert [s.request for s in replayed.trajectory.steps] == [{"n": 0}, {"n": 1}, {"n": 2}]
+    assert {s.status for s in replayed.trajectory.steps} == {StepStatus.EXACT}

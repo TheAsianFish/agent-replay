@@ -1,4 +1,4 @@
-"""What an agent did during one run: the ordered boundary calls it made."""
+"""What an agent did during one run: the boundary calls it made, in the order they started."""
 
 from __future__ import annotations
 

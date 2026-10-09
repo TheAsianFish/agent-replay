@@ -148,6 +148,9 @@ class RecordingSession(Session):
     ``seq`` is the finishing order. Each call also gets a ``span_id`` (in starting
     order) and, when it ran inside another intercepted call in the same context
     (a tool that calls a tool or the model), that call's span as ``parent_span_id``.
+    The trajectory lists steps in starting order, the same order a replay sees
+    them in, so parallel tools that finished in a different order still compare
+    equal.
     """
 
     mode = "record"
@@ -178,6 +181,9 @@ class RecordingSession(Session):
         with self._lock:
             span = f"s{self._spans}"
             self._spans += 1
+            # Reserve the step now, in starting order; it is completed when the call ends.
+            index = len(self._steps)
+            self._steps.append(_step(index, call, StepStatus.LIVE))
         parent = _parent_span.get()
         token = _parent_span.set(span)
         started = self._timer()
@@ -186,7 +192,13 @@ class RecordingSession(Session):
         except Exception as exc:
             latency_ms = (self._timer() - started) * 1000
             self._append(
-                call, span, parent, latency_ms, response=None, error=ErrorInfo.from_exception(exc)
+                call,
+                index,
+                span,
+                parent,
+                latency_ms,
+                response=None,
+                error=ErrorInfo.from_exception(exc),
             )
             raise
         finally:
@@ -204,6 +216,7 @@ class RecordingSession(Session):
         usage = call.usage(result)
         self._append(
             call,
+            index,
             span,
             parent,
             latency_ms,
@@ -217,6 +230,7 @@ class RecordingSession(Session):
     def _append[T](
         self,
         call: Call[T],
+        index: int,
         span: str,
         parent: str | None,
         latency_ms: float,
@@ -244,18 +258,8 @@ class RecordingSession(Session):
                     parent_span_id=parent,
                 )
             )
-            self._steps.append(
-                Step(
-                    index=len(self._steps),
-                    kind=call.kind,
-                    name=call.name,
-                    status=StepStatus.LIVE,
-                    fingerprint=call.fingerprint,
-                    request=call.request,
-                    response=response,
-                    error=error,
-                    envelope_seq=seq,
-                )
+            self._steps[index] = _step(
+                index, call, StepStatus.LIVE, response=response, error=error, envelope_seq=seq
             )
         log.debug("envelope.recorded", seq=seq, kind=call.kind.value, name=call.name)
 
@@ -284,8 +288,9 @@ class ReplaySession(Session):
     """Serves every call from a cassette without performing it (``full`` mode).
 
     Matching: each (kind, name) pair has its own cursor over the recorded
-    top-level envelopes, so the n-th call to ``lookup_order`` gets the n-th
-    recorded ``lookup_order`` result. The request fingerprint is then compared
+    top-level envelopes in the order they started, so the n-th call to
+    ``lookup_order`` gets the n-th recorded ``lookup_order`` result. The request
+    fingerprint is then compared
     with the recording: equal means ``exact``, different means ``approximate``
     (served anyway, flagged in the trajectory). A call with nothing left to serve
     raises :class:`UnrecordedCallError`.
@@ -300,7 +305,7 @@ class ReplaySession(Session):
         super().__init__()
         self.cassette = cassette
         self._queues: dict[tuple[Kind, str], deque[Envelope]] = {}
-        for envelope in cassette.top_level():
+        for envelope in cassette.top_level(order="started"):
             self._queues.setdefault((envelope.kind, envelope.name), deque()).append(envelope)
 
     def intercept[T](self, call: Call[T]) -> T:
@@ -314,13 +319,10 @@ class ReplaySession(Session):
             else:
                 status = StepStatus.APPROXIMATE
             self._steps.append(
-                Step(
-                    index=len(self._steps),
-                    kind=call.kind,
-                    name=call.name,
-                    status=status,
-                    fingerprint=call.fingerprint,
-                    request=call.request,
+                _step(
+                    len(self._steps),
+                    call,
+                    status,
                     response=envelope.response if envelope else None,
                     error=envelope.error if envelope else None,
                     envelope_seq=envelope.seq if envelope else None,
@@ -340,6 +342,28 @@ class ReplaySession(Session):
         with self._lock:
             left = [e for queue in self._queues.values() for e in queue]
         return sorted(left, key=lambda e: e.seq)
+
+
+def _step[T](
+    index: int,
+    call: Call[T],
+    status: StepStatus,
+    *,
+    response: JsonValue = None,
+    error: ErrorInfo | None = None,
+    envelope_seq: int | None = None,
+) -> Step:
+    return Step(
+        index=index,
+        kind=call.kind,
+        name=call.name,
+        status=status,
+        fingerprint=call.fingerprint,
+        request=call.request,
+        response=response,
+        error=error,
+        envelope_seq=envelope_seq,
+    )
 
 
 def _preview(request: JsonValue, limit: int = 200) -> str:
