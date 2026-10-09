@@ -90,6 +90,14 @@ def test_aggregate_takes_the_median_of_each_metric_independently() -> None:
     )
 
 
+def test_aggregate_median_ignores_one_outlying_run() -> None:
+    # One slow, dear run must not set the bar: the mean would (0.4, 1000, 700 ms).
+    runs = [metrics(0.1, 100, 2, 100.0), metrics(0.1, 100, 2, 100.0), metrics(1.0, 2800, 2, 1900.0)]
+    assert aggregate(runs) == ScenarioBaseline(
+        cost_usd=0.1, tokens=100, model_calls=2, p95_latency_ms=100.0, runs=3
+    )
+
+
 def test_aggregate_even_runs_rounds_integer_medians_half_up() -> None:
     runs = [metrics(0.1, 10, 3, 100.0), metrics(0.2, 11, 4, 200.0)]
     baseline = aggregate(runs)
