@@ -391,6 +391,13 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     `PROMPT_VERSION` is bumped by hand when the judge prompt changes. With
     one run per scenario, p95 latency moved by up to 36% between runs, too
     noisy to gate tightly before M4's repeats.
+    (j) **Independent review.** Fixed on the branch: older stores opened by
+    two processes at once could fail on the duplicate column; a cached
+    verdict copied under another key was served on its file name alone; the
+    stats error tests matched on wording the spec never promised (the spec
+    now names the argument); the gate simulation's shared outcome stream did
+    not hold for an early-stopping gate; reports took a `$GITHUB_SHA` that
+    was not a commit of the checkout; two figures were rounded twice.
 - [ ] M4: Flakiness engine and mutation study — `replay flake` running repeated `model-live` replays with bounded concurrency and rate limiting; Wilson gate and SPRT early stop through the stats interface; flaky vs failing classification; `eval/mutations/` with 25+ mutations and 5 benign refactors; `make eval-mutations` and `make bench-sprt` (simulation) run offline in CI and write RESULTS.md. Done when RESULTS.md holds measured mutation detection rates per check type and per mode, and simulated SPRT savings, with commands and raw output.
 - [ ] M5: Dashboard — PostgreSQL + Alembic migrations sharing the SQLite models; FastAPI API with structured logging; React 19 + TypeScript strict dashboard (runs, run detail, trace viewer, aligned trace diff from `diff.py`, flakiness trend, calibration report page reading stored reports); Vitest and Playwright smoke test; Docker Compose; `replay serve`. Done when `docker compose up` shows the example data, API tests and UI tests pass in CI, and screenshots are in `docs/`.
 - [ ] M6: Judge calibration — `replay label` TUI, golden-set format, `replay calibrate` (kappa per criterion with bootstrap CI, agreement, confusion matrix, majority baseline, self-consistency across 3 judge runs, position / verbosity / self-preference probes), LLMBar harness (`make eval-llmbar`), calibration gating wired into `judge` checks, calibration page populated. Done when the full pipeline runs end to end on a fake judge offline with tests, and RESULTS.md lists the exact key-requiring commands under "To measure" with cost estimates; if D1 has been recorded and labelled, the measured kappa is in RESULTS.md.
