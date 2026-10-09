@@ -112,7 +112,9 @@ class Budget:
             limit: float | None = getattr(self, absolute_key)
             details[key] = value
             details[absolute_key] = limit
-            if limit is not None and value is not None and value > limit:
+            if limit is not None and value is None:
+                skipped.append(f"{absolute_key} (no latency samples in the run)")
+            elif limit is not None and value is not None and value > limit:
                 exceeded.append(f"{key} {value:g} > {absolute_key} {limit:g}")
             if base is None:
                 continue
@@ -129,12 +131,16 @@ class Budget:
             if pct is not None:
                 outcome, text = _relative(key, relative_key, value, base_value, pct, delta_pct)
                 {"over": exceeded, "within": compared, "skipped": skipped}[outcome].append(text)
-        if base is not None:
+        if base is not None or skipped:
             details["skipped"] = list(skipped)
         if exceeded:
             message = "over budget: " + "; ".join(exceeded)
         else:
-            limited = ", ".join(k for k, a, _ in _METRICS if getattr(self, a) is not None)
+            limited = ", ".join(
+                k
+                for k, a, _ in _METRICS
+                if getattr(self, a) is not None and measured[k] is not None
+            )
             parts = [limited] if limited else []
             if compared:
                 parts.append("vs baseline: " + ", ".join(compared))

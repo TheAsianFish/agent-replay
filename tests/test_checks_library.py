@@ -431,6 +431,10 @@ def test_budget_empty_run_and_no_latency_samples() -> None:
     assert result.passed
     assert result.details["p95_latency_ms"] is None
     assert result.details["model_calls"] == 0
+    assert result.details["skipped"] == ["max_p95_latency_ms (no latency samples in the run)"]
+    assert result.message == (
+        "within budget (cost_usd); skipped max_p95_latency_ms (no latency samples in the run)"
+    )
 
 
 # --- budget: relative limits against a baseline ------------------------------------------------
