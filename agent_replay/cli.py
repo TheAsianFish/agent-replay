@@ -317,6 +317,25 @@ def run_cmd(
     raise typer.Exit(EXIT_OK if passed else EXIT_FAILED)
 
 
+def _print_scenario(scenario: ScenarioReport) -> None:
+    if scenario.passed:
+        mark = "[bold green]PASS[/]"
+    elif scenario.ran:
+        mark = "[bold red]FAIL[/]"
+    else:
+        mark = "[bold yellow]ERROR[/]"
+    steps = ", ".join(f"{n} {s}" for s, n in sorted(scenario.steps.by_status.items()))
+    console.print(
+        f"{mark} {escape(scenario.name)} ({scenario.mode}; {escape(steps) or 'no steps'})"
+    )
+    if scenario.error is not None:
+        console.print(
+            f"    [red]run:[/] {escape(scenario.error.type)}: {escape(scenario.error.message)}"
+        )
+    for check in scenario.failed_checks:
+        console.print(f"    [red]{escape(check.check)}:[/] {escape(check.message)}")
+
+
 def _store_sink(store: Store, suite_path: Path) -> RunSink:
     def save(report: ScenarioReport, result: RunResult | None, started_at: datetime) -> str | None:
         if result is None:
@@ -396,8 +415,10 @@ def ci_cmd(
     """Replay every scenario in SUITE, run its checks and fail on any regression.
 
     Exit 0 when every scenario passed, 1 when any failed, 2 when the suite
-    itself is broken. Writes the Markdown summary to $GITHUB_STEP_SUMMARY too
-    when that is set (GitHub Actions).
+    itself is broken (invalid TOML, or a scenario that could not run at all:
+    missing cassette, unimportable agent, bad check, no client). Writes the
+    Markdown summary to $GITHUB_STEP_SUMMARY too when that is set (GitHub
+    Actions).
     """
     overrides = Overrides(
         agent=agent,
@@ -418,17 +439,7 @@ def ci_cmd(
         raise _fail(str(exc)) from exc
 
     for scenario in report.scenarios:
-        mark = "[bold green]PASS[/]" if scenario.passed else "[bold red]FAIL[/]"
-        steps = ", ".join(f"{n} {s}" for s, n in sorted(scenario.steps.by_status.items()))
-        console.print(
-            f"{mark} {escape(scenario.name)} ({scenario.mode}; {escape(steps) or 'no steps'})"
-        )
-        if scenario.error is not None:
-            console.print(
-                f"    [red]run:[/] {escape(scenario.error.type)}: {escape(scenario.error.message)}"
-            )
-        for check in scenario.failed_checks:
-            console.print(f"    [red]{escape(check.check)}:[/] {escape(check.message)}")
+        _print_scenario(scenario)
     markdown = report_markdown(report)
     if json_path is not None:
         _write(json_path, report_json(report), "JSON")
@@ -445,6 +456,11 @@ def ci_cmd(
     console.print(f"{total - failed}/{total} scenario(s) passed: {verdict}")
     if report.suite_id is not None:
         console.print(f"[dim]stored as suite {report.suite_id[:12]}; see `replay runs`[/]")
+    if report.broken:
+        console.print(
+            f"[bold yellow]{len(report.broken)} scenario(s) could not run; fix the suite[/]"
+        )
+        raise typer.Exit(EXIT_USAGE)
     raise typer.Exit(EXIT_OK if report.passed else EXIT_FAILED)
 
 

@@ -132,6 +132,9 @@ class ScenarioReport(BaseModel):
     mode: ReplayMode
     policy: Policy
     passed: bool
+    ran: bool = True
+    """False when the scenario never ran (missing cassette, unimportable agent, bad
+    check, no client): a broken suite rather than a regression."""
     error: ErrorInfo | None = None
     """Why the scenario could not run, or the exception the agent ended with."""
     checks: tuple[CheckResult, ...] = ()
@@ -165,6 +168,11 @@ class SuiteReport(BaseModel):
     def failed(self) -> list[ScenarioReport]:
         return [s for s in self.scenarios if not s.passed]
 
+    @property
+    def broken(self) -> list[ScenarioReport]:
+        """Scenarios that could not run at all; ``replay ci`` exits 2 for these."""
+        return [s for s in self.scenarios if not s.ran]
+
 
 @dataclass(frozen=True)
 class RunSink:
@@ -192,8 +200,9 @@ def run_suite(
     """Replay every scenario of the suite at ``path`` and check it.
 
     Raises :class:`ConfigError` for a broken suite file. A scenario that cannot
-    run (missing cassette, unimportable agent, bad check) fails on its own with
-    the reason in its report; the other scenarios still run.
+    run (missing cassette, unimportable agent, bad check) is reported with
+    ``ran=False`` and the reason; the other scenarios still run, and the suite
+    counts as broken rather than regressed.
     """
     suite = load_suite(path)
     overrides = overrides or Overrides()
@@ -251,6 +260,7 @@ def _run_scenario(
             mode=mode,
             policy=policy,
             passed=False,
+            ran=False,
             error=ErrorInfo.from_exception(exc),
             duration_ms=round((timer() - started) * 1000, 3),
         ), None
@@ -350,6 +360,7 @@ def to_json(report: SuiteReport) -> str:
     for scenario, model in zip(data["scenarios"], report.scenarios, strict=True):
         scenario["failed_checks"] = [c.check for c in model.failed_checks]
     data["failed"] = [s.name for s in report.failed]
+    data["broken"] = [s.name for s in report.broken]
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -376,12 +387,13 @@ def to_markdown(report: SuiteReport) -> str:
     for s in report.scenarios:
         passed_checks = sum(1 for c in s.checks if c.passed)
         steps = ", ".join(f"{n} {status}" for status, n in sorted(s.steps.by_status.items()))
+        result = "✅ pass" if s.passed else ("❌ fail" if s.ran else "⚠️ did not run")
         lines.append(
-            f"| `{_cell(s.name)}` | {s.mode} | {'✅ pass' if s.passed else '❌ fail'} "
+            f"| `{_cell(s.name)}` | {s.mode} | {result} "
             f"| {passed_checks}/{len(s.checks)} | {_cell(steps) or '—'} | ${s.cost_usd:.4f} |"
         )
     for s in failed:
-        lines += ["", f"### ❌ `{s.name}`", ""]
+        lines += ["", f"### {'❌' if s.ran else '⚠️'} `{s.name}`", ""]
         lines.append(f"Cassette `{s.cassette}`, agent `{s.agent}`, {s.mode} / {s.policy}.")
         if s.error is not None:
             lines += ["", f"- **run**: `{s.error.type}`: {_cell(s.error.message)}"]

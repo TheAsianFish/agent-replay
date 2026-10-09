@@ -221,6 +221,13 @@ checks = [{{ type = "max_tool_calls", limit = -1 }}]
     assert by_name["bad check"].error is not None
     assert "check #2" in by_name["bad check"].error.message  # after the default tool_sequence
     assert not report.passed
+    # Neither scenario ran, so the suite is broken rather than regressed.
+    assert by_name["eligible"].ran
+    assert [s.name for s in report.broken] == ["missing", "bad check"]
+    assert json.loads(to_json(report))["broken"] == ["missing", "bad check"]
+    markdown = to_markdown(report)
+    assert markdown.count("⚠️ did not run") == 2
+    assert "### ⚠️ `missing`" in markdown
 
 
 def test_fail_on_approximate(tmp_path: Path) -> None:
@@ -426,8 +433,9 @@ def test_a_client_factory_returning_a_non_client(tmp_path: Path) -> None:
     ci = invoke(
         "ci", str(SUITE), "--no-store", "--mode", "model-live", "--client", "builtins:object"
     )
-    assert ci.exit_code == 1, ci.output
+    assert ci.exit_code == 2, ci.output  # a suite that cannot run is not a regression
     assert "must return a model client" in ci.output
+    assert "6 scenario(s) could not run" in ci.output
 
 
 def test_a_cassette_path_that_is_a_directory(tmp_path: Path) -> None:
@@ -439,7 +447,8 @@ def test_a_cassette_path_that_is_a_directory(tmp_path: Path) -> None:
         str(ROOT / "examples/toy_agent/cassettes/refund_eligible.jsonl"), str(tmp_path)
     )
     ci = invoke("ci", str(write_suite(tmp_path, body)), "--no-store")
-    assert ci.exit_code == 1
+    assert ci.exit_code == 2
+    assert "ERROR" in ci.output
     assert "cannot read cassette" in ci.output
 
 
