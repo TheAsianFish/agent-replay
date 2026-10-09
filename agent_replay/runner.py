@@ -79,6 +79,28 @@ class RunResult(BaseModel):
         return [c(self) for c in checks]
 
 
+def make_client(ref: str) -> object:
+    """A model client from ``"anthropic"`` (the real API) or a ``module:factory`` reference."""
+    if ref == "anthropic":
+        import anthropic  # noqa: PLC0415 - only needed for live calls
+
+        try:
+            return anthropic.Anthropic()
+        except anthropic.AnthropicError as exc:
+            raise AgentLoadError(
+                f"cannot create the Anthropic client ({exc}). Set ANTHROPIC_API_KEY, or use a "
+                "fake model with module:factory (for example "
+                "examples.toy_agent.fake_model:make_client)."
+            ) from exc
+    factory = load_object(ref)
+    if not callable(factory):
+        raise AgentLoadError(f"client {ref!r} is not callable; it must return a model client")
+    try:
+        return factory()
+    except Exception as exc:
+        raise AgentLoadError(f"client {ref!r} raised {type(exc).__name__}: {exc}") from exc
+
+
 def load_agent(ref: str) -> Agent:
     obj = load_object(ref)
     if not callable(obj):

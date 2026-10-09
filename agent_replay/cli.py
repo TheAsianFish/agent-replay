@@ -1,12 +1,15 @@
 """The ``replay`` command line.
 
-Exit codes: 0 = everything passed, 1 = a check failed or the agent errored,
-2 = bad input (missing cassette, unimportable agent, missing credentials).
+Exit codes: 0 = everything passed, 1 = a check failed or the agent errored
+(a regression), 2 = bad input (missing cassette or suite, unimportable agent,
+invalid config, missing credentials).
 """
 
 from __future__ import annotations
 
 import json
+import os
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any
@@ -19,14 +22,19 @@ from rich.table import Table
 
 from agent_replay import __version__
 from agent_replay._json import canonical_json, to_jsonable
-from agent_replay._loading import load_object
 from agent_replay._logging import configure_logging
-from agent_replay.cassette import Cassette
+from agent_replay.cassette import Cassette, Kind
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
+from agent_replay.ci import Overrides, RunSink, ScenarioReport, SuiteReport, run_suite
+from agent_replay.ci import to_json as report_json
+from agent_replay.ci import to_markdown as report_markdown
 from agent_replay.errors import ReplayError
 from agent_replay.record import wrap
-from agent_replay.runner import RunResult, load_agent, record, replay
+from agent_replay.runner import RunResult, load_agent, make_client, record, replay
+from agent_replay.session import Policy as PolicyName
+from agent_replay.session import ReplayMode
+from agent_replay.store import Store
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2
@@ -45,11 +53,21 @@ _STATUS_STYLE = {
     StepStatus.EXACT: "green",
     StepStatus.APPROXIMATE: "yellow",
     StepStatus.UNRECORDED: "bold red",
+    StepStatus.FALLBACK: "magenta",
+    StepStatus.SYNTH: "magenta",
 }
 
 
 class Mode(StrEnum):
     full = "full"
+    model_live = "model-live"
+    tools_live = "tools-live"
+
+
+class Policy(StrEnum):
+    strict = "strict"
+    fallback = "fallback"
+    synth = "synth"
 
 
 class SeqMode(StrEnum):
@@ -104,24 +122,10 @@ def _steps_table(trajectory: Trajectory) -> Table:
 
 
 def _make_client(spec: str) -> object:
-    if spec == "anthropic":
-        import anthropic  # noqa: PLC0415 - only needed for live recording
-
-        try:
-            return anthropic.Anthropic()
-        except anthropic.AnthropicError as exc:
-            raise _fail(
-                f"cannot create the Anthropic client ({exc}). Set ANTHROPIC_API_KEY, or record "
-                "offline with --client module:factory (for example "
-                "examples.toy_agent.fake_model:make_client)."
-            ) from exc
-    factory = load_object(spec)
-    if not callable(factory):
-        raise _fail(f"--client {spec!r} is not callable; it must return a model client")
     try:
-        return factory()
-    except Exception as exc:
-        raise _fail(f"--client {spec!r} raised {type(exc).__name__}: {exc}") from exc
+        return make_client(spec)
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
 
 
 @app.command("record")
@@ -205,8 +209,26 @@ def _print_check(check: CheckResult) -> None:
 def run_cmd(
     cassette_path: Annotated[Path, typer.Argument(metavar="CASSETTE", help="Cassette to replay.")],
     mode: Annotated[
-        Mode, typer.Option(help="Cut point: full serves model and tools from the cassette.")
+        Mode,
+        typer.Option(
+            help="Cut point: full serves model and tools from the cassette; model-live runs "
+            "the model for real against recorded tools (needs --client); tools-live runs the "
+            "tools for real against recorded model replies."
+        ),
     ] = Mode.full,
+    policy: Annotated[
+        Policy,
+        typer.Option(
+            help="For calls the cassette never recorded: strict fails, fallback performs "
+            "them for real, synth stubs tool results from their return type."
+        ),
+    ] = Policy.strict,
+    client: Annotated[
+        str | None,
+        typer.Option(
+            help="Live model client for model-live (or fallback): 'anthropic' or module:factory."
+        ),
+    ] = None,
     agent: Annotated[
         str | None,
         typer.Option(help="Agent to replay (module:function); defaults to the recorded one."),
@@ -224,18 +246,34 @@ def run_cmd(
     task: Annotated[
         str | None, typer.Option(help="Task text; defaults to the one in the cassette.")
     ] = None,
+    save: Annotated[
+        Path | None, typer.Option(help="Write the replayed run as a cassette of its own.")
+    ] = None,
     json_output: Annotated[bool, typer.Option("--json", help="Print a JSON report.")] = False,
 ) -> None:
     """Replay CASSETTE against the agent's current code and run the checks."""
+    replay_mode: ReplayMode = mode.value
+    replay_policy: PolicyName = policy.value
     try:
         cassette = Cassette.load(cassette_path)
         agent_ref = agent or cassette.header.agent
         if agent_ref is None:
             raise ReplayError("the cassette does not name its agent; pass --agent module:function")
         agent_fn = load_agent(agent_ref)
-        result = replay(cassette, agent_fn, mode=mode.value, task=task)
+        model_client = _make_client(client) if client is not None else None
+        result = replay(
+            cassette,
+            agent_fn,
+            mode=replay_mode,
+            policy=replay_policy,
+            task=task,
+            client=model_client,
+            save_to=save,
+        )
     except ReplayError as exc:
         raise _fail(str(exc)) from exc
+    except OSError as exc:
+        raise _fail(f"cannot write {save}: {exc}; pick a writable --save path") from exc
 
     expected = (
         [name.strip() for name in expect.split(",") if name.strip()]
@@ -252,8 +290,8 @@ def run_cmd(
         raise typer.Exit(EXIT_OK if passed else EXIT_FAILED)
 
     console.print(
-        f"Replaying [bold]{escape(str(cassette_path))}[/] (mode {mode.value}) "
-        f"against [bold]{escape(agent_ref)}[/]"
+        f"Replaying [bold]{escape(str(cassette_path))}[/] (mode {mode.value}, policy "
+        f"{policy.value}) against [bold]{escape(agent_ref)}[/]"
     )
     console.print(_steps_table(result.trajectory))
     if approx:
@@ -271,8 +309,196 @@ def run_cmd(
         )
     for check in checks:
         _print_check(check)
+    if save is not None:
+        console.print(f"Saved the replayed run to [bold]{escape(str(save))}[/]")
     console.print("[bold green]passed[/]" if passed else "[bold red]failed[/]")
     raise typer.Exit(EXIT_OK if passed else EXIT_FAILED)
+
+
+def _store_sink(store: Store, suite_path: Path) -> RunSink:
+    def save(report: ScenarioReport, result: RunResult | None, started_at: datetime) -> str | None:
+        if result is None:
+            return None
+        return store.save_run(
+            result,
+            report.checks,
+            scenario=report.name,
+            cassette_path=report.cassette,
+            agent=report.agent,
+            passed=report.passed,
+            started_at=started_at,
+            duration_ms=report.duration_ms,
+            suite_id=suite_id[0],
+        )
+
+    suite_id: list[str | None] = [None]
+
+    def start(git_sha: str | None) -> str:
+        new_id = store.start_suite(config_path=str(suite_path), git_sha=git_sha)
+        suite_id[0] = new_id
+        return new_id
+
+    def finish(report: SuiteReport) -> None:
+        if suite_id[0] is not None:
+            store.finish_suite(
+                suite_id[0],
+                passed=report.passed,
+                scenario_count=len(report.scenarios),
+                failed_count=len(report.failed),
+            )
+
+    return RunSink(start=start, save=save, finish=finish)
+
+
+def _write(path: Path, text: str, what: str) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    except OSError as exc:
+        raise _fail(f"cannot write the {what} report to {path}: {exc}") from exc
+
+
+@app.command("ci")
+def ci_cmd(
+    suite_path: Annotated[
+        Path, typer.Argument(metavar="SUITE", help="Suite file (replay.toml) listing scenarios.")
+    ],
+    agent: Annotated[
+        str | None,
+        typer.Option(help="Replay every scenario against this agent (module:function)."),
+    ] = None,
+    mode: Annotated[Mode | None, typer.Option(help="Override every scenario's mode.")] = None,
+    policy: Annotated[Policy | None, typer.Option(help="Override every scenario's policy.")] = None,
+    client: Annotated[
+        str | None,
+        typer.Option(help="Live model client for model-live: 'anthropic' or module:factory."),
+    ] = None,
+    json_path: Annotated[
+        Path | None, typer.Option("--json", help="Write the JSON report here.")
+    ] = None,
+    markdown_path: Annotated[
+        Path | None, typer.Option("--markdown", help="Write the Markdown summary here.")
+    ] = None,
+    use_store: Annotated[
+        bool, typer.Option("--store/--no-store", help="Save every run in the run store.")
+    ] = True,
+    db: Annotated[
+        str | None,
+        typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db."),
+    ] = None,
+) -> None:
+    """Replay every scenario in SUITE, run its checks and fail on any regression.
+
+    Exit 0 when every scenario passed, 1 when any failed, 2 when the suite
+    itself is broken. Writes the Markdown summary to $GITHUB_STEP_SUMMARY too
+    when that is set (GitHub Actions).
+    """
+    overrides = Overrides(
+        agent=agent,
+        mode=mode.value if mode else None,
+        policy=policy.value if policy else None,
+        client=client,
+    )
+    try:
+        store = Store.open(db) if use_store else None
+        sink = _store_sink(store, suite_path) if store is not None else RunSink()
+        try:
+            report = run_suite(suite_path, overrides=overrides, sink=sink)
+        finally:
+            if store is not None:
+                store.close()
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+
+    for scenario in report.scenarios:
+        mark = "[bold green]PASS[/]" if scenario.passed else "[bold red]FAIL[/]"
+        steps = ", ".join(f"{n} {s}" for s, n in sorted(scenario.steps.by_status.items()))
+        console.print(
+            f"{mark} {escape(scenario.name)} ({scenario.mode}; {escape(steps) or 'no steps'})"
+        )
+        if scenario.error is not None:
+            console.print(
+                f"    [red]run:[/] {escape(scenario.error.type)}: {escape(scenario.error.message)}"
+            )
+        for check in scenario.failed_checks:
+            console.print(f"    [red]{escape(check.check)}:[/] {escape(check.message)}")
+    markdown = report_markdown(report)
+    if json_path is not None:
+        _write(json_path, report_json(report), "JSON")
+    if markdown_path is not None:
+        _write(markdown_path, markdown, "Markdown")
+    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+        with Path(summary).open("a", encoding="utf-8") as fh:
+            fh.write(markdown)
+    total, failed = len(report.scenarios), len(report.failed)
+    verdict = "[bold green]passed[/]" if report.passed else "[bold red]failed[/]"
+    console.print(f"{total - failed}/{total} scenario(s) passed: {verdict}")
+    if report.suite_id is not None:
+        console.print(f"[dim]stored as suite {report.suite_id[:12]}; see `replay runs`[/]")
+    raise typer.Exit(EXIT_OK if report.passed else EXIT_FAILED)
+
+
+@app.command("runs")
+def runs_cmd(
+    run_id: Annotated[
+        str | None, typer.Argument(metavar="[RUN_ID]", help="Show one run (an id prefix works).")
+    ] = None,
+    limit: Annotated[int, typer.Option(help="How many recent runs to list.")] = 20,
+    scenario: Annotated[str | None, typer.Option(help="Only runs of this scenario.")] = None,
+    db: Annotated[
+        str | None,
+        typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db."),
+    ] = None,
+) -> None:
+    """List recent stored runs, or show one run's steps and checks."""
+    try:
+        with Store.open(db) as store:
+            if run_id is None:
+                runs = store.list_runs(limit=limit, scenario=scenario)
+                table = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+                for column in ("id", "started", "scenario", "mode", "result", "steps", "cost"):
+                    table.add_column(column)
+                for r in runs:
+                    table.add_row(
+                        r.id[:12],
+                        r.started_at.strftime("%Y-%m-%d %H:%M:%S"),
+                        escape(r.scenario),
+                        r.mode,
+                        "[green]pass[/]" if r.passed else "[red]fail[/]",
+                        str(r.step_count),
+                        f"${r.cost_usd:.4f}",
+                    )
+                console.print(table if runs else "No runs stored yet; run `replay ci`.")
+                return
+            run = store.get_run(run_id)
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+    console.print(
+        f"[bold]{run.id}[/] {escape(run.scenario)}: "
+        + ("[green]passed[/]" if run.passed else "[red]failed[/]")
+    )
+    console.print(f"cassette {escape(run.cassette_path)}, agent {escape(run.agent)}")
+    console.print(f"mode {run.mode}, policy {run.policy}, started {run.started_at.isoformat()}")
+    steps = [
+        Step(
+            index=s.index,
+            kind=Kind(s.kind),
+            name=s.name,
+            status=StepStatus(s.status),
+            fingerprint=s.fingerprint,
+            request=s.request,
+        )
+        for s in run.steps
+    ]
+    console.print(_steps_table(Trajectory(steps=tuple(steps))))
+    if run.error_type is not None:
+        console.print(f"[red]run:[/] {escape(run.error_type)}: {escape(run.error_message or '')}")
+    for check in run.checks:
+        _print_check(
+            CheckResult(
+                check=check.check, passed=check.passed, message=check.message, details=check.details
+            )
+        )
 
 
 @app.command("show")

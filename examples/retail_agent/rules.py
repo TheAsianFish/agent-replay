@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from agent_replay.runner import RunResult
-from examples.retail_agent.tasks import Action
+from examples.retail_agent.tasks import TASKS, Action
 from examples.retail_agent.tools import TERMINAL_TOOLS, WRITE_TOOLS
 
 ToolCalls = Sequence[tuple[str, Mapping[str, Any]]]
@@ -84,3 +84,24 @@ def outputs_match(output: object, expected_outputs: Sequence[str]) -> Verdict:
     answer = str(output or "").lower().replace(",", "")
     missing = [o for o in expected_outputs if o.lower() not in answer]
     return (not missing, f"answer lacks {missing}" if missing else "all expected outputs present")
+
+
+# --- rule checks: ``fn(run, **args)``, referenced from replay.toml ---------------
+
+
+def matches_ground_truth(run: RunResult, task: str) -> Verdict:
+    """τ-bench's ground truth for ``task``: its consequential actions, then its outputs."""
+    expected = TASKS[task]
+    verdict = write_actions_match(tool_calls(run), expected.expected_actions)
+    if not verdict[0]:
+        return verdict
+    return outputs_match(run.output, expected.expected_outputs)
+
+
+def checked_before_writing(run: RunResult) -> Verdict:
+    """The user was authenticated and every written order fetched before any write."""
+    calls = tool_calls(run)
+    for verdict in (authenticated_before_write(calls), order_checked_before_write(calls)):
+        if not verdict[0]:
+            return verdict
+    return True, "authenticated and checked every order before writing"
