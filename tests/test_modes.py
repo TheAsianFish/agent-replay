@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from agent_replay import capture
 from agent_replay.cassette import Cassette, Kind
@@ -608,3 +608,31 @@ def test_a_cancelled_call_is_recorded_and_replays() -> None:
     assert info.value.type_name == "CancelledError"
     assert replayed.fatal is None
     assert replayed.trajectory.steps[0].status is StepStatus.EXACT
+
+
+class Opaque:
+    """Not JSON-schema-able: pydantic needs arbitrary_types_allowed for it."""
+
+
+class Holder(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    thing: Opaque
+
+
+@tool
+def make_holder() -> Holder:
+    raise AssertionError("never runs")
+
+
+def test_synth_failure_for_an_unschematisable_type_is_fatal_and_named() -> None:
+    session = ReplaySession(record_pings(), policy="synth")
+    with session:
+        try:
+            make_holder()
+        except Exception as exc:  # the agent swallows it
+            swallowed = exc
+    assert isinstance(swallowed, ReplayError)
+    assert "cannot synthesise" in str(swallowed)
+    assert "--policy fallback" in str(swallowed)
+    assert session.fatal is swallowed

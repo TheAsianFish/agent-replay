@@ -9,7 +9,13 @@ from collections.abc import Awaitable, Callable
 from typing import Any, overload
 
 from anthropic.types import ToolParam
-from pydantic import JsonValue, PydanticSchemaGenerationError, TypeAdapter, create_model
+from pydantic import (
+    JsonValue,
+    PydanticSchemaGenerationError,
+    PydanticUserError,
+    TypeAdapter,
+    create_model,
+)
 
 from agent_replay._json import fingerprint, to_jsonable
 from agent_replay.cassette import Kind
@@ -122,8 +128,10 @@ class Tool[**P, R]:
         if adapter is None:
             return None
         try:
-            return stub_from_schema(adapter.json_schema(mode="serialization"))
-        except (SynthError, PydanticSchemaGenerationError) as exc:
+            # Validation mode: the stub is validated back into the type, so it must
+            # use field names and aliases as the type accepts them.
+            return stub_from_schema(adapter.json_schema(mode="validation"))
+        except (SynthError, PydanticUserError) as exc:
             raise ReplayError(
                 f"tool {self.name!r}: cannot synthesise a result ({exc}); record this call "
                 "or replay with --policy fallback"

@@ -355,7 +355,7 @@ class Session:
             raise rebuild_exception(
                 envelope.error.type, envelope.error.module, envelope.error.message
             )
-        return self._decode(call, envelope.response, "recorded response")
+        return self._decode(call, envelope.response)
 
     def _synthesize[T](self, call: Call[T], plan: _Plan) -> T:
         assert call.synth is not None
@@ -363,11 +363,27 @@ class Session:
             response = call.synth()
         except ReplayError as exc:
             raise self.fail(exc) from exc
+        except Exception as exc:  # a schema the stub builder never anticipated
+            raise self.fail(
+                ReplayError(
+                    f"cannot synthesise a result for {call.kind.value} call {call.name!r} "
+                    f"({type(exc).__name__}: {exc}); record the call or use --policy fallback"
+                )
+            ) from exc
         seq = self._emit(call, plan, response=response, error=None, latency_ms=0.0)
         self._complete(call, plan, seq, response=response, latency_ms=0.0)
-        return self._decode(call, response, "synthesised response")
+        try:
+            return call.decode(response)
+        except Exception as exc:
+            raise self.fail(
+                ReplayError(
+                    f"the synthesised stub for {call.kind.value} call {call.name!r} does not "
+                    f"validate against its return type ({exc}); record the call or use "
+                    "--policy fallback"
+                )
+            ) from exc
 
-    def _decode[T](self, call: Call[T], response: JsonValue, what: str) -> T:
+    def _decode[T](self, call: Call[T], response: JsonValue) -> T:
         try:
             return call.decode(response)
         except Exception as exc:
@@ -375,8 +391,8 @@ class Session:
             # an unrecorded call, this decides the run even if the agent swallows it.
             raise self.fail(
                 ReplayError(
-                    f"the {what} of {call.kind.value} call {call.name!r} no longer fits its "
-                    f"return type ({exc}); re-record the cassette with `replay record`"
+                    f"the recorded response of {call.kind.value} call {call.name!r} no longer "
+                    f"fits its return type ({exc}); re-record the cassette with `replay record`"
                 )
             ) from exc
 
