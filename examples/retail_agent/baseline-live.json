@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "suite": "examples/retail_agent/replay.toml",
+  "created_at": "2026-10-09T14:54:44.657644Z",
+  "git_sha": "9174d8dda28f14c454ddc5a216eaf6e98b5bb874",
+  "mode": "full",
+  "policy": "strict",
+  "scenarios": {
+    "cancel_pending_laptop": {
+      "cost_usd": 0.0461406,
+      "tokens": 26889,
+      "model_calls": 5,
+      "p95_latency_ms": 1974.423,
+      "runs": 1
+    },
+    "exchange_waterproof_boots": {
+      "cost_usd": 0.0654254,
+      "tokens": 38960,
+      "model_calls": 6,
+      "p95_latency_ms": 2338.822,
+      "runs": 1
+    },
+    "lookup_latest_order_total": {
+      "cost_usd": 0.0451702,
+      "tokens": 20497,
+      "model_calls": 4,
+      "p95_latency_ms": 2758.022,
+      "runs": 1
+    },
+    "modify_address_suite": {
+      "cost_usd": 0.040258,
+      "tokens": 16092,
+      "model_calls": 3,
+      "p95_latency_ms": 2589.299,
+      "runs": 1
+    },
+    "return_damaged_bicycle": {
+      "cost_usd": 0.0527062,
+      "tokens": 28850,
+      "model_calls": 5,
+      "p95_latency_ms": 2320.018,
+      "runs": 1
+    },
+    "transfer_swapped_refunds": {
+      "cost_usd": 0.045254,
+      "tokens": 26239,
+      "model_calls": 5,
+      "p95_latency_ms": 2722.717,
+      "runs": 1
+    }
+  }
+}

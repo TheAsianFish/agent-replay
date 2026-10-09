@@ -361,3 +361,24 @@ def test_baseline_cli_unwritable_output_exits_2(tmp_path: Path) -> None:
     result = invoke("baseline", str(SUITE), "--cassette-dir", str(LIVE), "-o", str(target))
     assert result.exit_code == 2
     assert "cannot write the baseline" in " ".join(result.output.split())
+
+
+# --- the committed example ----------------------------------------------------------------
+
+
+def test_the_committed_live_suite_passes_against_its_committed_baseline() -> None:
+    report = run_suite(RETAIL / "replay-live.toml")
+
+    assert report.passed, to_markdown(report)
+    relative = [
+        c for s in report.scenarios for c in s.checks if c.details.get("max_cost_increase_pct")
+    ]
+    assert len(relative) == 6
+    assert all(c.details["skipped"] == [] for c in relative)
+
+
+def test_the_committed_live_baseline_is_what_replay_baseline_measures() -> None:
+    committed = BaselineFile.load(RETAIL / "baseline-live.json")
+    measured = measure_suite(SUITE, overrides=Overrides(cassette_dir=LIVE))
+    assert comparable(committed) == comparable(measured)
+    assert committed.suite == "examples/retail_agent/replay.toml"

@@ -54,9 +54,11 @@ demo:
 RETAIL_SUITE = examples/retail_agent/replay.toml
 
 # replay ci on the retail suite: passes in every mode (the fake model plays the
-# live one), and each seeded regression fails it (expected exit 1).
+# live one), the live recordings stay within their cost and latency baseline,
+# and each seeded regression fails it (expected exit 1).
 ci-demo:
 	uv run replay ci $(RETAIL_SUITE) --no-store
+	uv run replay ci examples/retail_agent/replay-live.toml --no-store
 	uv run replay ci $(RETAIL_SUITE) --no-store --mode tools-live
 	uv run replay ci $(RETAIL_SUITE) --no-store --mode model-live \
 		--client examples.retail_agent.fake_model:make_client
