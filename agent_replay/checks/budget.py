@@ -29,9 +29,11 @@ class Budget:
     """Absolute limits over one run: cost, tokens, model calls, p95 model latency.
 
     Served steps carry their recorded cost and latency, so under a ``full`` replay
-    this measures the recorded run as the current code re-assembled it (a change
-    that makes more or different model calls shows up; a slower model does not).
-    Relative limits against a baseline arrive with M3.
+    with the ``strict`` policy this re-measures the recording: the agent cannot
+    make a model call the cassette lacks, and a slower model does not show. The
+    limits bite in ``model-live`` (real calls, real cost and latency) and under
+    ``fallback`` or ``synth``, where the agent may make calls the recording never
+    saw. Relative limits against a baseline arrive with M3.
     """
 
     max_cost_usd: float | None = None

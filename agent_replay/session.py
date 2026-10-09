@@ -159,11 +159,10 @@ class Session:
     response cannot be invented, so it fails as under ``strict``).
 
     A recorded call nested inside another call (a tool calling a tool) is only
-    asked for when its parent runs for real, so it is servable only if its
-    parent's kind runs live in this mode; otherwise the parent is served whole.
+    asked for when its parent runs for real, so it is servable only if every
+    ancestor's kind runs live in this mode; otherwise an ancestor is served
+    whole and the nested call is never made.
     """
-
-    mode: Mode = "record"
 
     def __init__(
         self,
@@ -550,14 +549,14 @@ def _servable(
 
 
 class RecordingSession(Session):
-    """Performs every call for real and appends an envelope when each call finishes.
+    """A :class:`Session` in ``record`` mode: every call runs for real.
 
-    ``seq`` is the finishing order. Each call also gets a ``span_id`` (in starting
-    order) and, when it ran inside another intercepted call in the same context
-    (a tool that calls a tool or the model), that call's span as ``parent_span_id``.
-    The trajectory lists steps in starting order, the same order a replay sees
-    them in, so parallel tools that finished in a different order still compare
-    equal.
+    As in every mode, an envelope is appended when its call finishes (``seq`` is
+    the finishing order), each call gets a ``span_id`` in starting order and, when
+    it ran inside another intercepted call in the same context, that call's span
+    as ``parent_span_id``. The trajectory lists steps in starting order, the same
+    order a replay sees them in, so parallel tools that finished in a different
+    order still compare equal.
     """
 
     def __init__(

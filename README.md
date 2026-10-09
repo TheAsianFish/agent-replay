@@ -234,7 +234,7 @@ for check in result.check(tool_sequence(cassette.tool_names()), budget(max_cost_
 | `arg_schema(tool, schema, must_call=False)` | Every call to `tool` has arguments valid against a JSON Schema or pydantic model |
 | `output_schema(schema, parse_json=False)` | The final output validates |
 | `rule(fn, **args)` | `fn(run, **args)` returns `True`, `(True, message)` or a passing `CheckResult`; an exception fails the check, never the suite |
-| `budget(max_cost_usd=, max_tokens=, max_model_calls=, max_p95_latency_ms=)` | The run is within every limit given. Served steps carry their recorded cost and latency |
+| `budget(max_cost_usd=, max_tokens=, max_model_calls=, max_p95_latency_ms=)` | The run is within every limit given. Served steps carry their recorded cost and latency, so in `full` mode under `strict` this re-measures the recording; it bites in `model-live`, or when `fallback` / `synth` let the agent make calls the recording never saw |
 
 ## `replay ci`
 
@@ -270,9 +270,17 @@ checks = [
 - exits `0` when everything passed, `1` on any regression, `2` when the suite
   itself is broken.
 
-A scenario that cannot run (a missing cassette, a bad check) fails on its own
-with the reason, and the rest still run. `--agent`, `--mode`, `--policy`,
-`--client` and `--cassette-dir` override the suite for every scenario.
+A scenario that cannot run (a missing cassette, an unimportable agent, a bad
+check, no client for `model-live`) is reported with the reason, the rest still
+run, and the command exits `2`: that is a broken suite to fix, not a
+regression to bisect. `--agent`, `--mode`, `--policy`, `--client` and
+`--cassette-dir` override the suite for every scenario.
+
+In `model-live`, an `approximate` tool step means the live model asked
+something the recording never saw and got the oldest unused reply for that
+tool instead. Set `fail_on_approximate = true` (or pass `--strict` to `replay
+run`) when a wrong answer there would make the rest of the run meaningless;
+leave it off when the drift is in free text, such as a summary argument.
 
 ## CLI
 
