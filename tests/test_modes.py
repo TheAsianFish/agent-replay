@@ -253,6 +253,29 @@ def test_synth_cannot_invent_a_model_reply() -> None:
     assert "cannot invent a model response" in result.error.message
 
 
+def test_tools_live_fallback_for_a_model_call_uses_the_given_client(no_orders: None) -> None:
+    result = replay(
+        eligible(), extra_turn, mode="tools-live", policy="fallback", client=make_client()
+    )
+
+    assert result.ok, result.error
+    assert result.output == eligible().footer.output
+    last = result.trajectory.steps[-1]
+    assert (last.kind, last.status) == (Kind.MODEL, StepStatus.FALLBACK)
+    assert statuses(result, Kind.TOOL) == {StepStatus.LIVE}  # tools ran: ORDERS is empty
+    assert any(s.error is not None for s in result.trajectory.tool_steps())
+
+
+def test_tools_live_synth_cannot_invent_a_model_reply() -> None:
+    result = replay(eligible(), extra_turn, mode="tools-live", policy="synth")
+
+    assert result.error is not None
+    assert result.error.type == "UnrecordedCallError"
+    assert "synth" in result.error.message
+    assert "cannot invent a model response" in result.error.message
+    assert statuses(result, Kind.TOOL) == {StepStatus.LIVE}
+
+
 # --- matching -----------------------------------------------------------------
 
 
@@ -356,6 +379,7 @@ def world() -> dict[str, Any]:
 
 
 def test_clock_and_random_are_recorded_and_replayed() -> None:
+    capture.seed(1234)
     session = recorder()
     with session:
         recorded = world()
@@ -384,6 +408,23 @@ def test_seeded_capture_is_reproducible() -> None:
     first = [capture.random(), capture.randint(0, 100)]
     capture.seed(7)
     assert [capture.random(), capture.randint(0, 100)] == first
+
+
+def test_choice_over_a_different_length_is_served_approximately() -> None:
+    capture.seed(1)
+    session = recorder()
+    with session:
+        capture.choice(list("abcde"))
+    cassette = session.finish()
+    drawn = cassette.envelopes[0].response
+    assert isinstance(drawn, int)
+    assert drawn < 3  # still in range for the 3-item sequence
+
+    replayed = ReplaySession(cassette)
+    with replayed:
+        assert capture.choice(["x", "y", "z"]) == "xyz"[drawn]
+    [step] = replayed.trajectory.steps
+    assert step.status is StepStatus.APPROXIMATE
 
 
 def test_unrecorded_clock_read_fails_under_strict_and_runs_under_synth() -> None:

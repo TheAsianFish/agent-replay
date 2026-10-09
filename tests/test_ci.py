@@ -98,7 +98,10 @@ def test_retail_suite_passes_with_the_model_live() -> None:
 
 def test_retail_suite_passes_with_the_tools_live() -> None:
     report = run_suite(SUITE, overrides=Overrides(mode="tools-live"))
+
     assert report.passed, to_markdown(report)
+    for scenario in report.scenarios:
+        assert set(scenario.steps.by_status) == {"exact", "live"}
 
 
 def failed_checks(report_scenarios: object) -> dict[str, set[str]]:
@@ -228,6 +231,29 @@ def test_fail_on_approximate(tmp_path: Path) -> None:
 
     [scenario] = report.scenarios
     assert "no_approximate_steps" in {c.check for c in scenario.failed_checks}
+
+
+def test_fail_on_approximate_fires_for_a_single_approximate_step(tmp_path: Path) -> None:
+    body = f"""
+[defaults]
+fail_on_approximate = true
+checks = [{{ type = "tool_sequence" }}]
+
+[[scenario]]
+name = "one_approximate"
+cassette = "{RETAIL_CASSETTES / "cancel_pending_laptop.jsonl"}"
+"""
+    report = run_suite(
+        write_suite(tmp_path, body),
+        overrides=Overrides(agent=f"{MUTANTS}:wrong_write_argument"),
+    )
+
+    [scenario] = report.scenarios
+    assert scenario.steps.by_status["approximate"] == 1
+    [failed] = scenario.failed_checks
+    assert failed.check == "no_approximate_steps"
+    assert failed.message.startswith("1 step(s) were served approximately")
+    assert not scenario.passed
 
 
 def test_model_live_without_a_client_fails_the_scenario(tmp_path: Path) -> None:
