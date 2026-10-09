@@ -409,6 +409,8 @@ def test_live_opus_recordings_pass_the_suite_offline() -> None:
     assert report.passed, to_markdown(report)
     for scenario in report.scenarios:
         assert set(scenario.steps.by_status) == {"exact"}
+        # The report names the cassette that was replayed, not the suite's default.
+        assert scenario.cassette == str(RETAIL_CASSETTES / "live" / f"{scenario.name}.jsonl")
     assert sum(s.cost_usd for s in report.scenarios) == pytest.approx(0.295, abs=0.001)
 
 

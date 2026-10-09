@@ -246,7 +246,7 @@ def _run_scenario(
         log.warning("ci.scenario_error", name=scenario.name, error=str(exc))
         return ScenarioReport(
             name=scenario.name,
-            cassette=scenario.cassette,
+            cassette=str(cassette_path),
             agent=agent,
             mode=mode,
             policy=policy,
@@ -294,7 +294,7 @@ def _run_scenario(
         by_status[step.status.value] = by_status.get(step.status.value, 0) + 1
     report = ScenarioReport(
         name=scenario.name,
-        cassette=scenario.cassette,
+        cassette=str(cassette_path),
         agent=agent_ref,
         mode=mode,
         policy=policy,
