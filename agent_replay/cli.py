@@ -1,8 +1,10 @@
 """The ``replay`` command line.
 
 Exit codes: 0 = everything passed, 1 = a check failed or the agent errored
-(a regression), 2 = bad input (missing cassette or suite, unimportable agent,
-invalid config, missing credentials).
+(a regression), 2 = bad input to the command itself (missing cassette or
+suite, unimportable agent, invalid config, missing credentials). In ``replay
+ci`` a scenario that cannot run fails that scenario, so the suite exits 1; a
+broken suite file exits 2.
 """
 
 from __future__ import annotations
@@ -433,8 +435,11 @@ def ci_cmd(
     if markdown_path is not None:
         _write(markdown_path, markdown, "Markdown")
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
-        with Path(summary).open("a", encoding="utf-8") as fh:
-            fh.write(markdown)
+        try:
+            with Path(summary).open("a", encoding="utf-8") as fh:
+                fh.write(markdown)
+        except OSError as exc:  # the verdict matters more than the summary
+            console.print(f"[yellow]warning:[/] cannot append to GITHUB_STEP_SUMMARY: {exc}")
     total, failed = len(report.scenarios), len(report.failed)
     verdict = "[bold green]passed[/]" if report.passed else "[bold red]failed[/]"
     console.print(f"{total - failed}/{total} scenario(s) passed: {verdict}")

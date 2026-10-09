@@ -384,3 +384,41 @@ def test_live_opus_recordings_pass_the_suite_offline() -> None:
     for scenario in report.scenarios:
         assert set(scenario.steps.by_status) == {"exact"}
     assert sum(s.cost_usd for s in report.scenarios) == pytest.approx(0.295, abs=0.001)
+
+
+# --- review regressions: bad input never crashes with a traceback --------------------
+
+
+def test_a_client_factory_returning_a_non_client(tmp_path: Path) -> None:
+    cassette = str(ROOT / "examples/toy_agent/cassettes/refund_eligible.jsonl")
+    run = invoke("run", cassette, "--mode", "model-live", "--client", "builtins:object")
+    assert run.exit_code == 2, run.output
+    assert "must return a model client" in run.output
+
+    ci = invoke(
+        "ci", str(SUITE), "--no-store", "--mode", "model-live", "--client", "builtins:object"
+    )
+    assert ci.exit_code == 1, ci.output
+    assert "must return a model client" in ci.output
+
+
+def test_a_cassette_path_that_is_a_directory(tmp_path: Path) -> None:
+    run = invoke("run", str(tmp_path))
+    assert run.exit_code == 2
+    assert "cannot read cassette" in run.output
+
+    body = TOY_SUITE.replace(
+        str(ROOT / "examples/toy_agent/cassettes/refund_eligible.jsonl"), str(tmp_path)
+    )
+    ci = invoke("ci", str(write_suite(tmp_path, body)), "--no-store")
+    assert ci.exit_code == 1
+    assert "cannot read cassette" in ci.output
+
+
+def test_an_unwritable_step_summary_only_warns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "missing" / "summary.md"))
+    result = invoke("ci", str(SUITE), "--no-store")
+    assert result.exit_code == 0, result.output
+    assert "cannot append to GITHUB_STEP_SUMMARY" in result.output

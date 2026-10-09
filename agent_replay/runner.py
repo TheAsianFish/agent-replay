@@ -207,7 +207,10 @@ def replay(
         client = adapter_for_calls(model_names).offline_client(
             is_async=inspect.iscoroutinefunction(agent)
         )
-    model_client = wrap(client)
+    try:
+        model_client = wrap(client)
+    except TypeError as exc:
+        raise AgentLoadError(f"{exc}; --client must return a model client") from exc
     session = ReplaySession(cassette, mode=mode, policy=policy)
     log.info("replay.start", mode=mode, policy=policy, cassette=cassette.header.cassette_id)
     output, failure = _run(session, agent, model_client, task)

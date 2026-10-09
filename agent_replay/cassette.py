@@ -184,6 +184,8 @@ class Cassette(_Strict):
             raise CassetteError(
                 f"cassette {path} does not exist; record one with `replay record`"
             ) from exc
+        except (OSError, UnicodeDecodeError) as exc:
+            raise CassetteError(f"cannot read cassette {path}: {exc}") from exc
         return cls.loads(text, source=str(path))
 
 
