@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from agent_replay import capture
 from agent_replay.cassette import Cassette, Kind
 from agent_replay.checks import tool_sequence
-from agent_replay.errors import ReplayError, UnrecordedCallError
+from agent_replay.errors import RecordedException, ReplayError, UnrecordedCallError
 from agent_replay.fake import FakeAnthropic, FakeRequest, Reply, ToolCall
 from agent_replay.record import tool, wrap
 from agent_replay.runner import replay
@@ -574,3 +574,37 @@ def test_fallback_without_a_client_fails_even_if_the_agent_swallows_it() -> None
     assert not result.ok
     assert result.error is not None
     assert "no live model client" in result.error.message
+
+
+def test_a_cancelled_call_is_recorded_and_replays() -> None:
+    import asyncio  # noqa: PLC0415
+
+    @tool
+    async def slow() -> str:
+        await asyncio.sleep(10)
+        return "late"
+
+    async def agent() -> str:
+        try:
+            async with asyncio.timeout(0.01):
+                return await slow()
+        except TimeoutError:
+            return "gave up"
+
+    session = recorder()
+    with session:
+        assert asyncio.run(agent()) == "gave up"
+    cassette = session.finish(output="gave up")
+    [envelope] = cassette.envelopes
+    assert envelope.error is not None
+    assert envelope.error.type == "CancelledError"
+    assert session.trajectory.steps[0].error is not None
+
+    # Nothing is really cancelled on replay, so the recorded cancellation comes
+    # back as a RecordedException naming it, not as an unrecorded call.
+    replayed = ReplaySession(cassette)
+    with replayed, pytest.raises(RecordedException) as info:
+        asyncio.run(agent())
+    assert info.value.type_name == "CancelledError"
+    assert replayed.fatal is None
+    assert replayed.trajectory.steps[0].status is StepStatus.EXACT

@@ -256,7 +256,9 @@ class Session:
         started = self._timer()
         try:
             result = call.invoke()
-        except Exception as exc:
+        except BaseException as exc:
+            # BaseException too: a cancelled task or Ctrl-C must still complete the
+            # reserved step and write an envelope, or the cassette cannot replay.
             self._record_error(call, plan, started, exc)
             raise
         finally:
@@ -276,7 +278,9 @@ class Session:
         started = self._timer()
         try:
             result = await call.ainvoke()
-        except Exception as exc:
+        except BaseException as exc:
+            # BaseException too: a cancelled task or Ctrl-C must still complete the
+            # reserved step and write an envelope, or the cassette cannot replay.
             self._record_error(call, plan, started, exc)
             raise
         finally:
@@ -376,7 +380,9 @@ class Session:
                 )
             ) from exc
 
-    def _record_error[T](self, call: Call[T], plan: _Plan, started: float, exc: Exception) -> None:
+    def _record_error[T](
+        self, call: Call[T], plan: _Plan, started: float, exc: BaseException
+    ) -> None:
         latency_ms = round((self._timer() - started) * 1000, 3)
         error = ErrorInfo.from_exception(exc)
         seq = self._emit(call, plan, response=None, error=error, latency_ms=latency_ms)
