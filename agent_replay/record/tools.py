@@ -55,7 +55,7 @@ class Tool[**P, R]:
     @functools.cached_property
     def _hints(self) -> dict[str, Any]:
         try:
-            return typing.get_type_hints(self.fn)
+            return typing.get_type_hints(self.fn, include_extras=True)
         except NameError as exc:
             raise ReplayError(f"tool {self.name!r}: cannot resolve type hints ({exc})") from exc
 

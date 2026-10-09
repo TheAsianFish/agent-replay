@@ -7,11 +7,11 @@ import itertools
 import threading
 import time
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
 
 import pytest
 from anthropic.types import Message
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from agent_replay.cassette import Cassette, Kind, Usage
 from agent_replay.errors import RecordedException, ReplayError, UnrecordedCallError
@@ -598,3 +598,15 @@ def test_recorded_response_that_no_longer_fits_the_return_type_fails_the_run() -
     assert replayed.fatal is swallowed
     [step] = replayed.trajectory.steps
     assert step.status is StepStatus.EXACT
+
+
+def test_annotated_parameter_descriptions_reach_the_tool_schema() -> None:
+    @tool
+    def find(email: Annotated[str, Field(description="The user's email address.")]) -> str:
+        """Find a user id."""
+        return email
+
+    assert find.input_schema["properties"]["email"] == {
+        "type": "string",
+        "description": "The user's email address.",
+    }
