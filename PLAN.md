@@ -249,7 +249,21 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
 
 ## Milestones
 
-- [ ] M1: Scaffolding, CI and a thin vertical slice — `uv` project with ruff, mypy `--strict`, pytest, Hypothesis; GitHub Actions running lint, type-check and tests; `Makefile` targets; cassette schema v1; Anthropic SDK wrapper and `@replay.tool`; `replay record` and `replay run --mode full` on a toy agent driven by a deterministic fake model; the `tool_sequence` check; MIT LICENSE; README quickstart that works. Done when a committed cassette replays offline, the check passes, a mutated toy agent fails it, and CI is green.
+- [x] M1: Scaffolding, CI and a thin vertical slice — `uv` project with ruff, mypy `--strict`, pytest, Hypothesis; GitHub Actions running lint, type-check and tests; `Makefile` targets; cassette schema v1; Anthropic SDK wrapper and `@replay.tool`; `replay record` and `replay run --mode full` on a toy agent driven by a deterministic fake model; the `tool_sequence` check; MIT LICENSE; README quickstart that works. Done when a committed cassette replays offline, the check passes, a mutated toy agent fails it, and CI is green.
+  - *M1 notes (2026-10-09).* Built as planned. A few decisions refine the plan:
+    (a) replay matching in M1 uses a per-(kind, name) cursor and compares
+    fingerprints to label each step `exact` or `approximate`; M2 adds the search
+    by fingerprint across the queue and the unrecorded-call policies.
+    (b) Before freezing v1, the schema gained `ErrorInfo.module`, so replay can
+    re-raise the original exception class. `span_id`/`parent_span_id` are
+    populated now, so nested calls are recorded and served through their parent.
+    (c) Unknown cassette fields stay rejected (`extra="forbid"`): any additive
+    field is a schema bump with a migration, matching the "never change v1"
+    rule. (d) `replay run --strict` fails on `approximate` steps, a cheap guard
+    until M2's checks land. (e) Streaming, `messages.parse`, `client.beta` and
+    async clients raise inside a session instead of going live unrecorded; M2
+    records them. (f) Not done: `@tool` on methods (no descriptor support yet),
+    and Ctrl-C during a live recording discards the partial cassette.
 - [ ] M2: Replay engine and checks library — modes `full`, `model-live`, `tools-live`; fingerprint matching with cursor fallback and the `approximate` flag; unrecorded-call policies `strict | fallback | synth`; clock and random capture; sync, async and streaming; Ollama adapter; checks `required_tools`, `forbidden_tools`, `max_tool_calls`, `arg_schema`, `output_schema`, `rule`, `budget`; SQLite store; `replay ci` with exit codes and JSON + Markdown reports; `examples/retail_agent` on vendored τ-bench retail data with fake-model cassettes committed. Done when every mode and policy has integration tests, the example agent records and replays, and `replay ci` fails on a seeded regression.
 - [ ] M3: Judge, cost and the stats interface — `judge` check with rubric YAML, `claude-opus-5-5` through structured outputs, Ollama fallback, fingerprint cache, "advisory until calibrated" semantics; pricing table and cost/latency baselines (`replay baseline`); `stats.py` interface with `NotImplementedError` bodies, `stats_baseline.py`, `tests/test_stats.py` (hand cases, edge cases, oracle property tests), `eval/sprt_sim.py`. Done when judge checks run offline against a fake judge in tests, cost deltas gate correctly, and the stats tests pass against the baseline where applicable and are marked expected-fail for the unimplemented module.
 - [ ] M4: Flakiness engine and mutation study — `replay flake` running repeated `model-live` replays with bounded concurrency and rate limiting; Wilson gate and SPRT early stop through the stats interface; flaky vs failing classification; `eval/mutations/` with 25+ mutations and 5 benign refactors; `make eval-mutations` and `make bench-sprt` (simulation) run offline in CI and write RESULTS.md. Done when RESULTS.md holds measured mutation detection rates per check type and per mode, and simulated SPRT savings, with commands and raw output.
