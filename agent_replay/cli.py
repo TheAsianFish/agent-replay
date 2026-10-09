@@ -3,8 +3,9 @@
 Exit codes: 0 = everything passed, 1 = a check failed or the agent errored
 (a regression), 2 = bad input to the command itself (missing cassette or
 suite, unimportable agent, invalid config, missing credentials). In ``replay
-ci`` a scenario that cannot run fails that scenario, so the suite exits 1; a
-broken suite file exits 2.
+ci`` a scenario that cannot run (or, offline, has no cached judge verdict) is
+reported and the others still run, and the command exits 2: a broken suite,
+not a regression.
 """
 
 from __future__ import annotations
