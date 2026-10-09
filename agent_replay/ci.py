@@ -215,7 +215,9 @@ def run_suite(
 ) -> SuiteReport:
     """Replay every scenario of the suite at ``path`` and check it.
 
-    Raises :class:`ConfigError` for a broken suite file. A scenario that cannot
+    Raises :class:`ConfigError` for a broken suite file, or a missing or broken
+    baseline file (``baseline`` in ``[defaults]``, or ``overrides.baseline``),
+    which is read once for the whole suite. A scenario that cannot
     run (missing cassette, unimportable agent, bad check) is reported with
     ``ran=False`` and the reason; the other scenarios still run, and the suite
     counts as broken rather than regressed.
