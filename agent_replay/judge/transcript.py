@@ -20,15 +20,16 @@ if TYPE_CHECKING:
     from agent_replay.runner import RunResult
 
 DEFAULT_MAX_CHARS = 2000
-"""Default cap, in characters of compact JSON, for each value in the transcript."""
+"""Default cap, in characters of its JSON text, for each value in the transcript."""
 
 
 def clip(value: JsonValue, max_chars: int) -> JsonValue:
     """``value`` unchanged if its JSON is at most ``max_chars`` long, else a clipped string.
 
-    A string is clipped as text; any other value is serialised to compact JSON
-    and clipped as that. The clipped text ends with a visible
-    ``…[truncated N chars]`` marker.
+    A string is clipped as text; any other value is serialised to single-line
+    JSON (``json.dumps`` defaults) and clipped as that. The rendered transcript
+    pretty-prints values that fit, so it can run a little longer than the cap.
+    The clipped text ends with a visible ``…[truncated N chars]`` marker.
     """
     text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
     if len(text) <= max_chars:
