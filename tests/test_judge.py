@@ -30,6 +30,7 @@ from agent_replay.judge import (
     PROMPT_VERSION,
     AnthropicJudge,
     CacheEntry,
+    CalibrationReport,
     CriterionVerdict,
     FakeJudge,
     JudgeCache,
@@ -37,9 +38,11 @@ from agent_replay.judge import (
     JudgeOutput,
     OllamaJudge,
     Rubric,
+    gating,
     make_provider,
 )
 from agent_replay.judge.cache import cache_key
+from agent_replay.judge.calibration import resolve_min_kappa
 from agent_replay.judge.transcript import clip
 from agent_replay.pricing import cost_usd
 from examples.retail_agent import agent as retail_agent
@@ -672,3 +675,124 @@ def test_the_cache_directory_comes_from_the_environment(
     assert JudgeCache().directory == Path(".replay/judge-cache")
     monkeypatch.setenv("REPLAY_JUDGE_CACHE", str(tmp_path / "shared"))
     assert JudgeCache().directory == tmp_path / "shared"
+
+
+# --- calibration gate -----------------------------------------------------------
+
+FAKE_ID = "fake:default"
+
+
+def calibration(
+    rubric: Rubric | None = None,
+    *,
+    judge_id: str = FAKE_ID,
+    ci_low: dict[str, float] | None = None,
+) -> CalibrationReport:
+    rubric = rubric or make_rubric()
+    lows = ci_low if ci_low is not None else dict.fromkeys(rubric.ids, 0.75)
+    return CalibrationReport.model_validate(
+        {
+            "rubric": rubric.name,
+            "rubric_fingerprint": rubric.fingerprint,
+            "judge_id": judge_id,
+            "created_at": "2026-10-09T00:00:00Z",
+            "n_items": 120,
+            "method": "Cohen's kappa, 95% bootstrap CI (2000 resamples)",
+            "criteria": {
+                i: {
+                    "kappa": min(1.0, low + 0.05),
+                    "ci_low": low,
+                    "ci_high": min(1.0, low + 0.1),
+                    "agreement": 0.9,
+                    "n": 120,
+                }
+                for i, low in lows.items()
+            },
+        }
+    )
+
+
+def write_calibration(tmp_path: Path, report: CalibrationReport) -> Path:
+    path = tmp_path / "calibration.json"
+    path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+    return path
+
+
+def test_without_a_report_every_criterion_is_advisory():
+    gates = gating(None, make_rubric(), FAKE_ID, 0.6)
+
+    assert set(gates) == {"resolved", "policy"}
+    assert not any(g.gating for g in gates.values())
+    assert "calibrate the judge against human labels first" in gates["resolved"].reason
+
+
+def test_a_report_for_another_rubric_version_or_judge_gates_nothing():
+    rubric = make_rubric()
+
+    other_version = gating(calibration(make_rubric(version=2)), rubric, FAKE_ID, 0.6)
+    other_judge = gating(calibration(judge_id="fake:other"), rubric, FAKE_ID, 0.6)
+
+    assert not any(g.gating for g in other_version.values())
+    assert "another version of rubric 'refunds'" in other_version["policy"].reason
+    assert not any(g.gating for g in other_judge.values())
+    assert "for judge fake:other, not fake:default" in other_judge["policy"].reason
+
+
+@pytest.mark.parametrize(
+    ("ci_low", "gates_resolved"),
+    [(0.59, False), (0.6, True), (0.61, True)],
+)
+def test_a_criterion_gates_when_its_kappa_lower_bound_reaches_the_threshold(ci_low, gates_resolved):
+    gates = gating(
+        calibration(ci_low={"resolved": ci_low, "policy": 0.9}), make_rubric(), FAKE_ID, 0.6
+    )
+
+    assert gates["resolved"].gating is gates_resolved
+    assert gates["policy"].gating is True
+    if not gates_resolved:
+        assert "kappa lower bound 0.59 < 0.60 (n=120)" in gates["resolved"].reason
+    else:
+        assert gates["resolved"].reason.startswith("calibrated: kappa lower bound")
+
+
+def test_mixed_gating_and_advisory_criteria():
+    gates = gating(calibration(ci_low={"resolved": 0.8}), make_rubric(), FAKE_ID, 0.6)
+
+    assert gates["resolved"].gating is True
+    assert gates["policy"].gating is False
+    assert "not in the calibration report" in gates["policy"].reason
+
+
+def test_calibration_reports_load_and_validate(tmp_path: Path):
+    report = calibration()
+    path = write_calibration(tmp_path, report)
+
+    assert CalibrationReport.load(path) == report
+    with pytest.raises(ConfigError, match="does not exist"):
+        CalibrationReport.load(tmp_path / "missing.json")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["schema_version"] = 2
+    data["criteria"]["resolved"]["ci_low"] = 1.5
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ConfigError) as info:
+        CalibrationReport.load(path)
+    assert "schema_version" in str(info.value)
+    assert "criteria.resolved.ci_low" in str(info.value)
+
+
+def test_min_kappa_comes_from_the_argument_or_the_environment(monkeypatch: pytest.MonkeyPatch):
+    assert resolve_min_kappa(None) == 0.6
+    assert resolve_min_kappa(0.8) == 0.8
+    monkeypatch.setenv("REPLAY_JUDGE_MIN_KAPPA", "0.7")
+    assert resolve_min_kappa(None) == 0.7
+    assert resolve_min_kappa(0.0) == 0.0
+    monkeypatch.setenv("REPLAY_JUDGE_MIN_KAPPA", "high")
+    with pytest.raises(ConfigError, match="REPLAY_JUDGE_MIN_KAPPA='high' is not a number"):
+        resolve_min_kappa(None)
+    monkeypatch.setenv("REPLAY_JUDGE_MIN_KAPPA", "1.5")
+    with pytest.raises(ConfigError, match=r"REPLAY_JUDGE_MIN_KAPPA=1\.5 is out of range"):
+        resolve_min_kappa(None)
+    with pytest.raises(ConfigError, match=r"min_kappa=-0\.1 is out of range"):
+        resolve_min_kappa(-0.1)
+    with pytest.raises(ConfigError, match="out of range"):
+        resolve_min_kappa(float("nan"))

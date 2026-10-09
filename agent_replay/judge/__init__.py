@@ -5,6 +5,12 @@ human labels (PLAN.md decision 5).
 """
 
 from agent_replay.judge.cache import CacheEntry, JudgeCache
+from agent_replay.judge.calibration import (
+    CalibrationReport,
+    CriterionCalibration,
+    CriterionGate,
+    gating,
+)
 from agent_replay.judge.providers import (
     AnthropicJudge,
     FakeJudge,
@@ -26,7 +32,10 @@ __all__ = [
     "AgentError",
     "AnthropicJudge",
     "CacheEntry",
+    "CalibrationReport",
     "Criterion",
+    "CriterionCalibration",
+    "CriterionGate",
     "CriterionVerdict",
     "FakeJudge",
     "JudgeCache",
@@ -37,5 +46,6 @@ __all__ = [
     "OllamaJudge",
     "Rubric",
     "ToolCallRecord",
+    "gating",
     "make_provider",
 ]
