@@ -97,3 +97,8 @@ class ConfigError(ReplayError):
 
 class MeasurementError(ReplayError):
     """A run measured for a baseline ended in an error, so there is nothing to measure."""
+
+
+class JudgeError(ReplayError):
+    """The judge could not produce a verdict: provider failure, bad output, or a cache miss
+    in offline mode."""
