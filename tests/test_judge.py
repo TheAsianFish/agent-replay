@@ -9,7 +9,8 @@ from __future__ import annotations
 import json
 import re
 import sys
-from collections.abc import Callable
+import tomllib
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -20,9 +21,13 @@ import pytest
 import yaml
 from pydantic import JsonValue
 from structlog.testing import capture_logs
+from typer.testing import CliRunner
 
 from agent_replay import Cassette, Kind, RunResult, Step, StepStatus, Trajectory, replay
 from agent_replay.cassette import ErrorInfo
+from agent_replay.checks import build_check
+from agent_replay.ci import run_suite
+from agent_replay.cli import app
 from agent_replay.errors import ConfigError, JudgeError
 from agent_replay.fake import FakeAnthropic, FakeRequest, Reply
 from agent_replay.fake_ollama import FakeOllama
@@ -1064,3 +1069,128 @@ def test_the_fake_retail_judge_catches_a_skipped_order_lookup():
         "policy_followed"
     ]
     assert "without checking the order first" in result.message
+
+
+# --- suites ---------------------------------------------------------------------
+
+cli = CliRunner()
+
+
+def judge_suite(tmp_path: Path, *, calibration_file: str | None = None) -> Path:
+    extra = f'calibration = "{calibration_file}"' if calibration_file else ""
+    body = f"""
+[defaults]
+agent = "examples.retail_agent.agent:run"
+
+[[defaults.checks]]
+type = "judge"
+rubric = "{RETAIL_RUBRIC}"
+provider = "{FAKE_RETAIL_JUDGE}"
+cache_dir = "cache"
+{extra}
+
+[[scenario]]
+name = "modify_address"
+cassette = "{RETAIL / "cassettes" / "modify_address_suite.jsonl"}"
+
+[[scenario]]
+name = "modify_address_without_lookup"
+cassette = "{RETAIL / "cassettes" / "modify_address_suite.jsonl"}"
+agent = "examples.retail_agent.mutants:skips_order_lookup"
+"""
+    path = tmp_path / "replay.toml"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+@pytest.fixture
+def _retail_cwd(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    monkeypatch.chdir(ROOT)
+    retail_tools.reset_db()
+    yield
+    retail_tools.reset_db()
+
+
+@pytest.mark.usefixtures("_retail_cwd")
+def test_an_uncalibrated_judge_failure_keeps_the_suite_passing(tmp_path: Path):
+    suite = judge_suite(tmp_path)
+
+    report = run_suite(suite)
+
+    assert report.passed
+    good, mutant = report.scenarios
+    assert good.checks[0].passed
+    assert mutant.passed
+    assert [c.check for c in mutant.advisory_failures] == ["judge:retail-resolution"]
+    assert list((tmp_path / "cache").glob("*/*.json"))  # cache_dir is relative to the suite
+    again = run_suite(suite)
+    assert all(s.checks[0].details["cached"] is True for s in again.scenarios)
+    result = cli.invoke(app, ["ci", str(suite), "--no-store"], env={"COLUMNS": "200"})
+    assert result.exit_code == 0, result.output
+    assert "judge:retail-resolution (advisory)" in result.output
+
+
+@pytest.mark.usefixtures("_retail_cwd")
+def test_a_calibrated_failing_criterion_fails_the_suite(tmp_path: Path):
+    rubric = Rubric.load(RETAIL_RUBRIC)
+    report = calibration(
+        rubric, judge_id="fake:retail-rules", ci_low=dict.fromkeys(rubric.ids, 0.7)
+    )
+    write_calibration(tmp_path, report)
+    suite = judge_suite(tmp_path, calibration_file="calibration.json")
+
+    outcome = run_suite(suite)
+
+    assert not outcome.passed
+    good, mutant = outcome.scenarios
+    assert good.passed
+    assert not mutant.passed
+    assert [c.check for c in mutant.failed_checks] == ["judge:retail-resolution"]
+    result = cli.invoke(app, ["ci", str(suite), "--no-store"], env={"COLUMNS": "200"})
+    assert result.exit_code == 1, result.output
+
+
+@pytest.mark.parametrize(
+    ("fields", "fragment"),
+    [
+        ('rubric = "missing.yaml"', "does not exist"),
+        (f'rubric = "{RETAIL_RUBRIC}", provider = "fake", effort = "low"', "effort applies"),
+        (f'rubric = "{RETAIL_RUBRIC}", weight = 2', "weight: Extra inputs"),
+        (f'rubric = "{RETAIL_RUBRIC}", min_kappa = 3.0', "min_kappa=3.0 is out of range"),
+        (f'rubric = "{RETAIL_RUBRIC}", calibration = "nope.json"', "does not exist"),
+        ("provider = 'fake'", "rubric: Field required"),
+    ],
+)
+def test_judge_spec_errors(tmp_path: Path, fields: str, fragment: str):
+    spec = tomllib.loads(f'check = {{ type = "judge", {fields} }}')["check"]
+
+    with pytest.raises(ConfigError, match=re.escape(fragment)) as info:
+        build_check(spec, base_dir=tmp_path)
+    assert "check of type 'judge'" in str(info.value)
+
+
+def test_judge_spec_builds_a_judge(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("REPLAY_JUDGE_CACHE", str(tmp_path / "env-cache"))
+    spec = {
+        "type": "judge",
+        "rubric": str(RETAIL_RUBRIC),
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "min_kappa": 0.7,
+        "max_chars": 500,
+    }
+
+    check = build_check(spec, base_dir=tmp_path)
+
+    assert isinstance(check, Judge)
+    assert check.provider.judge_id == "anthropic:claude-sonnet-5-5:effort=medium"
+    assert check.min_kappa == 0.7
+    assert check.max_chars == 500
+    assert check.cache is not None
+    assert check.cache.directory == tmp_path / "env-cache"
+    offline = build_check({**spec, "cache_dir": "c", "offline": True}, base_dir=tmp_path)
+    assert isinstance(offline, Judge)
+    assert offline.cache is not None
+    assert offline.cache.directory == tmp_path / "c"
+    assert offline.cache.offline is True

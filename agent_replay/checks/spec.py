@@ -70,6 +70,22 @@ class _RuleSpec(_Spec):
     args: dict[str, Any] = Field(default_factory=dict)
 
 
+class _JudgeSpec(_Spec):
+    type: Literal["judge"]
+    rubric: str
+    """Rubric YAML file, relative to the suite file."""
+    provider: str | None = None
+    model: str | None = None
+    effort: str | None = None
+    calibration: str | None = None
+    """Calibration report JSON file, relative to the suite file."""
+    min_kappa: float | None = None
+    cache_dir: str | None = None
+    """Verdict cache directory, relative to the suite file (default: REPLAY_JUDGE_CACHE)."""
+    offline: bool | None = None
+    max_chars: int = Field(default=2000, ge=1)
+
+
 class _BudgetSpec(_Spec):
     type: Literal["budget"]
     max_cost_usd: float | None = None
@@ -90,7 +106,8 @@ _Anything = Annotated[
     | _ArgSchemaSpec
     | _OutputSchemaSpec
     | _RuleSpec
-    | _BudgetSpec,
+    | _BudgetSpec
+    | _JudgeSpec,
     Field(discriminator="type"),
 ]
 _ADAPTER: TypeAdapter[_Anything] = TypeAdapter(_Anything)
@@ -104,6 +121,7 @@ CHECK_TYPES = (
     "output_schema",
     "rule",
     "budget",
+    "judge",
 )
 
 
@@ -230,6 +248,8 @@ def _build(  # noqa: PLR0911
         if not callable(fn):
             raise ConfigError(f"ref {parsed.ref!r} is not callable")
         return rule(fn, name=parsed.name, **parsed.args)
+    if isinstance(parsed, _JudgeSpec):
+        return _judge(parsed, base_dir)
     return budget(
         max_cost_usd=parsed.max_cost_usd,
         max_tokens=parsed.max_tokens,
@@ -240,4 +260,25 @@ def _build(  # noqa: PLR0911
         max_model_calls_increase_pct=parsed.max_model_calls_increase_pct,
         max_p95_latency_increase_pct=parsed.max_p95_latency_increase_pct,
         baseline=baseline,
+    )
+
+
+def _judge(spec: _JudgeSpec, base_dir: Path) -> Check:
+    # Imported here: agent_replay.judge imports this package's base module.
+    from agent_replay.judge import JudgeCache, judge, make_provider  # noqa: PLC0415
+
+    provider = make_provider(spec.provider, model=spec.model, effort=spec.effort)
+    cache: JudgeCache | Literal["default"] = (
+        JudgeCache(base_dir / spec.cache_dir, offline=spec.offline)
+        if spec.cache_dir is not None
+        else "default"
+    )
+    return judge(
+        base_dir / spec.rubric,
+        provider=provider,
+        cache=cache,
+        calibration=base_dir / spec.calibration if spec.calibration is not None else None,
+        min_kappa=spec.min_kappa,
+        offline=spec.offline,
+        max_chars=spec.max_chars,
     )
