@@ -1,4 +1,4 @@
-"""The retail example: τ-bench tools, tasks and the expected-database reward."""
+"""The retail example: τ-bench reward on fresh recordings, tools, tasks and rules."""
 
 from __future__ import annotations
 
@@ -6,8 +6,13 @@ from collections.abc import Iterator
 
 import pytest
 
-from examples.retail_agent import tools
+from agent_replay.runner import record
+from examples.retail_agent import agent as retail
+from examples.retail_agent import rules, tools
+from examples.retail_agent.fake_model import make_client
 from examples.retail_agent.tasks import TASKS, expected_db_hash
+
+TASK_IDS = sorted(TASKS)
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +27,41 @@ def test_six_tasks_cover_every_kind_of_request():
     assert kinds == tools.WRITE_TOOLS | tools.TERMINAL_TOOLS
     assert [t.id for t in TASKS.values() if not t.expected_actions] == ["lookup_latest_order_total"]
     assert {t.tau_bench_index for t in TASKS.values()} == {10, 17, 27, 53, 67, 69}
+
+
+@pytest.mark.parametrize("task_id", TASK_IDS)
+def test_fake_model_run_reaches_the_expected_database(task_id: str):
+    """The τ-bench objective reward: final DB state equals the ground truth's."""
+    task = TASKS[task_id]
+    expected = expected_db_hash(task)
+    tools.reset_db()
+    initial = tools.db_hash()
+
+    result, _ = record(retail.run, task.instruction, client=make_client())
+
+    assert result.ok, result.error
+    assert tools.db_hash() == expected
+    assert (expected != initial) == any(a.name in tools.WRITE_TOOLS for a in task.expected_actions)
+    calls = rules.tool_calls(result)
+    assert rules.write_actions_match(calls, task.expected_actions)[0]
+    assert rules.authenticated_before_write(calls)[0]
+    assert rules.order_checked_before_write(calls)[0]
+    assert rules.outputs_match(result.output, task.expected_outputs)[0]
+
+
+def test_lookup_task_answers_with_tau_benchs_expected_output():
+    result, _ = record(
+        retail.run, TASKS["lookup_latest_order_total"].instruction, client=make_client()
+    )
+    assert result.output == "You paid $829.43 for your most recent order, #W6729841."
+
+
+def test_policy_violation_is_transferred_without_writing():
+    task = TASKS["transfer_swapped_refunds"]
+    result, _ = record(retail.run, task.instruction, client=make_client())
+    calls = rules.tool_calls(result)
+    assert calls[-1][0] == "transfer_to_human_agents"
+    assert rules.no_write_actions(calls) == (True, "no writes")
 
 
 def test_expected_db_hash_differs_per_write_and_resets_first():
@@ -91,6 +131,17 @@ def test_calculate_errors(expression: str, message: str):
         tools.calculate(expression)
 
 
+def test_tool_errors_become_tau_bench_worded_error_results():
+    result = retail.call_tool("toolu_1", "get_order_details", {"order_id": "#W0000000"})
+    assert result == {
+        "type": "tool_result",
+        "tool_use_id": "toolu_1",
+        "content": "Error: order not found",
+        "is_error": True,
+    }
+    assert retail.call_tool("toolu_2", "nope", {})["content"] == "Error: unknown tool nope"
+
+
 def test_reset_db_discards_changes_in_place():
     db = tools.DB
     initial = tools.db_hash()
@@ -99,3 +150,23 @@ def test_reset_db_discards_changes_in_place():
     tools.reset_db()
     assert tools.DB is db
     assert tools.db_hash() == initial
+
+
+def test_rules_report_violations():
+    calls = [
+        ("cancel_pending_order", {"order_id": "#W1", "reason": "no longer needed"}),
+        ("find_user_id_by_email", {"email": "a@example.com"}),
+    ]
+    assert rules.authenticated_before_write(calls) == (
+        False,
+        "cancel_pending_order called before authenticating the user",
+    )
+    assert rules.order_checked_before_write(calls)[0] is False
+    assert rules.no_write_actions(calls)[0] is False
+    assert rules.write_actions_match(calls, []) == (
+        False,
+        "unexpected extra action ('cancel_pending_order', "
+        "{'order_id': '#W1', 'reason': 'no longer needed'})",
+    )
+    assert rules.outputs_match("It cost $1,093.34.", ["1093.34"])[0]
+    assert not rules.outputs_match("It cost $1093.", ["1093.34"])[0]
