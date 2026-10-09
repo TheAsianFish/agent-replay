@@ -214,8 +214,11 @@ REPLAY_JUDGE_OFFLINE=1 uv run replay ci examples/retail_agent/replay-live.toml -
 REPLAY_JUDGE_OFFLINE=1 uv run replay ci examples/retail_agent/replay-live.toml --no-store --mode model-live --client anthropic --agent examples.retail_agent.mutants:no_prompt_cache --json eval/results/m3_cost_gate_no_prompt_cache.json
 ```
 
-Exit codes 0 and 1. Raw reports: `eval/results/m3_cost_gate_*.json`. Deltas
-are against the baseline, from the budget check's details:
+Exit codes 0 and 1. Raw reports: `eval/results/m3_cost_gate_*.json` (their
+`git_sha`, like the baseline file's, is the `$GITHUB_SHA` of the runner they
+were made on, not a commit of this repository; `replay` now ignores a SHA
+that is not in the checkout). Deltas are against the baseline, from the
+budget check's details:
 
 | Task | agent cost | Δ cost | Δ tokens | no_prompt_cache cost | Δ cost | Δ tokens |
 |---|---|---|---|---|---|---|
