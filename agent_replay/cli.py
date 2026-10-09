@@ -32,6 +32,7 @@ from agent_replay.ci import Overrides, RunSink, ScenarioReport, SuiteReport, run
 from agent_replay.ci import to_json as report_json
 from agent_replay.ci import to_markdown as report_markdown
 from agent_replay.errors import ReplayError
+from agent_replay.pricing import prices
 from agent_replay.record import wrap
 from agent_replay.runner import RunResult, load_agent, make_client, record, replay
 from agent_replay.session import Policy as PolicyName
@@ -96,6 +97,10 @@ def _main(
     ] = False,
 ) -> None:
     configure_logging()
+    try:
+        prices()  # a bad REPLAY_PRICES_FILE fails here, not midway through a recording
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
 
 
 def _preview(value: JsonValue, limit: int = 60) -> str:
