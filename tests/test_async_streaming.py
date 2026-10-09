@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 from typing import Any
 
@@ -21,6 +22,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from pydantic import BaseModel
 
+from agent_replay._json import canonical_json
 from agent_replay.cassette import Cassette, Kind
 from agent_replay.errors import ReplayError, UnrecordedCallError
 from agent_replay.fake import FakeAnthropic, FakeAsyncAnthropic, FakeRequest, Reply, ToolCall
@@ -58,16 +60,31 @@ def weather_policy(request: FakeRequest) -> Reply:
     return Reply(text=f"Now: {temps}.")
 
 
+class Weather(BaseModel):
+    city: str
+    temp_c: int
+
+
+@tool(name="weather")
+async def aweather(city: str) -> Weather:
+    """Current weather for a city (async)."""
+    for _ in range(3 if city == "Oslo" else 1):  # yield more often: finish out of start order
+        await asyncio.sleep(0)
+    return Weather(city=city, temp_c=len(city) * 3)
+
+
 async def run_tool(block: ToolUseBlock) -> ToolResultBlockParam:
-    result = weather(**block.input)
-    return {"type": "tool_result", "tool_use_id": block.id, "content": json.dumps(result)}
+    result = await aweather(**block.input)
+    assert isinstance(result, Weather)  # rebuilt from JSON on replay
+    content = json.dumps(result.model_dump())
+    return {"type": "tool_result", "tool_use_id": block.id, "content": content}
 
 
 async def async_agent(client: anthropic.AsyncAnthropic, task: str) -> str:
     messages: list[MessageParam] = [{"role": "user", "content": task}]
     for _ in range(4):
         response = await client.messages.create(
-            model=MODEL, max_tokens=256, messages=messages, tools=[weather.to_anthropic()]
+            model=MODEL, max_tokens=256, messages=messages, tools=[aweather.to_anthropic()]
         )
         messages.append({"role": "assistant", "content": response.content})
         uses = [b for b in response.content if isinstance(b, ToolUseBlock)]
@@ -201,6 +218,83 @@ def test_async_agent_full_replay_uses_the_async_offline_client() -> None:
     result = replay(cassette, twice, policy="fallback")
     assert result.error is not None
     assert "no live model client" in result.error.message
+
+
+# --- async tools --------------------------------------------------------------------
+
+
+@tool
+async def report(cities: list[str]) -> list[Weather]:
+    """Weather for several cities, fetched concurrently."""
+    return list(await asyncio.gather(*(aweather(c) for c in cities)))
+
+
+async def report_agent(client: anthropic.AsyncAnthropic, task: str) -> list[Any]:
+    reports = await asyncio.gather(report(["Oslo", "Lima"]), report(["Rome"]))
+    return [[w.model_dump() for w in r] for r in reports]
+
+
+def test_async_tool_is_a_coroutine_function_and_passes_through() -> None:
+    assert inspect.iscoroutinefunction(aweather)
+    assert aweather.is_async
+    assert not weather.is_async
+    pending = aweather("Rome")
+    assert inspect.iscoroutine(pending)
+    assert asyncio.run(pending) == Weather(city="Rome", temp_c=12)
+
+
+def test_async_tools_record_with_types_and_replay() -> None:
+    result, cassette = record(async_agent, TASK, client=fake_async())
+    tools = [e for e in cassette.envelopes if e.kind is Kind.TOOL]
+    assert [e.response for e in tools] == [
+        {"city": "Lima", "temp_c": 12},  # Oslo sleeps, so Lima finishes first
+        {"city": "Oslo", "temp_c": 12},
+    ]
+    replayed = replay(cassette, async_agent)
+    assert replayed.output == result.output
+    assert replayed.trajectory.tool_names() == ["weather", "weather"]
+
+
+def test_nested_async_tools_keep_their_parent_across_gather() -> None:
+    result, cassette = record(report_agent, "report", client=fake_async())
+    assert result.ok, result.error
+    spans = {canonical_json(e.request): e.span_id for e in cassette.envelopes if e.name == "report"}
+    parents = {
+        e.request["city"]: e.parent_span_id
+        for e in cassette.envelopes
+        if e.name == "weather" and isinstance(e.request, dict)
+    }
+    oslo_lima = spans[canonical_json({"cities": ["Oslo", "Lima"]})]
+    assert parents == {
+        "Oslo": oslo_lima,
+        "Lima": oslo_lima,
+        "Rome": spans[canonical_json({"cities": ["Rome"]})],
+    }
+    assert all(e.parent_span_id is None for e in cassette.envelopes if e.name == "report")
+
+    full = replay(cassette, report_agent)
+    assert full.ok, full.error
+    assert full.output == result.output
+    assert full.trajectory.tool_names() == ["report", "report"]  # served whole
+    assert statuses(full) == {StepStatus.EXACT}
+
+
+def test_unrecorded_async_tool_follows_the_policy() -> None:
+    _, cassette = record(report_agent, "report", client=fake_async())
+
+    async def more(client: anthropic.AsyncAnthropic, task: str) -> list[Any]:
+        return [*(await report_agent(client, task)), (await aweather("Kyiv")).model_dump()]
+
+    strict = replay(cassette, more)
+    assert strict.error is not None
+    assert strict.error.type == "UnrecordedCallError"
+    synth = replay(cassette, more, policy="synth")
+    assert synth.ok, synth.error
+    assert isinstance(synth.output, list)
+    assert synth.output[-1] == {"city": "", "temp_c": 0}
+    fallback = replay(cassette, more, policy="fallback")
+    assert isinstance(fallback.output, list)
+    assert fallback.output[-1] == {"city": "Kyiv", "temp_c": 12}
 
 
 # --- streaming ----------------------------------------------------------------------

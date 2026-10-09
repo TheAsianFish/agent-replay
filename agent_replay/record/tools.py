@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 import inspect
 import typing
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any, overload
 
 from anthropic.types import ToolParam
@@ -25,6 +25,11 @@ class Tool[**P, R]:
     active. Arguments are recorded by parameter name (defaults applied), and on
     replay the recorded JSON result is validated back into the function's
     annotated return type, so ``-> Order`` returns an ``Order`` both times.
+
+    An ``async def`` tool stays a coroutine function: calling it returns an
+    awaitable, which inside a session goes through ``session.intercept_async``
+    when awaited, so tools run with ``asyncio.gather`` are recorded with their
+    nesting (each task copies the context holding the parent span).
     """
 
     def __init__(
@@ -39,6 +44,10 @@ class Tool[**P, R]:
                 raise TypeError(f"tool {self.name!r}: *args and **kwargs are not supported")
         functools.update_wrapper(self, fn)
         self.__name__ = self.name
+        self.is_async = inspect.iscoroutinefunction(fn)
+        if self.is_async:
+            # So inspect.iscoroutinefunction(tool) is true, as it is for the function.
+            inspect.markcoroutinefunction(self)
 
     # Type hints are resolved lazily: decorating must never break an import
     # (forward references, annotations pydantic cannot schematise), because
@@ -81,6 +90,20 @@ class Tool[**P, R]:
                     "pass JSON-compatible values"
                 )
             ) from exc
+        if self.is_async:
+            # The awaited value is what gets recorded; get_type_hints on an
+            # ``async def`` already gives its awaited return type for decoding.
+            acall: Call[Any] = Call(
+                kind=Kind.TOOL,
+                name=self.name,
+                request=request,
+                fingerprint=fingerprint(Kind.TOOL, self.name, request),
+                ainvoke=lambda: typing.cast(Awaitable[Any], self.fn(*args, **kwargs)),
+                encode=to_jsonable,
+                decode=decode,
+                synth=self._synth,
+            )
+            return typing.cast(R, session.intercept_async(acall))
         call: Call[R] = Call(
             kind=Kind.TOOL,
             name=self.name,
