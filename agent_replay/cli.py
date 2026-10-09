@@ -19,13 +19,14 @@ from rich.table import Table
 
 from agent_replay import __version__
 from agent_replay._json import canonical_json, to_jsonable
+from agent_replay._loading import load_object
 from agent_replay._logging import configure_logging
 from agent_replay.cassette import Cassette
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
 from agent_replay.errors import ReplayError
 from agent_replay.record import wrap
-from agent_replay.runner import RunResult, load_agent, load_object, record, replay
+from agent_replay.runner import RunResult, load_agent, record, replay
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2

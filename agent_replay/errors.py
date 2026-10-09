@@ -89,3 +89,7 @@ def rebuild_exception(type_name: str, module: str | None, message: str) -> Recor
 
 class StoreError(ReplayError):
     """The run store could not be opened, or a stored run could not be found."""
+
+
+class ConfigError(ReplayError):
+    """A check or suite configuration table is invalid."""

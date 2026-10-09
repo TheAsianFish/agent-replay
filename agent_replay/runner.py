@@ -9,9 +9,7 @@ wrapped, so its calls are intercepted) and the task text. Its tools must be
 from __future__ import annotations
 
 import asyncio
-import importlib
 import inspect
-import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
@@ -20,6 +18,7 @@ import structlog
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 from agent_replay._json import to_jsonable
+from agent_replay._loading import load_object
 from agent_replay.cassette import Cassette, Envelope, ErrorInfo, Kind
 from agent_replay.checks.base import Check, CheckResult
 from agent_replay.errors import AgentLoadError, ReplayError
@@ -78,34 +77,6 @@ class RunResult(BaseModel):
 
     def check(self, *checks: Check) -> list[CheckResult]:
         return [c(self) for c in checks]
-
-
-def load_object(ref: str) -> object:
-    """Import ``"package.module:attribute"``; the working directory is importable."""
-    module_name, sep, attr = ref.partition(":")
-    if not sep or not module_name or not attr:
-        raise AgentLoadError(f"{ref!r} is not a reference; use the form 'package.module:function'")
-    cwd = str(Path.cwd())
-    if cwd not in sys.path:
-        sys.path.insert(0, cwd)
-    try:
-        module = importlib.import_module(module_name)
-    except ImportError as exc:
-        raise AgentLoadError(
-            f"cannot import {module_name!r} for {ref!r}: {exc}. Run from the project root "
-            "or install the package that contains the agent."
-        ) from exc
-    except Exception as exc:  # the module itself is broken: SyntaxError, error at import
-        raise AgentLoadError(
-            f"importing {module_name!r} for {ref!r} failed: {type(exc).__name__}: {exc}"
-        ) from exc
-    obj: object = module
-    for part in attr.split("."):
-        try:
-            obj = getattr(obj, part)
-        except AttributeError as exc:
-            raise AgentLoadError(f"{module_name!r} has no attribute {attr!r}") from exc
-    return obj
 
 
 def load_agent(ref: str) -> Agent:

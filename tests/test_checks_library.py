@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
+import json
+import sys
+import types
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 from pydantic import BaseModel, JsonValue
 
 from agent_replay.cassette import ErrorInfo, Kind, Usage
 from agent_replay.checks import (
+    ArgSchema,
+    Budget,
     CheckResult,
+    ForbiddenTools,
+    MaxToolCalls,
+    OutputSchema,
+    RequiredTools,
+    Rule,
+    ToolSequence,
     arg_schema,
     budget,
+    build_check,
     forbidden_tools,
     max_tool_calls,
     output_schema,
@@ -19,6 +32,7 @@ from agent_replay.checks import (
     rule,
 )
 from agent_replay.checks.budget import percentile_nearest_rank
+from agent_replay.errors import ConfigError, ReplayError
 from agent_replay.runner import RunResult
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
@@ -416,3 +430,218 @@ def test_budget_empty_run_and_no_latency_samples() -> None:
     assert result.passed
     assert result.details["p95_latency_ms"] is None
     assert result.details["model_calls"] == 0
+
+
+# --- build_check ------------------------------------------------------------------------------
+
+
+class SpecArgs(BaseModel):
+    id: int
+
+
+def spec_rule(run: RunResult, *, needle: str = "") -> bool:
+    return needle in str(run.output)
+
+
+@pytest.fixture
+def helpers(monkeypatch: pytest.MonkeyPatch) -> str:
+    """A module the specs can reference as ``check_helpers_fixture:...``."""
+    module = types.ModuleType("check_helpers_fixture")
+    module.SpecArgs = SpecArgs  # type: ignore[attr-defined]
+    module.spec_rule = spec_rule  # type: ignore[attr-defined]
+    module.not_a_model = 3  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "check_helpers_fixture", module)
+    return "check_helpers_fixture"
+
+
+def test_build_tool_sequence_explicit_and_default(tmp_path: Path) -> None:
+    explicit = build_check(
+        {"type": "tool_sequence", "expected": ["a", "b"], "mode": "in_order"}, base_dir=tmp_path
+    )
+    assert isinstance(explicit, ToolSequence)
+    assert explicit.expected == ("a", "b")
+    assert explicit.mode == "in_order"
+    default = build_check({"type": "tool_sequence"}, base_dir=tmp_path, expected_tools=["x"])
+    assert isinstance(default, ToolSequence)
+    assert default.expected == ("x",)
+    assert default.mode == "exact"
+    assert default(tool_run("x")).passed
+
+
+def test_build_tool_sequence_without_expected_or_recording(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="no 'expected' list"):
+        build_check({"type": "tool_sequence"}, base_dir=tmp_path)
+
+
+def test_build_tool_checks(tmp_path: Path) -> None:
+    required = build_check({"type": "required_tools", "tools": ["a"]}, base_dir=tmp_path)
+    forbidden = build_check({"type": "forbidden_tools", "tools": ["rm"]}, base_dir=tmp_path)
+    limit = build_check({"type": "max_tool_calls", "limit": 1, "tool": "a"}, base_dir=tmp_path)
+    assert isinstance(required, RequiredTools)
+    assert isinstance(forbidden, ForbiddenTools)
+    assert isinstance(limit, MaxToolCalls)
+    assert limit.tool == "a"
+    assert required(tool_run("a")).passed
+    assert not forbidden(tool_run("rm")).passed
+    assert not limit(tool_run("a", "a")).passed
+
+
+def test_build_budget(tmp_path: Path) -> None:
+    check = build_check(
+        {"type": "budget", "max_cost_usd": 0.5, "max_model_calls": 3}, base_dir=tmp_path
+    )
+    assert isinstance(check, Budget)
+    assert check.max_cost_usd == 0.5
+    assert check.max_model_calls == 3
+    with pytest.raises(ConfigError, match="at least one limit"):
+        build_check({"type": "budget"}, base_dir=tmp_path)
+
+
+def test_build_arg_schema_from_inline_file_and_model(tmp_path: Path, helpers: str) -> None:
+    run = make_run([call(0, {"id": 1}), call(1, {"id": "x"})])
+    inline = build_check(
+        {"type": "arg_schema", "tool": "lookup", "schema": ARGS}, base_dir=tmp_path
+    )
+    (tmp_path / "schemas").mkdir()
+    (tmp_path / "schemas" / "args.json").write_text(json.dumps(ARGS))
+    from_file = build_check(
+        {"type": "arg_schema", "tool": "lookup", "schema_file": "schemas/args.json"},
+        base_dir=tmp_path,
+    )
+    model = build_check(
+        {"type": "arg_schema", "tool": "lookup", "model": f"{helpers}:SpecArgs", "must_call": True},
+        base_dir=tmp_path,
+    )
+    for check in (inline, from_file, model):
+        assert isinstance(check, ArgSchema)
+        result = check(run)
+        assert not result.passed
+        assert "step 1" in result.message
+    assert isinstance(model, ArgSchema)
+    assert model.must_call
+
+
+def test_build_output_schema_sources(tmp_path: Path, helpers: str) -> None:
+    (tmp_path / "out.json").write_text(json.dumps(OUT))
+    run = make_run(output='{"answer": "x"}')
+    for source in ({"schema": OUT}, {"schema_file": "out.json"}):
+        check = build_check(
+            {"type": "output_schema", "parse_json": True, **source}, base_dir=tmp_path
+        )
+        assert isinstance(check, OutputSchema)
+        assert check.parse_json
+        assert check(run).passed
+        assert not output_schema(OUT)(run).passed
+    model = build_check(
+        {"type": "output_schema", "model": f"{helpers}:SpecArgs"}, base_dir=tmp_path
+    )
+    assert not model(make_run(output={"answer": "x"})).passed
+
+
+def test_build_schema_file_is_relative_to_base_dir_not_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = tmp_path / "project"
+    base.mkdir()
+    (base / "s.json").write_text(json.dumps(OUT))
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    assert build_check({"type": "output_schema", "schema_file": "s.json"}, base_dir=base)
+    with pytest.raises(ConfigError, match="cannot read schema_file"):
+        build_check({"type": "output_schema", "schema_file": "s.json"}, base_dir=elsewhere)
+
+
+def test_build_schema_file_errors(tmp_path: Path) -> None:
+    (tmp_path / "bad.json").write_text("{nope")
+    (tmp_path / "list.json").write_text("[1]")
+    with pytest.raises(ConfigError, match="not valid JSON"):
+        build_check({"type": "output_schema", "schema_file": "bad.json"}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="JSON object"):
+        build_check({"type": "output_schema", "schema_file": "list.json"}, base_dir=tmp_path)
+
+
+def test_build_schema_source_must_be_exactly_one(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="exactly one of schema"):
+        build_check({"type": "output_schema"}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="got schema, model"):
+        build_check(
+            {"type": "arg_schema", "tool": "t", "schema": OUT, "model": "m:C"}, base_dir=tmp_path
+        )
+
+
+def test_build_bad_inline_schema_is_a_config_error(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="invalid JSON Schema"):
+        build_check({"type": "output_schema", "schema": {"type": "bogus"}}, base_dir=tmp_path)
+
+
+def test_build_model_reference_errors(tmp_path: Path, helpers: str) -> None:
+    with pytest.raises(ConfigError, match="not a pydantic BaseModel"):
+        build_check({"type": "output_schema", "model": f"{helpers}:not_a_model"}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="cannot load model"):
+        build_check({"type": "output_schema", "model": "no_such_module_xyz:C"}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="module:function"):
+        build_check({"type": "output_schema", "model": "nocolon"}, base_dir=tmp_path)
+
+
+def test_build_rule(tmp_path: Path, helpers: str) -> None:
+    check = build_check(
+        {"type": "rule", "ref": f"{helpers}:spec_rule", "args": {"needle": "hi"}, "name": "greets"},
+        base_dir=tmp_path,
+    )
+    assert isinstance(check, Rule)
+    assert check.name == "greets"
+    assert check(make_run(output="hi there")).passed
+    assert not check(make_run(output="bye")).passed
+    default_name = build_check({"type": "rule", "ref": f"{helpers}:spec_rule"}, base_dir=tmp_path)
+    assert default_name.name == "rule:spec_rule"
+
+
+def test_build_rule_reference_errors(tmp_path: Path, helpers: str) -> None:
+    with pytest.raises(ConfigError, match="cannot load rule"):
+        build_check({"type": "rule", "ref": f"{helpers}:missing"}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="not callable"):
+        build_check({"type": "rule", "ref": f"{helpers}:not_a_model"}, base_dir=tmp_path)
+
+
+def test_build_unknown_and_missing_type(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="unknown check type") as info:
+        build_check({"type": "nope"}, base_dir=tmp_path)
+    assert "tool_sequence" in str(info.value)
+    with pytest.raises(ConfigError, match="type: missing"):
+        build_check({"tools": ["a"]}, base_dir=tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("spec", "field"),
+    [
+        ({"type": "required_tools", "tool": ["a"]}, "tool"),
+        ({"type": "forbidden_tools", "tools": ["a"], "extra": 1}, "extra"),
+        ({"type": "max_tool_calls", "limit": 1, "tools": "a"}, "tools"),
+        ({"type": "tool_sequence", "expectd": ["a"]}, "expectd"),
+        ({"type": "budget", "max_cost": 1}, "max_cost"),
+        ({"type": "rule", "ref": "m:f", "arg": {}}, "arg"),
+        ({"type": "arg_schema", "tool": "t", "schema": OUT, "must_cal": True}, "must_cal"),
+        ({"type": "output_schema", "schema": OUT, "parse_jsn": True}, "parse_jsn"),
+    ],
+)
+def test_build_typo_names_the_field(tmp_path: Path, spec: dict[str, object], field: str) -> None:
+    with pytest.raises(ConfigError) as info:
+        build_check(spec, base_dir=tmp_path)
+    assert field in str(info.value)
+    assert f"check of type {spec['type']!r}" in str(info.value)
+
+
+def test_build_wrong_value_types_and_missing_fields(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="limit"):
+        build_check({"type": "max_tool_calls", "limit": -1}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="limit"):
+        build_check({"type": "max_tool_calls"}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="tools"):
+        build_check({"type": "required_tools", "tools": "abc"}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="mode"):
+        build_check({"type": "tool_sequence", "expected": [], "mode": "loose"}, base_dir=tmp_path)
+
+
+def test_config_error_is_a_replay_error() -> None:
+    assert issubclass(ConfigError, ReplayError)
