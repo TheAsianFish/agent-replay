@@ -28,7 +28,8 @@ _TRANSPORT_KWARGS = frozenset({"extra_headers", "extra_query", "timeout"})
 # otherwise identical requests.
 _VOLATILE_FIELDS = frozenset({"metadata"})
 # Client surfaces that would make calls this proxy cannot record yet. Inside a
-# session they raise instead of silently going live.
+# session, calling them raises instead of silently going live; merely looking
+# them up (``hasattr``) is harmless.
 _UNRECORDED_MESSAGES = frozenset(
     {"parse", "stream", "with_raw_response", "with_streaming_response"}
 )
@@ -44,6 +45,28 @@ def _not_recorded(what: str) -> NoReturn:
             "session; use client.messages.create(...) without stream=True"
         )
     )
+
+
+class _Unrecorded:
+    """Stands in for a client surface the proxy cannot record.
+
+    Looking it up is harmless; calling it, or reaching through it (for example
+    ``client.beta.messages.create``), fails the session via :func:`_not_recorded`.
+    """
+
+    def __init__(self, what: str) -> None:
+        self._what = what
+
+    def __call__(self, *args: Any, **kwargs: Any) -> NoReturn:
+        _not_recorded(self._what)
+
+    def __getattr__(self, name: str) -> NoReturn:
+        if name.startswith("__"):
+            raise AttributeError(name)
+        _not_recorded(self._what)
+
+    def __repr__(self) -> str:
+        return f"<unrecorded {self._what}>"
 
 
 def _encode(message: object) -> JsonValue:
@@ -106,7 +129,7 @@ class _MessagesProxy:
 
     def __getattr__(self, name: str) -> Any:
         if name in _UNRECORDED_MESSAGES and current_session() is not None:
-            _not_recorded(f"messages.{name}")
+            return _Unrecorded(f"messages.{name}")
         return getattr(self._inner, name)
 
 
@@ -117,8 +140,15 @@ class _ClientProxy:
 
     def __getattr__(self, name: str) -> Any:
         if name in _UNRECORDED_CLIENT and current_session() is not None:
-            _not_recorded(f"client.{name}")
+            return _Unrecorded(f"client.{name}")
         return getattr(self._inner, name)
+
+    def __enter__(self) -> Any:
+        self._inner.__enter__()
+        return self
+
+    def __exit__(self, *exc_info: object) -> Any:
+        return self._inner.__exit__(*exc_info)
 
 
 def wrap[C](client: C) -> C:

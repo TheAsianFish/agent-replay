@@ -406,3 +406,31 @@ def test_nested_sdk_sentinels_are_dropped_from_the_request():
     assert isinstance(envelope.request, dict)
     assert envelope.request["output_config"] == {}
     assert envelope.request["metadata"] == {}
+
+
+# --- unrecorded surfaces fail on call, not on attribute access --------------------
+
+
+def test_probing_unrecorded_surfaces_does_not_fail_the_session():
+    client = wrap(anthropic.Anthropic(api_key="test-key"))
+    with RecordingSession() as session:
+        assert hasattr(client.messages, "stream")
+        assert hasattr(client.messages, "parse")
+        assert hasattr(client, "beta")
+        assert hasattr(client, "with_raw_response")
+    assert session.fatal is None
+    assert session.finish().footer.status == "ok"
+
+
+def test_calling_through_an_unrecorded_namespace_raises():
+    client = wrap(anthropic.Anthropic(api_key="test-key"))
+    with RecordingSession() as session, pytest.raises(ReplayError, match=r"client\.beta"):
+        client.beta.messages.create(model="m", max_tokens=1, messages=[])
+    assert session.fatal is not None
+
+
+def test_wrapped_client_is_a_context_manager():
+    inner = anthropic.Anthropic(api_key="test-key")
+    with wrap(inner) as client:
+        assert client.messages.create is not None
+    assert inner.is_closed()
