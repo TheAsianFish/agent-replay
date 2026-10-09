@@ -257,12 +257,16 @@ def test_replay_raises_recorded_exception() -> None:
     assert info.value.message == "'bad'"
 
 
-def test_stream_rejected_in_session() -> None:
+def test_a_non_streamed_recording_replays_to_a_streaming_call() -> None:
     client = wrap(StubClient())
-    with recorder(), pytest.raises(ReplayError, match="stream"):
-        client.messages.create(model="m", messages=[], stream=True)
-    with ReplaySession(record_basic()), pytest.raises(ReplayError, match="stream"):
-        client.messages.create(model="m", messages=[], stream=True)
+    with ReplaySession(record_basic()) as session:
+        stream = client.messages.create(
+            model="claude-opus-5-5", messages=[{"role": "user", "content": "x"}], stream=True
+        )
+        events = [event.type for event in stream]
+    assert events[0] == "message_start"
+    assert events[-1] == "message_stop"
+    assert session.trajectory.steps[0].status is StepStatus.EXACT
 
 
 # ----------------------------------------------------------------------- replay

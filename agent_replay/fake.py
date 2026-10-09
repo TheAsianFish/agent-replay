@@ -7,6 +7,8 @@ are synthetic (about four characters per token) and only exist so token and
 budget code paths have something to work with; responses report the model as
 ``fake:<requested model>``, which has no price, so fake runs never show a cost.
 :class:`FakeAsyncAnthropic` is the same model behind ``await messages.create``.
+Both stream (``create(stream=True)`` and ``messages.stream(...)``), delivering
+the same message as raw events, so streaming agents record offline too.
 """
 
 from __future__ import annotations
@@ -17,10 +19,13 @@ from typing import Any, cast
 
 import anthropic
 from anthropic import Anthropic, AsyncAnthropic
+from anthropic.lib.streaming import AsyncMessageStreamManager, MessageStreamManager
 from anthropic.types import Message
 from pydantic import JsonValue
 
 from agent_replay._json import canonical_json, to_jsonable
+from agent_replay.record._streams import AsyncSyntheticStream, SyntheticStream, events_from_message
+from agent_replay.record.anthropic import wire_output_format
 
 
 @dataclass(frozen=True)
@@ -120,11 +125,12 @@ class _FakeModel:
         self._turn = 0
 
     def reply(self, kwargs: dict[str, Any]) -> Message:
+        # ``stream`` only changes the delivery, so it does not count towards usage.
         payload = to_jsonable(
             {
                 k: v
                 for k, v in kwargs.items()
-                if not isinstance(v, anthropic.NotGiven | anthropic.Omit)
+                if k != "stream" and not isinstance(v, anthropic.NotGiven | anthropic.Omit)
             }
         )
         assert isinstance(payload, dict)
@@ -171,24 +177,43 @@ class _FakeMessages:
     def __init__(self, model: _FakeModel) -> None:
         self._model = model
 
-    def create(self, **kwargs: Any) -> Message:
+    def create(self, **kwargs: Any) -> Any:
+        message = self._model.reply(kwargs)
         if kwargs.get("stream"):
-            raise NotImplementedError("FakeAnthropic does not stream")
-        return self._model.reply(kwargs)
+            return SyntheticStream(events_from_message(message))
+        return message
+
+    def stream(self, **kwargs: Any) -> MessageStreamManager[Any]:
+        wire, output_format = wire_output_format(kwargs)
+        return MessageStreamManager(
+            lambda: self.create(**wire, stream=True), output_format=output_format
+        )
 
 
 class _FakeAsyncMessages:
     def __init__(self, model: _FakeModel) -> None:
         self._model = model
 
-    async def create(self, **kwargs: Any) -> Message:
+    async def create(self, **kwargs: Any) -> Any:
+        message = self._model.reply(kwargs)
         if kwargs.get("stream"):
-            raise NotImplementedError("FakeAsyncAnthropic does not stream")
-        return self._model.reply(kwargs)
+            return AsyncSyntheticStream(events_from_message(message))
+        return message
+
+    def stream(self, **kwargs: Any) -> AsyncMessageStreamManager[Any]:
+        wire, output_format = wire_output_format(kwargs)
+        return AsyncMessageStreamManager(
+            self.create(**wire, stream=True), output_format=output_format
+        )
 
 
 class FakeAnthropic:
-    """Deterministic fake of the ``anthropic.Anthropic`` client (``messages.create`` only)."""
+    """Deterministic fake of the ``anthropic.Anthropic`` client.
+
+    Supports ``messages.create`` (with or without ``stream=True``) and
+    ``messages.stream(...)``; a streamed reply is the same message delivered as
+    raw stream events, with the same ids and usage.
+    """
 
     def __init__(self, policy: Policy) -> None:
         self.messages = _FakeMessages(_FakeModel(policy))

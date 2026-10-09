@@ -8,16 +8,20 @@ from typing import Any
 
 import anthropic
 import pytest
+from anthropic.lib.streaming._messages import accumulate_event
 from anthropic.types import Message, MessageParam, ToolResultBlockParam, ToolUseBlock
+from hypothesis import given
+from hypothesis import strategies as st
 
 from agent_replay.cassette import Cassette, Kind
 from agent_replay.errors import ReplayError, UnrecordedCallError
 from agent_replay.fake import FakeAnthropic, FakeAsyncAnthropic, FakeRequest, Reply, ToolCall
 from agent_replay.record import wrap
+from agent_replay.record._streams import events_from_message
 from agent_replay.record.anthropic import ANTHROPIC
 from agent_replay.record.tools import tool
 from agent_replay.runner import record, replay
-from agent_replay.session import ReplaySession
+from agent_replay.session import RecordingSession, ReplaySession
 from agent_replay.trajectory import StepStatus
 
 MODEL = "claude-opus-5-5"
@@ -189,3 +193,177 @@ def test_async_agent_full_replay_uses_the_async_offline_client() -> None:
     result = replay(cassette, twice, policy="fallback")
     assert result.error is not None
     assert "no live model client" in result.error.message
+
+
+# --- streaming ----------------------------------------------------------------------
+
+STREAM_KW: dict[str, Any] = {"model": MODEL, "max_tokens": 64}
+
+
+def stream_policy(request: FakeRequest) -> Reply:
+    if request.tool_results():
+        return Reply(text="Sunny.")
+    return Reply(text="Let me look.", tool_calls=[ToolCall("weather", {"city": "Oslo"})])
+
+
+def _events(events: list[Any]) -> list[Any]:
+    return [e.model_dump(mode="json", exclude_none=True) for e in events]
+
+
+def _ask(task: str) -> list[MessageParam]:
+    return [{"role": "user", "content": task}]
+
+
+def sync_create_stream_agent(client: anthropic.Anthropic, task: str) -> dict[str, Any]:
+    stream = client.messages.create(**STREAM_KW, messages=_ask(task), stream=True)
+    with stream:
+        events = list(stream)
+    return {"events": _events(events), "weather": weather("Oslo")}
+
+
+def sync_stream_agent(client: anthropic.Anthropic, task: str) -> dict[str, Any]:
+    with client.messages.stream(**STREAM_KW, messages=_ask(task)) as stream:
+        text = "".join(stream.text_stream)
+        final = stream.get_final_message()
+    return {"text": text, "final": final.model_dump(mode="json", exclude_none=True)}
+
+
+async def async_create_stream_agent(client: anthropic.AsyncAnthropic, task: str) -> dict[str, Any]:
+    stream = await client.messages.create(**STREAM_KW, messages=_ask(task), stream=True)
+    events = [event async for event in stream]
+    await stream.close()
+    return {"events": _events(events)}
+
+
+async def async_stream_agent(client: anthropic.AsyncAnthropic, task: str) -> dict[str, Any]:
+    async with client.messages.stream(**STREAM_KW, messages=_ask(task)) as stream:
+        events = [event async for event in stream]
+        text = await stream.get_final_text()
+    return {"events": _events(events), "text": text}
+
+
+def sync_plain_agent(client: anthropic.Anthropic, task: str) -> dict[str, Any]:
+    reply = client.messages.create(**STREAM_KW, messages=_ask(task))
+    return {"text": "".join(b.text for b in reply.content if b.type == "text")}
+
+
+@pytest.mark.parametrize(
+    ("agent", "fake"),
+    [
+        (sync_create_stream_agent, FakeAnthropic),
+        (sync_stream_agent, FakeAnthropic),
+        (async_create_stream_agent, FakeAsyncAnthropic),
+        (async_stream_agent, FakeAsyncAnthropic),
+    ],
+)
+def test_streams_record_and_replay_exactly(agent: Any, fake: Any) -> None:
+    result, cassette = record(agent, TASK, client=fake(stream_policy))
+    assert result.ok, result.error
+    model = next(e for e in cassette.envelopes if e.kind is Kind.MODEL)
+    assert isinstance(model.request, dict)
+    assert model.request["stream"] is True
+    assert isinstance(model.response, dict)
+    assert model.response["content"][0] == {"type": "text", "text": "Let me look."}
+    assert model.usage is not None
+    assert model.usage.output_tokens > 0
+
+    replayed = replay(Cassette.loads(cassette.dumps()), agent)
+    assert replayed.ok, replayed.error
+    # The replayed stream yields exactly the events the recorded run saw.
+    assert replayed.output == result.output
+    assert statuses(replayed) == {StepStatus.EXACT}
+
+
+def test_stream_text_and_final_message_match_the_reply() -> None:
+    result, _ = record(sync_stream_agent, TASK, client=FakeAnthropic(stream_policy))
+    assert isinstance(result.output, dict)
+    assert result.output["text"] == "Let me look."
+    final = result.output["final"]
+    assert isinstance(final, dict)
+    assert final["content"][1]["input"] == {"city": "Oslo"}
+    assert final["stop_reason"] == "tool_use"
+
+
+def test_streamed_recording_replays_exact_without_streaming() -> None:
+    _, cassette = record(sync_stream_agent, TASK, client=FakeAnthropic(stream_policy))
+    replayed = replay(cassette, sync_plain_agent)
+    assert replayed.ok, replayed.error
+    assert replayed.output == {"text": "Let me look."}
+    assert statuses(replayed) == {StepStatus.EXACT}
+
+
+def test_stream_is_not_requested_until_entered() -> None:
+    client = wrap(FakeAnthropic(stream_policy))
+    with RecordingSession() as session:
+        client.messages.stream(**STREAM_KW, messages=_ask(TASK))
+    assert session.finish().envelopes == ()
+
+
+def test_replayed_stream_has_no_http_response() -> None:
+    _, cassette = record(sync_stream_agent, TASK, client=FakeAnthropic(stream_policy))
+    client = wrap(FakeAnthropic(stream_policy))
+    with ReplaySession(cassette), client.messages.stream(**STREAM_KW, messages=_ask(TASK)) as s:
+        assert not hasattr(s, "response")
+        with pytest.raises(ReplayError, match="no HTTP response"):
+            _ = s.request_id
+
+
+_TEXT = st.text(st.characters(exclude_categories=("Cs",)), max_size=40)
+_JSON = st.recursive(
+    st.none()
+    | st.booleans()
+    | st.integers(-(2**53), 2**53)
+    | st.floats(allow_nan=False, allow_infinity=False)
+    | _TEXT,
+    lambda inner: st.lists(inner, max_size=4) | st.dictionaries(_TEXT, inner, max_size=4),
+    max_leaves=12,
+)
+_BLOCK = st.one_of(
+    st.builds(lambda t: {"type": "text", "text": t}, _TEXT),
+    st.builds(
+        lambda i, n, inp: {"type": "tool_use", "id": f"toolu_{i}", "name": n, "input": inp},
+        st.integers(0, 99),
+        st.text("abcdefgh_", min_size=1, max_size=8),
+        st.dictionaries(_TEXT, _JSON, max_size=4),
+    ),
+    st.builds(lambda t, s: {"type": "thinking", "thinking": t, "signature": s}, _TEXT, _TEXT),
+    st.builds(lambda d: {"type": "redacted_thinking", "data": d}, _TEXT),
+)
+
+
+@given(
+    content=st.lists(_BLOCK, max_size=5),
+    stop=st.sampled_from(["end_turn", "tool_use", "max_tokens"]),
+    usage=st.tuples(st.integers(0, 10**6), st.integers(0, 10**6), st.integers(0, 10**4)),
+)
+def test_events_from_message_accumulate_back_to_the_message(
+    content: list[dict[str, Any]], stop: str, usage: tuple[int, int, int]
+) -> None:
+    message = Message.model_validate(
+        {
+            "id": "msg_1",
+            "type": "message",
+            "role": "assistant",
+            "model": MODEL,
+            "content": content,
+            "stop_reason": stop,
+            "stop_sequence": None,
+            "usage": {
+                "input_tokens": usage[0],
+                "output_tokens": usage[1],
+                "cache_read_input_tokens": usage[2],
+            },
+        }
+    )
+    snapshot = None
+    json_bufs: dict[int, bytes] = {}
+    for event in events_from_message(message):
+        snapshot = accumulate_event(event=event, current_snapshot=snapshot, json_bufs=json_bufs)
+    assert snapshot is not None
+    assert snapshot.model_dump(exclude_none=True) == message.model_dump(exclude_none=True)
+
+
+def test_streams_pass_through_outside_a_session() -> None:
+    client = wrap(FakeAnthropic(stream_policy))
+    with client.messages.stream(**STREAM_KW, messages=_ask(TASK)) as stream:
+        assert stream.get_final_text() == "Let me look."

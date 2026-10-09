@@ -8,24 +8,40 @@ traffic, and the SDK layer hands us typed messages and usage for free.
 path: the request is normalised and fingerprinted the same way, and only the
 call that performs it differs (``session.intercept`` or
 ``await session.intercept_async``).
+
+Streaming (``messages.create(stream=True)`` and ``messages.stream(...)``) is
+recorded as the final accumulated ``Message`` under the same call name, with
+``"stream": true`` in the request but not in the fingerprint (it is delivery,
+not content), so a recording made with streaming replays ``exact`` against
+code that no longer streams, and vice versa. While recording, the real stream
+is drained before the agent sees any of it: the agent receives the stream only
+once the model has finished, rebuilt from the final message by
+:func:`agent_replay.record._streams.events_from_message`. Replay delivers the
+identical rebuilt stream, so the agent observes the same events in both. The
+trade-off: a recording run shows no incremental output, and a stream that
+fails part-way fails at ``create`` / ``__enter__`` rather than mid-iteration.
 """
 
 from __future__ import annotations
 
 import inspect
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, NoReturn
+from types import TracebackType
+from typing import Any, NoReturn, cast
 
 import anthropic
+from anthropic.lib._parse._transform import transform_schema
+from anthropic.lib.streaming import AsyncMessageStream, MessageStream
 from anthropic.resources.messages import AsyncMessages
 from anthropic.types import Message
-from pydantic import JsonValue
+from pydantic import JsonValue, PydanticSchemaGenerationError, TypeAdapter
 
 from agent_replay._json import fingerprint, to_jsonable
 from agent_replay.cassette import Kind, Usage
 from agent_replay.errors import ReplayError
 from agent_replay.record._base import WrappedClient
+from agent_replay.record._streams import AsyncSyntheticStream, SyntheticStream, events_from_message
 from agent_replay.session import Call, Session, current_session
 
 MODEL_CALL = "anthropic.messages.create"
@@ -33,15 +49,14 @@ MODEL_CALL = "anthropic.messages.create"
 # Transport options: never recorded (headers can carry credentials) and never
 # part of the request identity.
 _TRANSPORT_KWARGS = frozenset({"extra_headers", "extra_query", "timeout"})
-# Recorded, but excluded from the fingerprint because they vary between
-# otherwise identical requests.
-_VOLATILE_FIELDS = frozenset({"metadata"})
+# Recorded, but excluded from the fingerprint: ``metadata`` varies between
+# otherwise identical requests, and ``stream`` changes how the response is
+# delivered, not what it is.
+_UNIDENTIFYING_FIELDS = frozenset({"metadata", "stream"})
 # Client surfaces that would make calls this proxy cannot record yet. Inside a
 # session, calling them raises instead of silently going live; merely looking
 # them up (``hasattr``) is harmless.
-_UNRECORDED_MESSAGES = frozenset(
-    {"parse", "stream", "with_raw_response", "with_streaming_response"}
-)
+_UNRECORDED_MESSAGES = frozenset({"parse", "with_raw_response", "with_streaming_response"})
 _UNRECORDED_CLIENT = frozenset({"beta", "with_raw_response", "with_streaming_response"})
 
 
@@ -51,7 +66,7 @@ def _not_recorded(what: str) -> NoReturn:
     raise session.fail(
         ReplayError(
             f"{what} is not recorded yet, so it cannot run inside a recording or replay "
-            "session; use client.messages.create(...) without stream=True"
+            "session; use client.messages.create(...) or client.messages.stream(...)"
         )
     )
 
@@ -82,7 +97,7 @@ def _encode(message: object) -> JsonValue:
     if not isinstance(message, Message):
         raise TypeError(
             f"messages.create returned {type(message).__name__}, not a Message; "
-            "only non-streaming calls can be recorded"
+            "wrap the client itself, not a raw-response view of it"
         )
     return to_jsonable(message)
 
@@ -105,18 +120,59 @@ def _model_of(message: Message) -> str:
     return message.model
 
 
+def wire_output_format(kwargs: dict[str, Any]) -> tuple[dict[str, Any], Any]:
+    """Move ``output_format=SomeType`` into ``output_config.format``, as the SDK sends it.
+
+    ``messages.parse`` and ``messages.stream`` accept a Python type and send its
+    JSON schema; the cassette records what goes on the wire, so an agent that
+    switches between ``output_format=Answer`` and the equivalent
+    ``output_config`` still matches ``exact``. Returns the rewritten kwargs and
+    the type (``NOT_GIVEN`` when there is none). Mirrors the SDK's conversion,
+    including its ``TypeError`` for a schema dict.
+    """
+    kwargs = dict(kwargs)
+    output_format = kwargs.pop("output_format", anthropic.NOT_GIVEN)
+    if isinstance(output_format, anthropic.NotGiven | anthropic.Omit) or output_format is None:
+        return kwargs, anthropic.NOT_GIVEN
+    if isinstance(output_format, Mapping):
+        raise TypeError(
+            "`output_format` must be a type; pass a schema dict as "
+            "`output_config={'format': ...}` instead"
+        )
+    try:
+        schema = TypeAdapter(output_format).json_schema()
+    except PydanticSchemaGenerationError as exc:
+        raise TypeError(
+            "Could not generate JSON schema for the given `output_format` type. "
+            "Use a type that works with `pydantic.TypeAdapter`"
+        ) from exc
+    wire_format = {"type": "json_schema", "schema": transform_schema(schema)}
+    config = kwargs.get("output_config")
+    kwargs["output_config"] = (
+        {**config, "format": wire_format}
+        if isinstance(config, Mapping)
+        else {"format": wire_format}
+    )
+    return kwargs, output_format
+
+
 @dataclass(frozen=True)
 class _Prepared:
     """One model request, normalised for the cassette."""
 
     kwargs: dict[str, Any]
-    """What the real client is called with (transport options included)."""
+    """What the real ``messages.create`` is called with (transport options included)."""
     request: JsonValue
     """What the cassette records: the request body without transport options."""
     fingerprint: str
+    output_format: Any
+    """The type ``stream``/``parse`` validate the reply's text into, or ``NOT_GIVEN``."""
 
 
 def _prepare(session: Session, kwargs: dict[str, Any], what: str) -> _Prepared:
+    output_format: Any = anthropic.NOT_GIVEN
+    if what != "messages.create":  # only the helpers take output_format
+        kwargs, output_format = wire_output_format(kwargs)
     # NOT_GIVEN / omit are SDK sentinels for "leave the field out"; so do we.
     given = {
         k: v
@@ -132,7 +188,8 @@ def _prepare(session: Session, kwargs: dict[str, Any], what: str) -> _Prepared:
     return _Prepared(
         kwargs=kwargs,
         request=request,
-        fingerprint=fingerprint(Kind.MODEL, MODEL_CALL, request, ignore=_VOLATILE_FIELDS),
+        fingerprint=fingerprint(Kind.MODEL, MODEL_CALL, request, ignore=_UNIDENTIFYING_FIELDS),
+        output_format=output_format,
     )
 
 
@@ -156,6 +213,73 @@ def _call(
     )
 
 
+def _drain(raw: Any) -> Message:
+    """The final message of a real stream, accumulated by the SDK's own ``MessageStream``."""
+    with MessageStream(raw, output_format=anthropic.NOT_GIVEN) as stream:
+        final = stream.get_final_message()
+    return Message.model_validate(to_jsonable(final))
+
+
+async def _adrain(pending: Awaitable[Any]) -> Message:
+    """:func:`_drain` for an async client's ``create(stream=True)``."""
+    raw = await pending
+    async with AsyncMessageStream(raw, output_format=anthropic.NOT_GIVEN) as stream:
+        final = await stream.get_final_message()
+    return Message.model_validate(to_jsonable(final))
+
+
+class _StreamManager:
+    """What ``messages.stream(...)`` returns in a session; the call happens on ``__enter__``.
+
+    As with the SDK's ``MessageStreamManager``, nothing is requested until the
+    ``with`` block is entered; the block then gets the SDK's own
+    ``MessageStream`` over the rebuilt events, so ``text_stream``,
+    ``get_final_message()`` and ``until_done()`` behave exactly as they do live.
+    """
+
+    def __init__(self, request: Callable[[], Message], output_format: Any) -> None:
+        self._request = request
+        self._output_format = output_format
+        self._stream: MessageStream[Any] | None = None
+
+    def __enter__(self) -> MessageStream[Any]:
+        raw = SyntheticStream(events_from_message(self._request()))
+        self._stream = MessageStream(cast(Any, raw), output_format=self._output_format)
+        return self._stream
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        if self._stream is not None:
+            self._stream.close()
+
+
+class _AsyncStreamManager:
+    """:class:`_StreamManager` for ``async with client.messages.stream(...)``."""
+
+    def __init__(self, request: Callable[[], Awaitable[Message]], output_format: Any) -> None:
+        self._request = request
+        self._output_format = output_format
+        self._stream: AsyncMessageStream[Any] | None = None
+
+    async def __aenter__(self) -> AsyncMessageStream[Any]:
+        raw = AsyncSyntheticStream(events_from_message(await self._request()))
+        self._stream = AsyncMessageStream(cast(Any, raw), output_format=self._output_format)
+        return self._stream
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        if self._stream is not None:
+            await self._stream.close()
+
+
 class _MessagesBase:
     def __init__(self, inner: Any) -> None:
         self._inner = inner
@@ -171,10 +295,19 @@ class _MessagesProxy(_MessagesBase):
         session = current_session()
         if session is None:
             return self._inner.create(**kwargs)
-        if kwargs.get("stream"):
-            _not_recorded("messages.create(stream=True)")
         p = _prepare(session, kwargs, "messages.create")
-        return session.intercept(_call(p, invoke=lambda: self._inner.create(**p.kwargs)))
+        if not kwargs.get("stream"):
+            return session.intercept(_call(p, invoke=lambda: self._inner.create(**p.kwargs)))
+        message = session.intercept(_call(p, invoke=lambda: _drain(self._inner.create(**p.kwargs))))
+        return SyntheticStream(events_from_message(message))
+
+    def stream(self, **kwargs: Any) -> Any:
+        session = current_session()
+        if session is None:
+            return self._inner.stream(**kwargs)
+        p = _prepare(session, {**kwargs, "stream": True}, "messages.stream")
+        call = _call(p, invoke=lambda: _drain(self._inner.create(**p.kwargs)))
+        return _StreamManager(lambda: session.intercept(call), p.output_format)
 
 
 class _AsyncMessagesProxy(_MessagesBase):
@@ -182,12 +315,24 @@ class _AsyncMessagesProxy(_MessagesBase):
         session = current_session()
         if session is None:
             return await self._inner.create(**kwargs)
-        if kwargs.get("stream"):
-            _not_recorded("messages.create(stream=True)")
         p = _prepare(session, kwargs, "messages.create")
-        return await session.intercept_async(
-            _call(p, ainvoke=lambda: self._inner.create(**p.kwargs))
+        if not kwargs.get("stream"):
+            return await session.intercept_async(
+                _call(p, ainvoke=lambda: self._inner.create(**p.kwargs))
+            )
+        message = await session.intercept_async(
+            _call(p, ainvoke=lambda: _adrain(self._inner.create(**p.kwargs)))
         )
+        return AsyncSyntheticStream(events_from_message(message))
+
+    def stream(self, **kwargs: Any) -> Any:
+        # Not a coroutine function, like the SDK's: ``async with client.messages.stream(...)``.
+        session = current_session()
+        if session is None:
+            return self._inner.stream(**kwargs)
+        p = _prepare(session, {**kwargs, "stream": True}, "messages.stream")
+        call = _call(p, ainvoke=lambda: _adrain(self._inner.create(**p.kwargs)))
+        return _AsyncStreamManager(lambda: session.intercept_async(call), p.output_format)
 
 
 class _ClientProxy(WrappedClient):
@@ -230,7 +375,11 @@ def _offline_error() -> ReplayError:
 
 
 class _Offline:
-    """Stands in for the Anthropic client when replay serves the model and none was given."""
+    """Stands in for the Anthropic client when replay serves the model and none was given.
+
+    Streams and ``parse`` are performed through ``messages.create`` too, so
+    this one method covers every recorded surface.
+    """
 
     class _Messages:
         def create(self, **_: object) -> NoReturn:
