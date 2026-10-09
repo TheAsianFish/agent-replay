@@ -1,8 +1,7 @@
-# CLAUDE.md — working notes for agents on agent-replay
+# Contributing to agent-replay
 
 Read PLAN.md first; it is the single source of truth. Tick a milestone only
-when its definition of done is met and CI is green. Keep `.agent/summary.md`
-and `.agent/journal.md` current at the end of every run.
+when its definition of done is met and CI is green.
 
 ## What this is
 
@@ -16,7 +15,7 @@ React dashboard. See PLAN.md "Architecture" for the component map.
 
 ```
 agent_replay/        Python package (record, cassette, replay, checks, judge,
-                     stats [Patrick's piece], flake, calibrate, diff, store, cli)
+                     stats, flake, calibrate, diff, store, cli)
 server/              FastAPI app over the store
 dashboard/           React 19 + TypeScript strict (Vite, TanStack Query, Tailwind)
 examples/            retail_agent (τ-bench retail subset, MIT, attributed) and a toy agent
@@ -69,22 +68,11 @@ Until a target exists, say so in the PR rather than inventing it.
 ## Conventions
 
 - Small, reviewable commits in imperative mood ("Add cursor fallback to replay
-  engine"). Never add Co-Authored-By, "Generated with", or any AI attribution
-  to commits, PRs, code or docs. Git identity is already configured.
+  engine"), one logical step per commit, each passing the quality gates.
 - Typed everything: pydantic 2 models for cassette and reports; `Protocol`s for
   provider adapters; TypeScript types generated from the OpenAPI schema.
 - Cassette schema is versioned (`schema_version`); never change v1 fields,
   add v2 with a migration.
-- Each PR body teaches: big picture, decisions and trade-offs, how any number
-  was measured, and a "What to learn from this PR" section pointing at PLAN.md
-  "Learning path". Patrick reads explanations, not diffs.
-- Patrick's piece is `agent_replay/stats.py`. Build the interface, tests and
-  `stats_baseline.py` around it; do not implement the real module unless
-  PLAN.md says so (see "Patrick's piece" for the fallback rule).
-- Use subagents for independent work (tests vs implementation, dashboard vs
-  API) and review their output before committing.
-- Never sign up for services, publish, deploy or use credentials. Prepare
-  release workflows with `if:` guards and document steps in docs/RELEASE.md.
 
 ## Claude API facts to rely on (verified 2026-10-08)
 

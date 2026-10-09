@@ -31,7 +31,7 @@ replay calibrate --golden eval/golden --rubric rubrics/retail.yaml
 ## Documents
 
 - [PLAN.md](PLAN.md): goal, architecture, evaluation plan, milestones.
-- [CLAUDE.md](CLAUDE.md): commands, conventions and quality gates for contributors.
+- [CONTRIBUTING.md](CONTRIBUTING.md): commands, conventions and quality gates for contributors.
 - RESULTS.md (from M4): every measured number with its command and raw output.
 
 ## License
