@@ -465,12 +465,24 @@ def measure_suite(
 
 
 def git_sha(cwd: Path) -> str | None:
-    """The commit being tested: ``$GITHUB_SHA`` in Actions, else ``git rev-parse HEAD``."""
-    if sha := os.environ.get("GITHUB_SHA"):
-        return sha
+    """The commit being tested: ``$GITHUB_SHA`` when it is a commit of the checkout at
+    ``cwd`` (in Actions it is), else ``git rev-parse HEAD`` there, else ``$GITHUB_SHA``
+    as given, else ``None``.
+
+    A workflow that runs this tool on another repository's checkout exports a
+    ``GITHUB_SHA`` that means nothing here; the check keeps it out of reports.
+    """
+    actions = os.environ.get("GITHUB_SHA") or None
+    if actions is not None and _git(cwd, "cat-file", "-e", f"{actions}^{{commit}}") is not None:
+        return actions
+    return _git(cwd, "rev-parse", "HEAD") or actions
+
+
+def _git(cwd: Path, *args: str) -> str | None:
+    """stdout of ``git ARGS`` in ``cwd``, or ``None`` when git is missing or fails."""
     try:
-        out = subprocess.run(
-            ["git", "rev-parse", "HEAD"],  # noqa: S607 - git from PATH, fixed arguments
+        out = subprocess.run(  # noqa: S603 - arguments are literals from this module
+            ["git", *args],  # noqa: S607 - git from PATH
             cwd=cwd,
             capture_output=True,
             text=True,
@@ -479,7 +491,7 @@ def git_sha(cwd: Path) -> str | None:
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    return out.stdout.strip() or None if out.returncode == 0 else None
+    return out.stdout.strip() if out.returncode == 0 else None
 
 
 # --- reports ----------------------------------------------------------------------
