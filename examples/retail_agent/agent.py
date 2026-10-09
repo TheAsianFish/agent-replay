@@ -50,6 +50,8 @@ class RetailAgent:
                 tools=[t.to_anthropic() for t in TOOLS.values()],
                 messages=messages,
                 output_config={"effort": "low"},
+                # Caches the growing prefix (tools, policy, earlier turns) for the next turn.
+                cache_control={"type": "ephemeral"},
             )
             messages.append({"role": "assistant", "content": response.content})
             tool_uses = [b for b in response.content if isinstance(b, ToolUseBlock)]
