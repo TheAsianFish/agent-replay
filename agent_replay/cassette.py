@@ -1,13 +1,16 @@
-"""Cassette schema v1: one JSON object per line.
+"""Cassette schema v2: one JSON object per line.
 
 Line 1 is a ``header``; then one ``envelope`` per intercepted call, in the order
-the calls finished; the last line is a ``footer`` with the run's outcome. v1
-fields are frozen: a later schema adds a v2 model and a migration rather than
-changing them.
+the calls finished; the last line is a ``footer`` with the run's outcome.
+
+Versions are frozen once released. v2 added the ``clock`` and ``random``
+envelope kinds; v1 files are still read, through the frozen v1 models in
+:mod:`agent_replay._cassette_v1` and a migration, and every write is v2.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 from datetime import datetime
@@ -17,14 +20,20 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
+from agent_replay import _cassette_v1 as v1
 from agent_replay.errors import CassetteError
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+READABLE_VERSIONS = (1, 2)
 
 
 class Kind(StrEnum):
     MODEL = "model"
     TOOL = "tool"
+    CLOCK = "clock"
+    """A clock read through :func:`agent_replay.now` (v2)."""
+    RANDOM = "random"
+    """A random draw through :func:`agent_replay.random` and friends (v2)."""
 
 
 class _Strict(BaseModel):
@@ -59,7 +68,7 @@ class Usage(_Strict):
 
 class Header(_Strict):
     type: Literal["header"] = "header"
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
     cassette_id: str
     created_at: datetime
     agent: str | None = None
@@ -111,6 +120,10 @@ class Cassette(_Strict):
             top.sort(key=_span_number)
         return top
 
+    def in_start_order(self) -> list[Envelope]:
+        """Every envelope, nested ones included, in the order the calls started."""
+        return sorted(self.envelopes, key=_span_number)
+
     def tool_names(self) -> list[str]:
         """Names of the tools the agent called directly, in the order the calls started."""
         return [e.name for e in self.top_level(order="started") if e.kind is Kind.TOOL]
@@ -148,24 +161,11 @@ class Cassette(_Strict):
                 f"{source}: a cassette needs a header and a footer line; "
                 f"found {len(lines)} non-empty line(s). Re-record it with `replay record`."
             )
-        try:
-            header = Header.model_validate_json(lines[0][1])
-        except ValidationError as exc:
-            raise CassetteError(_header_error(source, lines[0][1], exc)) from exc
-        envelopes: list[Envelope] = []
-        for n, line in lines[1:-1]:
-            try:
-                envelopes.append(Envelope.model_validate_json(line))
-            except ValidationError as exc:
-                raise CassetteError(f"{source}:{n}: invalid envelope: {exc}") from exc
-        n, line = lines[-1]
-        try:
-            footer = Footer.model_validate_json(line)
-        except ValidationError as exc:
-            raise CassetteError(
-                f"{source}:{n}: the last line must be a footer; the recording may have been "
-                f"cut short. Re-record it with `replay record`. ({exc.error_count()} error(s))"
-            ) from exc
+        version = _schema_version(source, lines[0][1])
+        if version == 1:
+            header, envelopes, footer = _load_v1(source, lines)
+        else:
+            header, envelopes, footer = _load_v2(source, lines)
         if footer.envelope_count != len(envelopes):
             raise CassetteError(
                 f"{source}: footer says {footer.envelope_count} envelopes, found {len(envelopes)}; "
@@ -187,6 +187,68 @@ class Cassette(_Strict):
         return cls.loads(text, source=str(path))
 
 
+def _schema_version(source: str, line: str) -> int:
+    try:
+        version = json.loads(line).get("schema_version")
+    except (ValueError, AttributeError) as exc:
+        raise CassetteError(f"{source}:1: invalid header: not a JSON object") from exc
+    if version not in READABLE_VERSIONS:
+        raise CassetteError(
+            f"{source}: cassette schema_version {version!r} is not supported by this "
+            f"agent-replay (reads v1 and v{SCHEMA_VERSION}); upgrade agent-replay or re-record."
+        )
+    return int(version)
+
+
+type _Lines = list[tuple[int, str]]
+
+
+def _load_v2(source: str, lines: _Lines) -> tuple[Header, list[Envelope], Footer]:
+    try:
+        header = Header.model_validate_json(lines[0][1])
+    except ValidationError as exc:
+        raise CassetteError(f"{source}:1: invalid header: {exc}") from exc
+    envelopes: list[Envelope] = []
+    for n, line in lines[1:-1]:
+        try:
+            envelopes.append(Envelope.model_validate_json(line))
+        except ValidationError as exc:
+            raise CassetteError(f"{source}:{n}: invalid envelope: {exc}") from exc
+    return header, envelopes, _footer(source, lines, Footer)
+
+
+def _load_v1(source: str, lines: _Lines) -> tuple[Header, list[Envelope], Footer]:
+    """Validate against the frozen v1 schema, then migrate to the current models."""
+    try:
+        header = v1.HeaderV1.model_validate_json(lines[0][1])
+    except ValidationError as exc:
+        raise CassetteError(f"{source}:1: invalid v1 header: {exc}") from exc
+    envelopes: list[v1.EnvelopeV1] = []
+    for n, line in lines[1:-1]:
+        try:
+            envelopes.append(v1.EnvelopeV1.model_validate_json(line))
+        except ValidationError as exc:
+            raise CassetteError(f"{source}:{n}: invalid v1 envelope: {exc}") from exc
+    footer = _footer(source, lines, v1.FooterV1)
+    h, es, f = v1.migrate(header, envelopes, footer)
+    return (
+        Header.model_validate(h),
+        [Envelope.model_validate(e) for e in es],
+        Footer.model_validate(f),
+    )
+
+
+def _footer[F: BaseModel](source: str, lines: _Lines, model: type[F]) -> F:
+    n, line = lines[-1]
+    try:
+        return model.model_validate_json(line)
+    except ValidationError as exc:
+        raise CassetteError(
+            f"{source}:{n}: the last line must be a footer; the recording may have been "
+            f"cut short. Re-record it with `replay record`. ({exc.error_count()} error(s))"
+        ) from exc
+
+
 def _span_number(envelope: Envelope) -> tuple[int, int]:
     """Sort key for start order: the recorder's ``s<n>`` spans, with ``seq`` as the tiebreak."""
     span = envelope.span_id
@@ -198,13 +260,3 @@ def _umask() -> int:
     current = os.umask(0)
     os.umask(current)
     return current
-
-
-def _header_error(source: str, line: str, exc: ValidationError) -> str:
-    for err in exc.errors():
-        if err["loc"] == ("schema_version",) and err["type"] == "literal_error":
-            return (
-                f"{source}: cassette schema_version {err['input']!r} is not supported by this "
-                f"agent-replay (reads v{SCHEMA_VERSION}); upgrade agent-replay or re-record."
-            )
-    return f"{source}:1: invalid header: {exc}"
