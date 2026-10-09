@@ -21,9 +21,10 @@ pytestmark = [
 def test_real_recording_replays_offline_exactly():
     import anthropic  # noqa: PLC0415
 
-    result, cassette = record(
-        toy.run, "Order A1001 arrived damaged. Can I get a refund?", client=anthropic.Anthropic()
-    )
+    with anthropic.Anthropic() as client:  # closed, so no socket outlives the test
+        result, cassette = record(
+            toy.run, "Order A1001 arrived damaged. Can I get a refund?", client=client
+        )
 
     assert result.ok, result.error
     model_calls = [e for e in cassette.envelopes if e.kind is Kind.MODEL]
@@ -53,11 +54,10 @@ def _stream_agent(client: Any, task: str) -> str:
 def test_real_stream_records_and_replays_offline():
     import anthropic  # noqa: PLC0415
 
-    result, cassette = record(
-        _stream_agent,
-        "In one short sentence, what is a cassette tape?",
-        client=anthropic.Anthropic(),
-    )
+    with anthropic.Anthropic() as client:
+        result, cassette = record(
+            _stream_agent, "In one short sentence, what is a cassette tape?", client=client
+        )
 
     assert result.ok, result.error
     [envelope] = cassette.envelopes
