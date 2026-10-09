@@ -559,3 +559,38 @@ def test_same_named_parallel_calls_are_served_in_start_order() -> None:
         assert agent() == [0, 10, 20]
     assert [s.request for s in replayed.trajectory.steps] == [{"n": 0}, {"n": 1}, {"n": 2}]
     assert {s.status for s in replayed.trajectory.steps} == {StepStatus.EXACT}
+
+
+# --- replay: the code changed what a call returns ------------------------------
+
+
+class Price(BaseModel):
+    amount: int
+
+
+def test_recorded_response_that_no_longer_fits_the_return_type_fails_the_run() -> None:
+    @tool(name="quote")
+    def quote_v1() -> dict[str, str]:
+        return {"amount": "twelve"}
+
+    session = recorder()
+    with session:
+        quote_v1()
+    cassette = session.finish()
+
+    @tool(name="quote")
+    def quote_v2() -> Price:  # the same tool now promises a model the recording cannot fill
+        raise AssertionError("never runs on replay")
+
+    replayed = ReplaySession(cassette)
+    with replayed:
+        try:
+            quote_v2()
+        except Exception as exc:  # the agent swallows tool errors, as agents do
+            swallowed = exc
+    assert isinstance(swallowed, ReplayError)
+    assert "'quote'" in str(swallowed)
+    assert "return type" in str(swallowed)
+    assert replayed.fatal is swallowed
+    [step] = replayed.trajectory.steps
+    assert step.status is StepStatus.EXACT

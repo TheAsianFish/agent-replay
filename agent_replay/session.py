@@ -335,7 +335,17 @@ class ReplaySession(Session):
             raise rebuild_exception(
                 envelope.error.type, envelope.error.module, envelope.error.message
             )
-        return call.decode(envelope.response)
+        try:
+            return call.decode(envelope.response)
+        except Exception as exc:
+            # The recording is fine; the code changed what this call returns. Like
+            # an unrecorded call, this decides the run even if the agent swallows it.
+            raise self.fail(
+                ReplayError(
+                    f"the recorded response of {call.kind.value} call {call.name!r} no longer "
+                    f"fits its return type ({exc}); re-record the cassette with `replay record`"
+                )
+            ) from exc
 
     def unconsumed(self) -> list[Envelope]:
         """Recorded top-level envelopes the replayed run never asked for, in recorded order."""
