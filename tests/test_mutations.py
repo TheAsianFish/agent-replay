@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -87,6 +89,39 @@ def test_db_rule_leaves_the_database_as_the_run_left_it():
 
     assert not rules.db_matches_ground_truth(result, "cancel_pending_laptop")[0]
     assert tools.db_hash() == after_run
+
+
+def test_expected_database_is_stable_under_concurrent_resets():
+    """Concurrent ``model-live`` runs reset the database when they start; a reset in the
+    middle of replaying a task's ground truth must not poison the cached expected state."""
+    rules._expected_db.cache_clear()
+    expected = {task_id: rules._expected_db(task_id) for task_id in TASK_IDS}
+    rules._expected_db.cache_clear()
+    workers = len(TASK_IDS) * 2
+    barrier = threading.Barrier(workers)
+
+    def compute(task_id: str) -> tuple[str, dict[str, Any]]:
+        barrier.wait()
+        for _ in range(20):
+            tools.reset_db()
+        return rules._expected_db(task_id)
+
+    def churn(_: int) -> tuple[str, dict[str, Any]]:
+        barrier.wait()
+        for _ in range(200):
+            tools.reset_db()
+        return "", {}
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        churning = [pool.submit(churn, i) for i in range(len(TASK_IDS))]
+        computed = list(pool.map(compute, TASK_IDS))
+        for future in churning:
+            future.result()
+    rules._expected_db.cache_clear()
+
+    assert computed == [expected[task_id] for task_id in TASK_IDS]
+    for task_id in TASK_IDS:
+        assert rules._expected_db(task_id) == expected[task_id]
 
 
 def test_every_run_starts_from_the_vendored_database():

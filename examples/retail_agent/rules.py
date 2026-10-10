@@ -15,7 +15,7 @@ from typing import Any
 from agent_replay.runner import RunResult
 from agent_replay.trajectory import StepStatus
 from examples.retail_agent.tasks import TASKS, Action, expected_db_hash
-from examples.retail_agent.tools import DB, TERMINAL_TOOLS, WRITE_TOOLS, db_hash
+from examples.retail_agent.tools import DB, DB_LOCK, TERMINAL_TOOLS, WRITE_TOOLS, db_hash
 
 ToolCalls = Sequence[tuple[str, Mapping[str, Any]]]
 Verdict = tuple[bool, str]
@@ -117,13 +117,19 @@ _RAN = frozenset({StepStatus.LIVE, StepStatus.FALLBACK})
 @functools.cache
 def _expected_db(task: str) -> tuple[str, dict[str, dict[str, Any]]]:
     """The ground truth's database hash and tables for ``task``, computed once (leaving
-    the database as it found it)."""
-    saved = copy.deepcopy(DB.snapshot())
-    try:
-        digest = expected_db_hash(TASKS[task])
-        return digest, copy.deepcopy(DB.snapshot())
-    finally:
-        DB.users, DB.orders, DB.products = saved["users"], saved["orders"], saved["products"]
+    the database as it found it).
+
+    Computing it resets and replays the shared database, so it holds ``DB_LOCK``:
+    concurrent runs (``replay flake``) reset the database when they start, and a
+    reset in the middle of the replay would cache a wrong expected state.
+    """
+    with DB_LOCK:
+        saved = copy.deepcopy(DB.snapshot())
+        try:
+            digest = expected_db_hash(TASKS[task])
+            return digest, copy.deepcopy(DB.snapshot())
+        finally:
+            DB.users, DB.orders, DB.products = saved["users"], saved["orders"], saved["products"]
 
 
 def db_matches_ground_truth(run: RunResult, task: str) -> Verdict:

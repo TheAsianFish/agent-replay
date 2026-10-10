@@ -20,6 +20,7 @@ import copy
 import hashlib
 import json
 import operator
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
@@ -59,6 +60,10 @@ class RetailDB:
 
 DB = RetailDB()
 
+DB_LOCK = threading.RLock()
+"""Held while the database is reset or rebuilt as a whole (:func:`reset_db`, the rules'
+expected-state computation), so concurrent runs cannot interleave those rewrites."""
+
 WRITE_TOOLS = frozenset(
     {
         "cancel_pending_order",
@@ -74,7 +79,8 @@ TERMINAL_TOOLS = frozenset({"transfer_to_human_agents"})
 
 
 def reset_db() -> None:
-    DB.reset()
+    with DB_LOCK:
+        DB.reset()
 
 
 def db_hash() -> str:
