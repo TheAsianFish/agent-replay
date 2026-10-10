@@ -48,6 +48,7 @@ from agent_replay.flake import (
 )
 from agent_replay.flake import to_json as flake_json
 from agent_replay.flake import to_markdown as flake_markdown
+from agent_replay.judge.calibration import CalibrationReport
 from agent_replay.pricing import prices
 from agent_replay.record import wrap
 from agent_replay.runner import RunResult, load_agent, make_client, record, replay
@@ -698,6 +699,8 @@ def flake_cmd(
             report = flake_suite(
                 suite_path, settings=settings, overrides=overrides, scenarios=scenario, sink=sink
             )
+            if store is not None:
+                store.save_flake(report)
         finally:
             if store is not None:
                 store.close()
@@ -852,6 +855,26 @@ def db_upgrade_cmd(db: Annotated[str | None, _DB_OPTION] = None) -> None:
     except ReplayError as exc:
         raise _fail(str(exc)) from exc
     console.print(f"run store at schema revision {revision}")
+
+
+@db_app.command("add-calibration")
+def db_add_calibration_cmd(
+    report_path: Annotated[
+        Path, typer.Argument(metavar="REPORT", help="Calibration report (JSON) to store.")
+    ],
+    db: Annotated[str | None, _DB_OPTION] = None,
+) -> None:
+    """Store a calibration report so the dashboard's calibration page shows it."""
+    try:
+        report = CalibrationReport.load(report_path)
+        with Store.open(db) as store:
+            report_id = store.save_calibration(report)
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+    console.print(
+        f"stored calibration report {report_id[:12]} for rubric {escape(report.rubric)} "
+        f"({report.n_items} items, judge {escape(report.judge_id)})"
+    )
 
 
 def main() -> None:

@@ -60,8 +60,11 @@ from sqlalchemy.orm import (
 from sqlalchemy.pool import NullPool, StaticPool
 from sqlalchemy.schema import CreateColumn
 
+from agent_replay.cassette import ErrorInfo
 from agent_replay.checks.base import CheckResult
 from agent_replay.errors import StoreError
+from agent_replay.flake import FlakeReport, FlakeSettings, RunOutcome
+from agent_replay.judge.calibration import CalibrationReport
 from agent_replay.runner import RunResult
 from agent_replay.trajectory import StepStatus
 
@@ -168,6 +171,71 @@ class CheckRow(Base):
     advisory: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
+class FlakeReportRow(Base):
+    __tablename__ = "flake_reports"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    suite_id: Mapped[str | None] = mapped_column(ForeignKey("suites.id"), index=True)
+    suite: Mapped[str] = mapped_column(String)
+    stats_impl: Mapped[str] = mapped_column(String)
+    settings: Mapped[dict[str, Any]] = mapped_column(JSON)
+    passed: Mapped[bool] = mapped_column(Boolean)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    duration_ms: Mapped[float] = mapped_column(Float)
+    git_sha: Mapped[str | None] = mapped_column(String)
+    scenario_count: Mapped[int] = mapped_column(Integer)
+    failed_count: Mapped[int] = mapped_column(Integer)
+    flaky_count: Mapped[int] = mapped_column(Integer)
+    run_count: Mapped[int] = mapped_column(Integer)
+    cost_usd: Mapped[float] = mapped_column(Float)
+
+    scenarios: Mapped[list[FlakeScenarioRow]] = relationship(
+        order_by="FlakeScenarioRow.position", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class FlakeScenarioRow(Base):
+    __tablename__ = "flake_scenarios"
+
+    report_id: Mapped[str] = mapped_column(
+        ForeignKey("flake_reports.id", ondelete="CASCADE"), primary_key=True
+    )
+    position: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    name: Mapped[str] = mapped_column(String, index=True)
+    cassette: Mapped[str] = mapped_column(String)
+    agent: Mapped[str] = mapped_column(String)
+    mode: Mapped[str] = mapped_column(String)
+    policy: Mapped[str] = mapped_column(String)
+    classification: Mapped[str] = mapped_column(String)
+    decision: Mapped[str] = mapped_column(String)
+    runs: Mapped[int] = mapped_column(Integer)
+    passes: Mapped[int] = mapped_column(Integer)
+    pass_rate: Mapped[float | None] = mapped_column(Float)
+    ci_low: Mapped[float] = mapped_column(Float)
+    ci_high: Mapped[float] = mapped_column(Float)
+    failures: Mapped[dict[str, Any]] = mapped_column(JSON)
+    executed: Mapped[int] = mapped_column(Integer)
+    concurrency: Mapped[int] = mapped_column(Integer)
+    cost_usd: Mapped[float] = mapped_column(Float)
+    error: Mapped[Any | None] = mapped_column(JSON, nullable=True)
+    outcomes: Mapped[list[Any]] = mapped_column(JSON)
+
+
+class CalibrationRow(Base):
+    __tablename__ = "calibration_reports"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    rubric: Mapped[str] = mapped_column(String, index=True)
+    rubric_fingerprint: Mapped[str] = mapped_column(String)
+    judge_id: Mapped[str] = mapped_column(String)
+    prompt_version: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    stored_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    n_items: Mapped[int] = mapped_column(Integer)
+    report: Mapped[dict[str, Any]] = mapped_column(JSON)
+    """The whole :class:`CalibrationReport`, so fields added later survive the round trip."""
+
+
 class _Model(BaseModel):
     model_config = ConfigDict(frozen=True, from_attributes=True)
 
@@ -242,6 +310,82 @@ class RunRecord(RunSummary):
     checks: list[CheckRecord]
 
 
+class FlakeReportSummary(_Model):
+    id: str
+    suite_id: str | None
+    suite: str
+    stats_impl: str
+    passed: bool
+    started_at: datetime
+    duration_ms: float
+    git_sha: str | None
+    scenario_count: int
+    failed_count: int
+    flaky_count: int
+    run_count: int
+    cost_usd: float
+
+
+class FlakeScenarioRecord(_Model):
+    name: str
+    cassette: str
+    agent: str
+    mode: str
+    policy: str
+    classification: str
+    decision: str
+    runs: int
+    passes: int
+    pass_rate: float | None
+    ci_low: float
+    ci_high: float
+    failures: dict[str, int]
+    executed: int
+    concurrency: int
+    cost_usd: float
+    error: ErrorInfo | None
+    outcomes: list[RunOutcome]
+
+
+class FlakeReportRecord(FlakeReportSummary):
+    settings: FlakeSettings
+    scenarios: list[FlakeScenarioRecord]
+
+
+class FlakePoint(_Model):
+    """One scenario's estimate in one ``replay flake`` report: a point on its trend."""
+
+    report_id: str
+    started_at: datetime
+    stats_impl: str
+    git_sha: str | None
+    name: str
+    classification: str
+    decision: str
+    runs: int
+    passes: int
+    pass_rate: float | None
+    ci_low: float
+    ci_high: float
+
+
+class CalibrationSummary(_Model):
+    id: str
+    rubric: str
+    rubric_fingerprint: str
+    judge_id: str
+    prompt_version: str
+    created_at: datetime
+    stored_at: datetime
+    n_items: int
+
+
+class CalibrationRecord(_Model):
+    id: str
+    stored_at: datetime
+    report: CalibrationReport
+
+
 def _summary(row: RunRow) -> RunSummary:
     summary = RunSummary.model_validate(row)
     return summary.model_copy(update={"started_at": _utc(summary.started_at)})
@@ -269,6 +413,18 @@ def _suite_summary(row: SuiteRow, run_count: int) -> SuiteSummary:
         scenario_count=row.scenario_count,
         failed_count=row.failed_count,
         run_count=run_count,
+    )
+
+
+def _flake_summary(row: FlakeReportRow) -> FlakeReportSummary:
+    summary = FlakeReportSummary.model_validate(row)
+    return summary.model_copy(update={"started_at": _utc(summary.started_at)})
+
+
+def _calibration_summary(row: CalibrationRow) -> CalibrationSummary:
+    summary = CalibrationSummary.model_validate(row)
+    return summary.model_copy(
+        update={"created_at": _utc(summary.created_at), "stored_at": _utc(summary.stored_at)}
     )
 
 
@@ -507,7 +663,7 @@ class Store:
             row = self._by_prefix(session, RunRow, run_id, "run", "List ids with `replay runs`.")
             return _record(row)
 
-    def _by_prefix[R: RunRow](
+    def _by_prefix[R: (RunRow, FlakeReportRow, CalibrationRow)](
         self, session: Session, model: type[R], prefix: str, what: str, hint: str
     ) -> R:
         exact = session.get(model, prefix)
@@ -540,6 +696,165 @@ class Store:
         )
         with self._session() as session:
             return [_suite_summary(s, n) for s, n in session.execute(stmt)]
+
+    def get_suite(self, suite_id: str) -> SuiteSummary:
+        with self._session() as session:
+            row = session.get(SuiteRow, suite_id)
+            if row is None:
+                raise StoreError(
+                    f"no suite {suite_id!r} in the store. List ids with `replay runs`."
+                )
+            count = session.scalar(select(func.count()).where(RunRow.suite_id == suite_id)) or 0
+            return _suite_summary(row, count)
+
+    def save_flake(self, report: FlakeReport) -> str:
+        """Store one ``replay flake`` report with every scenario's estimate."""
+        report_id = _new_id()
+        row = FlakeReportRow(
+            id=report_id,
+            suite_id=report.suite_id,
+            suite=report.suite,
+            stats_impl=report.stats_impl,
+            settings=report.settings.model_dump(mode="json"),
+            passed=report.passed,
+            started_at=report.started_at,
+            duration_ms=report.duration_ms,
+            git_sha=report.git_sha,
+            scenario_count=len(report.scenarios),
+            failed_count=len(report.failed),
+            flaky_count=len(report.flaky),
+            run_count=report.runs,
+            cost_usd=report.cost_usd,
+            scenarios=[
+                FlakeScenarioRow(
+                    position=i,
+                    name=s.name,
+                    cassette=s.cassette,
+                    agent=s.agent,
+                    mode=s.mode,
+                    policy=s.policy,
+                    classification=s.classification,
+                    decision=s.decision,
+                    runs=s.runs,
+                    passes=s.passes,
+                    pass_rate=s.pass_rate,
+                    ci_low=s.interval[0],
+                    ci_high=s.interval[1],
+                    failures=dict(s.failures),
+                    executed=s.executed,
+                    concurrency=s.concurrency,
+                    cost_usd=s.cost_usd,
+                    error=s.error.model_dump(mode="json") if s.error else None,
+                    outcomes=[o.model_dump(mode="json") for o in s.outcomes],
+                )
+                for i, s in enumerate(report.scenarios)
+            ],
+        )
+        with self._session.begin() as session:
+            session.add(row)
+        log.debug("store.flake_saved", report_id=report_id, suite=report.suite)
+        return report_id
+
+    def list_flake_reports(self, *, limit: int = 20) -> list[FlakeReportSummary]:
+        """``replay flake`` reports newest first."""
+        stmt = (
+            select(FlakeReportRow)
+            .order_by(FlakeReportRow.started_at.desc(), FlakeReportRow.id)
+            .limit(limit)
+        )
+        with self._session() as session:
+            return [_flake_summary(r) for r in session.scalars(stmt)]
+
+    def get_flake_report(self, report_id: str) -> FlakeReportRecord:
+        """One flake report with its scenarios; ``report_id`` may be a unique prefix."""
+        with self._session() as session:
+            row = self._by_prefix(
+                session, FlakeReportRow, report_id, "flake report", "List them on /api/flake."
+            )
+            return FlakeReportRecord(
+                **_flake_summary(row).model_dump(),
+                settings=FlakeSettings.model_validate(row.settings),
+                scenarios=[FlakeScenarioRecord.model_validate(s) for s in row.scenarios],
+            )
+
+    def flake_trend(self, *, scenario: str | None = None, limit: int = 500) -> list[FlakePoint]:
+        """Each scenario's estimate per flake report, oldest first, over the newest ``limit``
+        points."""
+        stmt = (
+            select(FlakeScenarioRow, FlakeReportRow)
+            .join(FlakeReportRow, FlakeScenarioRow.report_id == FlakeReportRow.id)
+            .order_by(
+                FlakeReportRow.started_at.desc(), FlakeReportRow.id, FlakeScenarioRow.position
+            )
+            .limit(limit)
+        )
+        if scenario is not None:
+            stmt = stmt.where(FlakeScenarioRow.name == scenario)
+        with self._session() as session:
+            points = [
+                FlakePoint(
+                    report_id=r.id,
+                    started_at=_utc(r.started_at),
+                    stats_impl=r.stats_impl,
+                    git_sha=r.git_sha,
+                    name=s.name,
+                    classification=s.classification,
+                    decision=s.decision,
+                    runs=s.runs,
+                    passes=s.passes,
+                    pass_rate=s.pass_rate,
+                    ci_low=s.ci_low,
+                    ci_high=s.ci_high,
+                )
+                for s, r in session.execute(stmt)
+            ]
+        points.reverse()
+        return points
+
+    def save_calibration(self, report: CalibrationReport) -> str:
+        """Store a calibration report; the dashboard's calibration page reads these."""
+        report_id = _new_id()
+        with self._session.begin() as session:
+            session.add(
+                CalibrationRow(
+                    id=report_id,
+                    rubric=report.rubric,
+                    rubric_fingerprint=report.rubric_fingerprint,
+                    judge_id=report.judge_id,
+                    prompt_version=report.prompt_version,
+                    created_at=report.created_at,
+                    stored_at=self._clock(),
+                    n_items=report.n_items,
+                    report=report.model_dump(mode="json"),
+                )
+            )
+        log.debug("store.calibration_saved", report_id=report_id, rubric=report.rubric)
+        return report_id
+
+    def list_calibrations(self, *, limit: int = 50) -> list[CalibrationSummary]:
+        """Calibration reports, most recently created first."""
+        stmt = (
+            select(CalibrationRow)
+            .order_by(CalibrationRow.created_at.desc(), CalibrationRow.id)
+            .limit(limit)
+        )
+        with self._session() as session:
+            return [_calibration_summary(r) for r in session.scalars(stmt)]
+
+    def get_calibration(self, report_id: str) -> CalibrationRecord:
+        with self._session() as session:
+            row = self._by_prefix(
+                session,
+                CalibrationRow,
+                report_id,
+                "calibration report",
+                "List them on /api/calibration.",
+            )
+            return CalibrationRecord(
+                id=row.id,
+                stored_at=_utc(row.stored_at),
+                report=CalibrationReport.model_validate(row.report),
+            )
 
 
 _LEGACY_COLUMNS = {"check_results": ("advisory",)}
