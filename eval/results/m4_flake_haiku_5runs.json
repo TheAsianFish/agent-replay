@@ -1,0 +1,688 @@
+{
+  "suite": "examples/retail_agent/replay.toml",
+  "stats_impl": "baseline",
+  "settings": {
+    "gate": "sprt",
+    "p_fail": 0.6,
+    "p_pass": 0.9,
+    "alpha": 0.05,
+    "beta": 0.05,
+    "max_runs": 5,
+    "min_pass_rate": 0.8,
+    "confidence": 0.95,
+    "concurrency": 4,
+    "runs_per_minute": null,
+    "seed": 0
+  },
+  "passed": true,
+  "started_at": "2026-10-10T05:18:35.968145Z",
+  "duration_ms": 62564.476,
+  "git_sha": "7ac313c355caf39a3816736265c93e4e97337e0d",
+  "suite_id": null,
+  "scenarios": [
+    {
+      "name": "cancel_pending_laptop",
+      "cassette": "examples/retail_agent/cassettes/live/cancel_pending_laptop.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 5,
+      "passes": 5,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 5,
+      "concurrency": 4,
+      "cost_usd": 0.005379,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 718266358,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00135396,
+          "tokens": 27203,
+          "duration_ms": 5176.042,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 1573449568,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00134371,
+          "tokens": 27169,
+          "duration_ms": 4900.915,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 3301031642,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00067031,
+          "tokens": 27230,
+          "duration_ms": 5584.772,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 3016134220,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00135671,
+          "tokens": 27204,
+          "duration_ms": 5095.585,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 765598703,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00065431,
+          "tokens": 27183,
+          "duration_ms": 5386.788,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "modify_address_suite",
+      "cassette": "examples/retail_agent/cassettes/live/modify_address_suite.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 5,
+      "passes": 5,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 5,
+      "concurrency": 4,
+      "cost_usd": 0.00505304,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 2279990035,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.0010856,
+          "tokens": 16191,
+          "duration_ms": 3086.436,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 4041397125,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00110185,
+          "tokens": 16243,
+          "duration_ms": 3253.013,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 1777041983,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00108184,
+          "tokens": 16179,
+          "duration_ms": 3111.527,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 518828713,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 3
+          },
+          "cost_usd": 0.00115778,
+          "tokens": 20799,
+          "duration_ms": 3980.6,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 2156406538,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 3
+          },
+          "cost_usd": 0.00062597,
+          "tokens": 20734,
+          "duration_ms": 3752.593,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "return_damaged_bicycle",
+      "cassette": "examples/retail_agent/cassettes/live/return_damaged_bicycle.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 5,
+      "passes": 5,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 5,
+      "concurrency": 4,
+      "cost_usd": 0.00702368,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 749317351,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00156247,
+          "tokens": 29330,
+          "duration_ms": 5636.585,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 1538169969,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00160583,
+          "tokens": 29492,
+          "duration_ms": 6281.729,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 3265777099,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00155052,
+          "tokens": 29325,
+          "duration_ms": 5451.515,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 3047226717,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00154934,
+          "tokens": 29374,
+          "duration_ms": 5720.012,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 734292222,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00075552,
+          "tokens": 29332,
+          "duration_ms": 5366.411,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "exchange_waterproof_boots",
+      "cassette": "examples/retail_agent/cassettes/live/exchange_waterproof_boots.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 5,
+      "passes": 5,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 5,
+      "concurrency": 4,
+      "cost_usd": 0.00881216,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 1061930840,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00190563,
+          "tokens": 39483,
+          "duration_ms": 6628.431,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 1213003726,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00191746,
+          "tokens": 39476,
+          "duration_ms": 6553.483,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 3511002740,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00196214,
+          "tokens": 39657,
+          "duration_ms": 6920.376,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 2789381858,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00191798,
+          "tokens": 39511,
+          "duration_ms": 6430.583,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 942015297,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00110895,
+          "tokens": 39467,
+          "duration_ms": 6500.796,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "lookup_latest_order_total",
+      "cassette": "examples/retail_agent/cassettes/live/lookup_latest_order_total.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 5,
+      "passes": 5,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 5,
+      "concurrency": 4,
+      "cost_usd": 0.00534057,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 2070263533,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.001207,
+          "tokens": 20515,
+          "duration_ms": 4396.519,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 207783547,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.001203,
+          "tokens": 20507,
+          "duration_ms": 4340.153,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 2506872769,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.0011975,
+          "tokens": 20496,
+          "duration_ms": 4452.835,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 3798787927,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.001199,
+          "tokens": 20499,
+          "duration_ms": 4400.296,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 2080928500,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00053407,
+          "tokens": 20585,
+          "duration_ms": 4876.808,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "transfer_swapped_refunds",
+      "cassette": "examples/retail_agent/cassettes/live/transfer_swapped_refunds.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 5,
+      "passes": 5,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 5,
+      "concurrency": 4,
+      "cost_usd": 0.00624821,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 1391082204,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00142126,
+          "tokens": 26762,
+          "duration_ms": 5948.44,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 636291658,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00141451,
+          "tokens": 26768,
+          "duration_ms": 5884.563,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 3169082352,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00135574,
+          "tokens": 26932,
+          "duration_ms": 6560.164,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 3420679014,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00135701,
+          "tokens": 26590,
+          "duration_ms": 5743.047,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 1434975941,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00069969,
+          "tokens": 26605,
+          "duration_ms": 5795.746,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "failed": [],
+  "flaky": [],
+  "broken": [],
+  "runs": 30,
+  "cost_usd": 0.03785666
+}

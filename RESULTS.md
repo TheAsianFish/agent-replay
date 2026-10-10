@@ -651,6 +651,30 @@ gate passed Haiku's flaky scenario (19/20 is above the majority threshold)
 while the report flagged it flaky; separating "passes the gate" from
 "never fails" is the point of the classification.
 
+**Provenance, and a repeat.** Both JSON reports record commit `ff07cef`,
+which predates the scheduler rework in `1342707` (the window bound and the
+`broken` handling); with the fixed-k baseline gate every run is counted, so
+neither number depends on it. A repeat with 5 runs per scenario on the
+reviewed engine (`7ac313c`, `eval/results/m4_flake_haiku_5runs.json`) passed
+30/30 for $0.0379:
+
+```
+$ uv run replay flake examples/retail_agent/replay.toml --no-store --cassette-dir examples/retail_agent/cassettes/live --client anthropic --agent examples.retail_agent.variants:run_haiku --max-runs 5 --concurrency 4 --json eval/results/m4_flake_haiku_5runs.json
+PASS cancel_pending_laptop (passing 5/5 (100%), interval [1.00, 1.00])
+PASS modify_address_suite (passing 5/5 (100%), interval [1.00, 1.00])
+PASS return_damaged_bicycle (passing 5/5 (100%), interval [1.00, 1.00])
+PASS exchange_waterproof_boots (passing 5/5 (100%), interval [1.00, 1.00])
+PASS lookup_latest_order_total (passing 5/5 (100%), interval [1.00, 1.00])
+PASS transfer_swapped_refunds (passing 5/5 (100%), interval [1.00, 1.00])
+6/6 scenario(s) passed the gate (0 flaky; 30 runs, $0.0379; gate: fixed 5 runs, 
+pass on a pass rate of at least 0.75 (the baseline stand-in for the SPRT); Wald 
+intervals): passed
+```
+
+Its cost per run ($0.0013) is above the 120-run figure ($0.0009): with
+fewer runs per scenario, a larger share of each run's prompt is a cache
+write rather than a cache read.
+
 ## `replay flake` offline (M4)
 
 `make flake-demo` (a CI step) runs the engine with no network. The plain fake
@@ -706,7 +730,7 @@ fed to the gate in run order, so the result is the same at any
 - The M2 live smoke test above can be re-run with the two commands in its
   section (about $0.30 each with `claude-opus-5-5` and a cold prompt cache);
   the M3 cost-gate run with the two commands in its section (about $1.00);
-  the M4 flake runs with the two commands in their section ($0.10 and $1.07).
+  the M4 flake runs with the three commands in their section ($0.10, $1.07 and $0.04).
 
 API spend in M3: $1.408 (cost gate $0.974; judge on recordings and mutants
 $0.358; three runs of the judge's live test $0.076, two of them while the
@@ -717,7 +741,7 @@ verdicts $0.330, the live test above $0.025); the remaining $0.079 (two
 re-judged duplicate mutant transcripts, two earlier live-test runs) comes from
 the session log, not from a file in this repo.
 
-API spend in M4: $1.175 (Opus flake runs $1.06960 and Haiku flake runs
-$0.10453, both in their committed JSON reports; one Haiku smoke run $0.00137,
-from the session log; sum $1.17550). Project total: $3.288 (M1 $0.014, M2 $0.691, M3
-$1.408, M4 $1.175).
+API spend in M4: $1.213 (Opus flake runs $1.06960, Haiku flake runs
+$0.10453 and the Haiku repeat $0.03786, all in their committed JSON reports;
+one Haiku smoke run $0.00137, from the session log; sum $1.21336). Project
+total: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213).
