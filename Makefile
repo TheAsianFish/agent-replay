@@ -2,7 +2,7 @@
 # are added with the code they run.
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
-	bench-sprt flake-demo eval-mutations openapi serve demo-data
+	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -105,3 +105,15 @@ serve:
 DEMO_DB ?= sqlite:///.replay/demo.db
 demo-data:
 	uv run python -m examples.demo_data --db $(DEMO_DB)
+
+# Build the dashboard into agent_replay/server/static, where replay serve finds it.
+ui:
+	npm --prefix dashboard ci --no-audit --no-fund
+	npm --prefix dashboard run build
+
+# Dashboard checks: generated API types current, tsc, eslint, vitest.
+ui-check:
+	npm --prefix dashboard run check:types
+	npm --prefix dashboard run typecheck
+	npm --prefix dashboard run lint
+	npm --prefix dashboard test
