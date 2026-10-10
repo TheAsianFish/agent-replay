@@ -92,6 +92,8 @@ class Overrides(_Config):
     mode: ReplayMode | None = None
     policy: Policy | None = None
     client: str | None = None
+    fail_on_approximate: bool | None = None
+    """Fail every scenario on a served step whose request differs from the recording."""
     cassette_dir: Path | None = None
     """Read every scenario's cassette (by file name) from this directory instead."""
     baseline: Path | None = None
@@ -342,10 +344,8 @@ def run_scenario(
         check_results = tuple(result.check(*checks))
     except JudgeCacheMiss as exc:
         return failed(exc, agent_ref)
-    strict = with_checks and (
-        scenario.fail_on_approximate
-        if scenario.fail_on_approximate is not None
-        else defaults.fail_on_approximate
+    strict = with_checks and _first_set(
+        overrides.fail_on_approximate, scenario.fail_on_approximate, defaults.fail_on_approximate
     )
     approximate = result.trajectory.count(StepStatus.APPROXIMATE)
     if strict and approximate:
@@ -378,6 +378,11 @@ def run_scenario(
         baseline=baseline,
     )
     return report, result
+
+
+def _first_set(*values: bool | None) -> bool:
+    """The first value that is not ``None`` (the last one never is)."""
+    return next(v for v in values if v is not None)
 
 
 def _checks(

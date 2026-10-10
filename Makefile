@@ -86,7 +86,8 @@ eval-judge-smoke:
 	uv run python eval/judge_smoke.py --offline --out eval/results/judge_smoke.json
 
 # The mutation study: 32 known-bad variants and 5 benign refactors of the retail agent,
-# replayed in full, tools-live, model-live and model-live with fallback; detection rate
-# per check type and per mode (offline, ~20 s). The JSON is byte-stable across runs.
+# replayed in full, tools-live, model-live, model-live with fallback and tools-live with
+# fail_on_approximate; detection rate per check type and per configuration (offline,
+# ~25 s). The JSON is byte-stable across runs.
 eval-mutations:
 	uv run python eval/mutation_study.py --out eval/results/mutations.json

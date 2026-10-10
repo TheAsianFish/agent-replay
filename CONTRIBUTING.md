@@ -45,7 +45,7 @@ make ci-demo      replay ci on the retail suite in every mode; each seeded regre
 make bench-sprt   simulate the sequential CI gate over true pass rates (offline; core skipped until written)
 make flake-demo   replay flake offline: the fake model passes; a seeded flaky model must exit 1
 make eval-judge-smoke  judge vs deterministic checks on 24 retail runs, from the committed verdict cache
-make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in four replay
+make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in five replay
                        configurations; detection per check type and mode (offline, byte-stable JSON)
 ```
 

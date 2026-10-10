@@ -412,13 +412,16 @@ plus 5 behaviour-preserving refactors that must not fail anything.
   every tool call really ran; otherwise it passes as "not applicable".
 - **Configurations:** `full` (everything from the cassette: the
   stub-everything baseline), `tools-live`, `model-live` (the fake model, or
-  the mutated one, plays the live model) and `model-live` with the `fallback`
-  policy (unrecorded tool calls run for real). Strict policy otherwise.
+  the mutated one, plays the live model), `model-live` with the `fallback`
+  policy (a tool call with no recorded envelope left runs for real) and
+  `tools-live+strict` (`tools-live` with `fail_on_approximate`: a served
+  model step whose request differs from the recording fails the scenario).
+  Strict policy otherwise.
 - **Method:** a mutation is detected when the suite fails. A check type
   catches it when it is among the blocking failed checks of at least one
   scenario; `run_error:<Type>` is a run that ended in that exception; "alone"
   means no other check type caught that mutation in that configuration.
-- **Command:** `make eval-mutations` (= `uv run python eval/mutation_study.py --out eval/results/mutations.json`), about 22 s. Deterministic: CI
+- **Command:** `make eval-mutations` (= `uv run python eval/mutation_study.py --out eval/results/mutations.json`), about 25 s. Deterministic: CI
   re-runs it and fails if `eval/results/mutations.json` changes.
 
 Raw output (the per-mutation matrix is folded below):
@@ -426,7 +429,7 @@ Raw output (the per-mutation matrix is folded below):
 ```
 ## Mutation study: retail suite
 
-32 mutations (12 agent, 12 model, 8 tool) and 5 benign refactors, each replayed against the six-scenario suite `examples/retail_agent/replay.toml` in 4 configurations. `full` serves every call from the cassette: it is the stub-everything baseline.
+32 mutations (12 agent, 12 model, 8 tool) and 5 benign refactors, each replayed against the six-scenario suite `examples/retail_agent/replay.toml` in 5 configurations. `full` serves every call from the cassette: it is the stub-everything baseline.
 
 Detected: the suite fails. A check type catches a mutation when it is among the blocking failed checks of some scenario; `run_error:<Type>` is a run that ended in that exception. Alone: no other check type caught it in that configuration.
 
@@ -438,111 +441,132 @@ Detected: the suite fails. A check type catches a mutation when it is among the 
 | tools-live | 12/32 (38%) | 7/12 (58%) | 0/12 (0%) | 5/8 (62%) |
 | model-live | 22/32 (69%) | 10/12 (83%) | 12/12 (100%) | 0/8 (0%) |
 | model-live+fallback | 22/32 (69%) | 10/12 (83%) | 12/12 (100%) | 0/8 (0%) |
+| tools-live+strict | 19/32 (59%) | 11/12 (92%) | 0/12 (0%) | 8/8 (100%) |
 
 ### Mutations caught per check type (caught / all mutations, alone)
 
-| check type | full | tools-live | model-live | model-live+fallback |
-|---|---|---|---|---|
-| `arg_schema` | 1/32 (alone 0) | 1/32 (alone 0) | 6/32 (alone 0) | 6/32 (alone 0) |
-| `budget` | 0/32 (alone 0) | 0/32 (alone 0) | 3/32 (alone 1) | 3/32 (alone 1) |
-| `max_tool_calls` | 0/32 (alone 0) | 0/32 (alone 0) | 1/32 (alone 0) | 1/32 (alone 0) |
-| `output_schema` | 2/32 (alone 0) | 2/32 (alone 0) | 7/32 (alone 0) | 7/32 (alone 0) |
-| `required_tools` | 4/32 (alone 0) | 4/32 (alone 0) | 9/32 (alone 0) | 9/32 (alone 0) |
-| `rule:checked_before_writing` | 2/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) |
-| `rule:db_matches_ground_truth` | 0/32 (alone 0) | 7/32 (alone 5) | 0/32 (alone 0) | 0/32 (alone 0) |
-| `rule:matches_ground_truth` | 4/32 (alone 1) | 4/32 (alone 0) | 19/32 (alone 6) | 19/32 (alone 6) |
-| `run_error:JSONDecodeError` | 0/32 (alone 0) | 0/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) |
-| `run_error:KeyError` | 0/32 (alone 0) | 0/32 (alone 0) | 1/32 (alone 0) | 1/32 (alone 0) |
-| `run_error:RuntimeError` | 1/32 (alone 0) | 1/32 (alone 0) | 2/32 (alone 0) | 3/32 (alone 0) |
-| `run_error:UnrecordedCallError` | 1/32 (alone 0) | 0/32 (alone 0) | 4/32 (alone 0) | 0/32 (alone 0) |
-| `tool_sequence` | 5/32 (alone 0) | 5/32 (alone 0) | 13/32 (alone 0) | 13/32 (alone 0) |
+| check type | full | tools-live | model-live | model-live+fallback | tools-live+strict |
+|---|---|---|---|---|---|
+| `arg_schema` | 1/32 (alone 0) | 1/32 (alone 0) | 6/32 (alone 0) | 6/32 (alone 0) | 1/32 (alone 0) |
+| `budget` | 0/32 (alone 0) | 0/32 (alone 0) | 3/32 (alone 1) | 3/32 (alone 1) | 0/32 (alone 0) |
+| `forbidden_tools` | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) |
+| `max_tool_calls` | 0/32 (alone 0) | 0/32 (alone 0) | 1/32 (alone 0) | 1/32 (alone 0) | 0/32 (alone 0) |
+| `no_approximate_steps` | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 14/32 (alone 7) |
+| `output_schema` | 2/32 (alone 0) | 2/32 (alone 0) | 7/32 (alone 0) | 7/32 (alone 0) | 2/32 (alone 0) |
+| `required_tools` | 4/32 (alone 0) | 4/32 (alone 0) | 9/32 (alone 0) | 9/32 (alone 0) | 4/32 (alone 0) |
+| `rule:checked_before_writing` | 2/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) |
+| `rule:db_matches_ground_truth` | 0/32 (alone 0) | 7/32 (alone 5) | 0/32 (alone 0) | 0/32 (alone 0) | 7/32 (alone 2) |
+| `rule:matches_ground_truth` | 4/32 (alone 1) | 4/32 (alone 0) | 19/32 (alone 6) | 19/32 (alone 6) | 4/32 (alone 0) |
+| `run_error:JSONDecodeError` | 0/32 (alone 0) | 0/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) | 0/32 (alone 0) |
+| `run_error:KeyError` | 0/32 (alone 0) | 0/32 (alone 0) | 1/32 (alone 0) | 1/32 (alone 0) | 0/32 (alone 0) |
+| `run_error:RuntimeError` | 1/32 (alone 0) | 1/32 (alone 0) | 2/32 (alone 0) | 3/32 (alone 0) | 1/32 (alone 0) |
+| `run_error:UnrecordedCallError` | 1/32 (alone 0) | 0/32 (alone 0) | 4/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) |
+| `tool_sequence` | 5/32 (alone 0) | 5/32 (alone 0) | 13/32 (alone 0) | 13/32 (alone 0) | 5/32 (alone 0) |
 
 ### Benign refactors (false alarms; approximate steps)
 
-| refactor | full | tools-live | model-live | model-live+fallback |
-|---|---|---|---|---|
-| `extracted_loop` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
-| `parallel_tools` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
-| `compact_tool_json` | pass; 17 approx | pass; 17 approx | pass; 0 approx | pass; 0 approx |
-| `more_turns` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
-| `async_agent` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| refactor | full | tools-live | model-live | model-live+fallback | tools-live+strict |
+|---|---|---|---|---|---|
+| `extracted_loop` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| `parallel_tools` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| `compact_tool_json` | pass; 17 approx | pass; 17 approx | pass; 0 approx | pass; 0 approx | FALSE ALARM: no_approximate_steps; 17 approx |
+| `more_turns` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| `async_agent` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
 
-False alarms: full 0/5, tools-live 0/5, model-live 0/5, model-live+fallback 0/5.
-Survived every configuration: `drops_error_flag`, `strips_policy`, `user_lookup_builds_id`, `product_details_all_unavailable`, `order_details_stale_status`.
+False alarms: full 0/5, tools-live 0/5, model-live 0/5, model-live+fallback 0/5, tools-live+strict 1/5.
+Survived every configuration: `drops_error_flag`.
 ```
 
 <details><summary>Per-mutation matrix</summary>
 
 ### Per mutation (check types that caught it; — survived)
 
-| mutation | target | full | tools-live | model-live | model-live+fallback |
-|---|---|---|---|---|---|
-| `skips_order_lookup` | agent | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `arg_schema`, `budget`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `budget`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` |
-| `wrong_write_argument` | agent | `rule:matches_ground_truth` | `rule:db_matches_ground_truth`, `rule:matches_ground_truth` | `rule:matches_ground_truth` | `rule:matches_ground_truth` |
-| `first_tool_only` | agent | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `budget` | `budget` |
-| `drops_error_flag` | agent | — | — | — | — |
-| `truncates_tool_results` | agent | — | — | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` |
-| `max_turns_too_low` | agent | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:db_matches_ground_truth`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` |
-| `returns_empty_answer` | agent | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` |
-| `repeats_write_calls` | agent | `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` | `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` |
-| `mismatches_tool_use_ids` | agent | — | — | `required_tools`, `rule:matches_ground_truth`, `run_error:KeyError`, `tool_sequence` | `required_tools`, `rule:matches_ground_truth`, `run_error:KeyError`, `tool_sequence` |
-| `unregisters_product_tool` | agent | `required_tools`, `tool_sequence` | `required_tools`, `tool_sequence` | `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` |
-| `strips_policy` | agent | — | — | — | — |
-| `truncates_history` | agent | — | — | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` |
-| `skips_authentication` | model | — | — | `rule:checked_before_writing`, `tool_sequence` | `rule:checked_before_writing`, `tool_sequence` |
-| `skips_order_check` | model | — | — | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `required_tools`, `rule:checked_before_writing`, `tool_sequence` |
-| `wrong_cancel_reason` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` |
-| `product_ids_as_item_ids` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` |
-| `refunds_to_first_method` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` |
-| `suite_in_address1` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` |
-| `wrong_exchange_variant` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` |
-| `transfers_instead_of_acting` | model | — | — | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` |
-| `transfers_after_acting` | model | — | — | `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` |
-| `claims_without_acting` | model | — | — | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` |
-| `repeats_lookups` | model | — | — | `budget`, `max_tool_calls`, `output_schema`, `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `budget`, `max_tool_calls`, `output_schema`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` |
-| `rounds_reported_total` | model | — | — | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` |
-| `cancel_keeps_status` | tool | — | `rule:db_matches_ground_truth` | — | — |
-| `cancel_skips_gift_card_refund` | tool | — | `rule:db_matches_ground_truth` | — | — |
-| `address_drops_address2` | tool | — | `rule:db_matches_ground_truth` | — | — |
-| `return_ignores_item_ids` | tool | — | `rule:db_matches_ground_truth` | — | — |
-| `exchange_flips_price_difference` | tool | — | `rule:db_matches_ground_truth` | — | — |
-| `user_lookup_builds_id` | tool | — | — | — | — |
-| `product_details_all_unavailable` | tool | — | — | — | — |
-| `order_details_stale_status` | tool | — | — | — | — |
+| mutation | target | full | tools-live | model-live | model-live+fallback | tools-live+strict |
+|---|---|---|---|---|---|---|
+| `skips_order_lookup` | agent | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `arg_schema`, `budget`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `budget`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `no_approximate_steps`, `required_tools`, `rule:checked_before_writing`, `tool_sequence` |
+| `wrong_write_argument` | agent | `rule:matches_ground_truth` | `rule:db_matches_ground_truth`, `rule:matches_ground_truth` | `rule:matches_ground_truth` | `rule:matches_ground_truth` | `no_approximate_steps`, `rule:db_matches_ground_truth`, `rule:matches_ground_truth` |
+| `first_tool_only` | agent | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `budget` | `budget` | `no_approximate_steps`, `required_tools`, `rule:checked_before_writing`, `tool_sequence` |
+| `drops_error_flag` | agent | — | — | — | — | — |
+| `truncates_tool_results` | agent | — | — | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `no_approximate_steps` |
+| `max_turns_too_low` | agent | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:db_matches_ground_truth`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:db_matches_ground_truth`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` |
+| `returns_empty_answer` | agent | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` |
+| `repeats_write_calls` | agent | `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` | `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` |
+| `mismatches_tool_use_ids` | agent | — | — | `required_tools`, `rule:matches_ground_truth`, `run_error:KeyError`, `tool_sequence` | `required_tools`, `rule:matches_ground_truth`, `run_error:KeyError`, `tool_sequence` | `no_approximate_steps` |
+| `unregisters_product_tool` | agent | `required_tools`, `tool_sequence` | `required_tools`, `tool_sequence` | `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `no_approximate_steps`, `required_tools`, `tool_sequence` |
+| `strips_policy` | agent | — | — | — | — | `no_approximate_steps` |
+| `truncates_history` | agent | — | — | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | `no_approximate_steps` |
+| `skips_authentication` | model | — | — | `rule:checked_before_writing`, `tool_sequence` | `rule:checked_before_writing`, `tool_sequence` | — |
+| `skips_order_check` | model | — | — | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | — |
+| `wrong_cancel_reason` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `product_ids_as_item_ids` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `refunds_to_first_method` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `suite_in_address1` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `wrong_exchange_variant` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `transfers_instead_of_acting` | model | — | — | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | — |
+| `transfers_after_acting` | model | — | — | `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` | — |
+| `claims_without_acting` | model | — | — | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | — |
+| `repeats_lookups` | model | — | — | `budget`, `max_tool_calls`, `output_schema`, `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `budget`, `max_tool_calls`, `output_schema`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | — |
+| `rounds_reported_total` | model | — | — | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | — |
+| `cancel_keeps_status` | tool | — | `rule:db_matches_ground_truth` | — | — | `rule:db_matches_ground_truth` |
+| `cancel_skips_gift_card_refund` | tool | — | `rule:db_matches_ground_truth` | — | — | `rule:db_matches_ground_truth` |
+| `address_drops_address2` | tool | — | `rule:db_matches_ground_truth` | — | — | `no_approximate_steps`, `rule:db_matches_ground_truth` |
+| `return_ignores_item_ids` | tool | — | `rule:db_matches_ground_truth` | — | — | `no_approximate_steps`, `rule:db_matches_ground_truth` |
+| `exchange_flips_price_difference` | tool | — | `rule:db_matches_ground_truth` | — | — | `no_approximate_steps`, `rule:db_matches_ground_truth` |
+| `user_lookup_builds_id` | tool | — | — | — | — | `no_approximate_steps` |
+| `product_details_all_unavailable` | tool | — | — | — | — | `no_approximate_steps` |
+| `order_details_stale_status` | tool | — | — | — | — | `no_approximate_steps` |
 
 </details>
 
 What this shows:
 
-- **Each mode catches what it runs live, and only that.** `full` mode catches
-  7/12 orchestration bugs and none of the 12 model regressions or 8 tool
-  bugs, because the model replies and tool results it checks are the
-  recording's. `model-live` catches all 12 model regressions; `tools-live`
-  catches 5/8 tool bugs. A suite that only stubs everything would have
-  passed 25 of the 32 regressions. This is the measured case for cut-point
-  replay.
+- **Each mode catches what it runs live, and only that.** `full` serves the
+  recording's model replies and tool results, so a model or tool bug cannot
+  take effect there; a tool bug cannot take effect in `model-live` either.
+  Of the 32 mutations, 20 live in a component `full` never runs, so a suite
+  that only stubs everything passes them by construction: it caught 7/32,
+  and 7/12 of the mutations that could take effect. Over the mutations that
+  can take effect in each configuration: `tools-live` 12/20, `model-live`
+  22/24, `tools-live+strict` 19/20. This is the measured case for cut-point
+  replay: where the bug lives decides which cut point can see it.
 - **Ground-truth rules carry most of the weight.**
   `rule:matches_ground_truth` caught 19/32 in `model-live`, 6 of them alone
   (a wrong cancel reason, a wrong exchange variant and the like leave the
-  tool sequence intact). The state check `rule:db_matches_ground_truth`
-  caught 7/32 in `tools-live`, 5 alone. `tool_sequence` caught 13 but never
-  alone. `budget` (model-call limit) caught dropped parallel calls alone.
-- **No false alarms.** 0/5 benign refactors failed in any configuration. The
-  JSON-layout refactor changes every later model request, so 17 steps were
-  served `approximate` in `full` and `tools-live`, and still passed.
-- **Five mutations survive everything, and say what is missing.** Three tool
-  bugs change only what a tool returns, not the database, and no check
-  compares a live tool's output with the recorded one (a "tool-result drift"
-  check is on the roadmap). Dropping `is_error` on failed tool results is
-  invisible because no recorded run has a failing tool. Stripping the policy
-  from the system prompt only matters to a real model; the fake model
-  ignores the prompt.
-- **Caveat on `model-live`.** The fake model stands in for a live one. Three
+  tool sequence intact). For 9 of those 19 mutations a run ended in an
+  exception, and the rule and the other checks fail there as a side effect
+  of the run stopping early. The state check `rule:db_matches_ground_truth` caught 7/32
+  in `tools-live`, 5 alone; it cannot apply in either `model-live`
+  configuration (served tool calls never touch the database), so its 0/32
+  there is structural. `tool_sequence` caught 13 but never alone. `budget`
+  (model-call limit) caught dropped parallel calls alone.
+- **The drift signal is already there, and it is a trade-off.** Every
+  served step whose request differs from the recording is flagged
+  `approximate`; the four lenient configurations record the count without
+  failing on it. `tools-live+strict` (`fail_on_approximate`) turns it into a
+  check: `no_approximate_steps` caught 14/32, 7 of them alone, including
+  all 8 tool bugs (the three read-only ones change only what a tool
+  returns, which the next model request carries) and the stripped policy
+  (every later request differs). The price is 1/5 false alarms: the
+  JSON-layout refactor changes the same request bytes. The lenient
+  configurations stayed at 0/5.
+- **False alarms.** 0/5 benign refactors failed in the four lenient
+  configurations and 1/5 in the strict one. Five refactors is a small
+  control group, and four of them send byte-identical requests, so only
+  `compact_tool_json` exercises the matcher.
+- **One mutation survives everything.** `drops_error_flag` (not marking a
+  failed tool result `is_error`) is equivalent to the original on this
+  suite: no recorded run has a failing tool, and it leaves 0 approximate
+  steps in every configuration.
+- **Caveats.** The fake model stands in for a live one; it ignores the
+  prompt, so `strips_policy` is invisible in `model-live`. Three
   `run_error` catches (`JSONDecodeError` for `truncates_tool_results` and
   `unregisters_product_tool`, `KeyError` for `mismatches_tool_use_ids`) are
-  the fake model crashing on a conversation the mutant corrupted; a real model would
-  misbehave differently. With `fallback`, unrecorded calls run for real
-  instead of ending the run, and the checks still catch the same 22.
+  the fake model crashing on a conversation the mutant corrupted; a real
+  model would misbehave differently. With `fallback`, a tool call that has
+  no recorded envelope left runs for real instead of ending the run, but a
+  call whose arguments merely differ is still served the recorded result
+  (flagged `approximate`), so the checks judge the requested arguments, not
+  a real tool's answer; the same 22 are caught.
 
 ## `replay flake` on live models (M4)
 

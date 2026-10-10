@@ -232,6 +232,20 @@ def test_main_exits_2_on_a_harness_error(
     assert "harness bug" in capsys.readouterr().err
 
 
+def test_strict_configuration_fails_on_approximate_steps():
+    """The ``tools-live+strict`` configuration turns the drift signal (approximate steps)
+    into a failure: the JSON-layout refactor passes without it and fails with it."""
+    refactor = REFACTOR["compact_tool_json"]
+    lenient = study.replay_suite(refactor.agent, refactor.client, CONFIG["tools-live"])
+    strict = study.replay_suite(refactor.agent, refactor.client, CONFIG["tools-live+strict"])
+
+    assert lenient.passed
+    assert lenient.approximate_steps == 17
+    assert not strict.passed
+    assert strict.caught_by == ("no_approximate_steps",)
+    assert strict.approximate_steps == 17
+
+
 def test_check_types_keep_rule_names_and_drop_arguments():
     assert study.check_type("arg_schema:cancel_pending_order") == "arg_schema"
     assert study.check_type("rule:matches_ground_truth") == "rule:matches_ground_truth"

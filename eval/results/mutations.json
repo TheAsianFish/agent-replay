@@ -1,28 +1,39 @@
 {
   "configurations": [
     {
+      "fail_on_approximate": false,
       "id": "full",
       "mode": "full",
       "note": "everything served: the stub-everything baseline",
       "policy": "strict"
     },
     {
+      "fail_on_approximate": false,
       "id": "tools-live",
       "mode": "tools-live",
       "note": "tools run, model replies served",
       "policy": "strict"
     },
     {
+      "fail_on_approximate": false,
       "id": "model-live",
       "mode": "model-live",
       "note": "model runs, tools served",
       "policy": "strict"
     },
     {
+      "fail_on_approximate": false,
       "id": "model-live+fallback",
       "mode": "model-live",
       "note": "model runs, tools served; unrecorded tool calls run for real",
       "policy": "fallback"
+    },
+    {
+      "fail_on_approximate": true,
+      "id": "tools-live+strict",
+      "mode": "tools-live",
+      "note": "tools run, model replies served; a served step whose request differs from the recording fails (fail_on_approximate)",
+      "policy": "strict"
     }
   ],
   "definitions": {
@@ -31,7 +42,8 @@
     "check_type": "CheckResult.check up to its first ':'; rules keep their name",
     "detected": "the suite fails in that configuration (any scenario not passed)",
     "false_alarm": "a benign refactor fails the suite in that configuration",
-    "full": "every call served from the cassette: the stub-everything baseline"
+    "full": "every call served from the cassette: the stub-everything baseline",
+    "no_approximate_steps": "with fail_on_approximate, a served step whose request differed from the recording (the drift signal) fails the scenario"
   },
   "mutations": [
     {
@@ -115,6 +127,24 @@
             "transfer_swapped_refunds"
           ],
           "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 12,
+          "caught_by": [
+            "no_approximate_steps",
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       },
       "target": "agent"
@@ -167,6 +197,21 @@
         "tools-live": {
           "approximate_steps": 4,
           "caught_by": [
+            "rule:db_matches_ground_truth",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 4,
+          "caught_by": [
+            "no_approximate_steps",
             "rule:db_matches_ground_truth",
             "rule:matches_ground_truth"
           ],
@@ -238,6 +283,23 @@
             "transfer_swapped_refunds"
           ],
           "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 11,
+          "caught_by": [
+            "no_approximate_steps",
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       },
       "target": "agent"
@@ -267,6 +329,12 @@
           "passed": true
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -332,6 +400,21 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 17,
+          "caught_by": [
+            "no_approximate_steps"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       },
       "target": "agent"
@@ -422,6 +505,27 @@
             "transfer_swapped_refunds"
           ],
           "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:db_matches_ground_truth",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       },
       "target": "agent"
@@ -466,6 +570,17 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [
             "output_schema",
@@ -542,6 +657,20 @@
             "exchange_waterproof_boots"
           ],
           "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
         }
       },
       "target": "agent"
@@ -589,6 +718,20 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 11,
+          "caught_by": [
+            "no_approximate_steps"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       },
       "target": "agent"
@@ -646,6 +789,23 @@
             "exchange_waterproof_boots"
           ],
           "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 29,
+          "caught_by": [
+            "no_approximate_steps",
+            "required_tools",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       },
       "target": "agent"
@@ -679,6 +839,21 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 29,
+          "caught_by": [
+            "no_approximate_steps"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       },
       "target": "agent"
@@ -738,6 +913,21 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 17,
+          "caught_by": [
+            "no_approximate_steps"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       },
       "target": "agent"
@@ -787,6 +977,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -846,6 +1042,12 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
         }
       },
       "target": "model"
@@ -883,6 +1085,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -930,6 +1138,12 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
         }
       },
       "target": "model"
@@ -967,6 +1181,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1012,6 +1232,12 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
         }
       },
       "target": "model"
@@ -1049,6 +1275,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1107,6 +1339,12 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
         }
       },
       "target": "model"
@@ -1153,6 +1391,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1206,6 +1450,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1271,6 +1521,12 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
         }
       },
       "target": "model"
@@ -1314,6 +1570,12 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
         }
       },
       "target": "model"
@@ -1343,6 +1605,16 @@
           "passed": true
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop"
+          ],
+          "passed": false
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [
             "rule:db_matches_ground_truth"
@@ -1388,6 +1660,16 @@
             "cancel_pending_laptop"
           ],
           "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop"
+          ],
+          "passed": false
         }
       },
       "target": "tool"
@@ -1419,6 +1701,17 @@
         "tools-live": {
           "approximate_steps": 1,
           "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "modify_address_suite"
+          ],
+          "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "no_approximate_steps",
             "rule:db_matches_ground_truth"
           ],
           "failed_scenarios": [
@@ -1462,6 +1755,17 @@
             "return_damaged_bicycle"
           ],
           "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "no_approximate_steps",
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "return_damaged_bicycle"
+          ],
+          "passed": false
         }
       },
       "target": "tool"
@@ -1493,6 +1797,17 @@
         "tools-live": {
           "approximate_steps": 1,
           "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live+strict": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "no_approximate_steps",
             "rule:db_matches_ground_truth"
           ],
           "failed_scenarios": [
@@ -1532,6 +1847,20 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 19,
+          "caught_by": [
+            "no_approximate_steps"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total"
+          ],
+          "passed": false
         }
       },
       "target": "tool"
@@ -1565,6 +1894,16 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 2,
+          "caught_by": [
+            "no_approximate_steps"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
         }
       },
       "target": "tool"
@@ -1598,6 +1937,19 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 9,
+          "caught_by": [
+            "no_approximate_steps"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       },
       "target": "tool"
@@ -1629,6 +1981,12 @@
           "passed": true
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1665,6 +2023,12 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
         }
       }
     },
@@ -1697,6 +2061,21 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 17,
+          "caught_by": [
+            "no_approximate_steps"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         }
       }
     },
@@ -1725,6 +2104,12 @@
           "passed": true
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1761,6 +2146,12 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
         }
       }
     }
@@ -1784,6 +2175,10 @@
         "tools-live": {
           "alone": 0,
           "caught": 1
+        },
+        "tools-live+strict": {
+          "alone": 0,
+          "caught": 1
         }
       },
       "budget": {
@@ -1800,6 +2195,10 @@
           "caught": 3
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live+strict": {
           "alone": 0,
           "caught": 0
         }
@@ -1820,6 +2219,10 @@
         "tools-live": {
           "alone": 0,
           "caught": 0
+        },
+        "tools-live+strict": {
+          "alone": 0,
+          "caught": 0
         }
       },
       "max_tool_calls": {
@@ -1838,6 +2241,32 @@
         "tools-live": {
           "alone": 0,
           "caught": 0
+        },
+        "tools-live+strict": {
+          "alone": 0,
+          "caught": 0
+        }
+      },
+      "no_approximate_steps": {
+        "full": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live+strict": {
+          "alone": 7,
+          "caught": 14
         }
       },
       "output_schema": {
@@ -1854,6 +2283,10 @@
           "caught": 7
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 2
+        },
+        "tools-live+strict": {
           "alone": 0,
           "caught": 2
         }
@@ -1874,6 +2307,10 @@
         "tools-live": {
           "alone": 0,
           "caught": 4
+        },
+        "tools-live+strict": {
+          "alone": 0,
+          "caught": 4
         }
       },
       "rule:checked_before_writing": {
@@ -1890,6 +2327,10 @@
           "caught": 2
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 2
+        },
+        "tools-live+strict": {
           "alone": 0,
           "caught": 2
         }
@@ -1910,6 +2351,10 @@
         "tools-live": {
           "alone": 5,
           "caught": 7
+        },
+        "tools-live+strict": {
+          "alone": 2,
+          "caught": 7
         }
       },
       "rule:matches_ground_truth": {
@@ -1926,6 +2371,10 @@
           "caught": 19
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 4
+        },
+        "tools-live+strict": {
           "alone": 0,
           "caught": 4
         }
@@ -1946,6 +2395,10 @@
         "tools-live": {
           "alone": 0,
           "caught": 0
+        },
+        "tools-live+strict": {
+          "alone": 0,
+          "caught": 0
         }
       },
       "run_error:KeyError": {
@@ -1962,6 +2415,10 @@
           "caught": 1
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live+strict": {
           "alone": 0,
           "caught": 0
         }
@@ -1982,6 +2439,10 @@
         "tools-live": {
           "alone": 0,
           "caught": 1
+        },
+        "tools-live+strict": {
+          "alone": 0,
+          "caught": 1
         }
       },
       "run_error:UnrecordedCallError": {
@@ -2000,6 +2461,10 @@
         "tools-live": {
           "alone": 0,
           "caught": 0
+        },
+        "tools-live+strict": {
+          "alone": 0,
+          "caught": 0
         }
       },
       "tool_sequence": {
@@ -2016,6 +2481,10 @@
           "caught": 13
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 5
+        },
+        "tools-live+strict": {
           "alone": 0,
           "caught": 5
         }
@@ -2093,22 +2562,39 @@
           "detected": 5,
           "total": 8
         }
+      },
+      "tools-live+strict": {
+        "agent": {
+          "detected": 11,
+          "total": 12
+        },
+        "model": {
+          "detected": 0,
+          "total": 12
+        },
+        "overall": {
+          "detected": 19,
+          "total": 32
+        },
+        "tool": {
+          "detected": 8,
+          "total": 8
+        }
       }
     },
     "false_alarms": {
       "full": [],
       "model-live": [],
       "model-live+fallback": [],
-      "tools-live": []
+      "tools-live": [],
+      "tools-live+strict": [
+        "compact_tool_json"
+      ]
     },
     "mutations": 32,
     "refactors": 5,
     "survived_every_configuration": [
-      "drops_error_flag",
-      "strips_policy",
-      "user_lookup_builds_id",
-      "product_details_all_unavailable",
-      "order_details_stale_status"
+      "drops_error_flag"
     ]
   }
 }

@@ -426,9 +426,10 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     a `seed`, so simulated flakiness is reproducible at any concurrency.
     Runs go to the run store; a flake-level table is left to M5.
     (c) **Mutation study** (`eval/mutations/`, `eval/mutation_study.py`): 32
-    mutations (12 agent, 12 model, 8 tool) and 5 benign refactors, four
+    mutations (12 agent, 12 model, 8 tool) and 5 benign refactors, five
     configurations (`full`, `tools-live`, `model-live`, `model-live` with
-    `fallback`), byte-stable JSON checked in CI. Model regressions are
+    `fallback`, and `tools-live` with `fail_on_approximate`), byte-stable
+    JSON checked in CI. Model regressions are
     simulated by wrapping the fake model's policy, tool bugs by swapping a
     tool behind the same name and schema (`RetailAgent.tools`).
     (d) **State check.** `rule:db_matches_ground_truth` (τ-bench's reward)
@@ -436,8 +437,12 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     real. `RetailAgent.run` now resets the database first, as τ-bench does
     per task.
     (e) **Measured.** Stub-everything (`full`) caught 7/32 mutations and
-    none of the model or tool ones; `model-live` caught 12/12 model
-    regressions, `tools-live` 5/8 tool bugs; 0/5 benign refactors failed.
+    none of the model or tool ones (20 of the 32 live in a component it never
+    runs); `model-live` caught 12/12 model regressions, `tools-live` 5/8 tool
+    bugs; 0/5 benign refactors failed in those configurations. Failing on
+    `approximate` steps (`tools-live+strict`) caught all 8 tool bugs and the
+    stripped policy, at the price of 1/5 false alarms (the JSON-layout
+    refactor).
     Live `replay flake`: Haiku 5.5 passed 119/120 runs (one policy breach on
     the refund-swap task), Opus 5.5 30/30. M4 API spend $1.175.
     (f) **Review fixes,** each with a test that fails on the old code: the
@@ -452,12 +457,16 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     the others' results and left the stored suite unfinished (it now makes the
     scenario `broken` and keeps the rest). The mutation study now lists every
     configured check type, so `forbidden_tools` shows its 0/32.
-    (g) **Known limitations.** Five mutations survive every mode: three
-    tool bugs that change only a tool's output (no check compares live tool
-    results with recorded ones; a drift check is on the roadmap),
-    `drops_error_flag` (no recording has a failing tool) and `strips_policy`
-    (the fake model ignores the prompt). Three `model-live` catches are the
-    fake model crashing on a corrupted conversation. Tools with
+    (g) **Known limitations.** One mutation survives every configuration:
+    `drops_error_flag` is equivalent to the original on this suite (no
+    recording has a failing tool). The three tool bugs that change only a
+    tool's output, and the stripped policy, are caught only by failing on
+    `approximate` steps, which also fails a benign JSON-layout refactor; a
+    drift check that compares a live tool's result with the recorded one
+    (rather than the next model request's bytes) is on the roadmap. Three
+    `model-live` catches are the fake model crashing on a corrupted
+    conversation. `rule:db_matches_ground_truth` cannot apply in
+    `model-live`, where served tool calls never touch the database. Tools with
     process-global state must not be forced above `--concurrency 1` in
     `tools-live`. The `parallel_tools` benign refactor orders its trajectory
     by thread start, which Python does not guarantee; it has been stable in

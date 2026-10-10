@@ -41,13 +41,16 @@ tells flaky from failing.
   limiting, a sequential or fixed-sample gate, and passing / flaky / failing
   classification;
 - a mutation study: 32 injected regressions and 5 benign refactors replayed
-  in every mode.
+  in every mode, with and without failing on `approximate` steps.
 
 Measured so far ([RESULTS.md](RESULTS.md)):
 - **Mutation study (offline).** Stubbing everything (`full`) caught 7 of
   32 injected regressions, including none of the 12 model regressions and
-  none of the 8 tool bugs. `model-live` caught all 12 model regressions,
-  `tools-live` 5 of 8 tool bugs. No benign refactor failed in any mode.
+  none of the 8 tool bugs: 20 of the 32 live in a component it never runs.
+  `model-live` caught all 12 model regressions, `tools-live` 5 of 8 tool
+  bugs, with no false alarm on the 5 benign refactors. Failing on
+  `approximate` steps in `tools-live` caught all 8 tool bugs and the
+  stripped policy, and one benign refactor with them.
 - **Flakiness on live models.** Replayed 20 times per task, the retail agent
   on `claude-haiku-5-5` passed 119 of 120 runs. The one failure was a refund
   to the wrong payment method, a policy breach. On `claude-opus-5-5` it
@@ -627,7 +630,7 @@ make cassettes         # re-record the toy agent's cassettes (Anthropic and Olla
 make retail-cassettes  # re-record the retail agent's cassettes with the fake model
 make bench-sprt        # simulate the sequential gate over true pass rates (offline)
 make flake-demo        # replay flake offline: fake model passes, seeded flaky model fails
-make eval-mutations    # the mutation study: 32 mutations + 5 benign refactors, 4 modes (~22 s)
+make eval-mutations    # the mutation study: 32 mutations + 5 benign refactors, 5 configurations (~25 s)
 make eval-judge-smoke  # judge vs deterministic checks on 24 retail runs (offline, from the cache)
 ```
 
@@ -649,8 +652,9 @@ for every measured number.
 7. GitHub Action, PyPI release, Docker Compose
 
 Later: a tool-result drift check (in `tools-live`, compare each live tool
-result with the recorded one; three tool mutations survive every mode without
-it), and running a flake suite's scenarios in parallel as well as their runs.
+result with the recorded one, so that drift is caught without failing on
+every `approximate` model request as `fail_on_approximate` does), and running
+a flake suite's scenarios in parallel as well as their runs.
 
 ## Prior art
 

@@ -2,7 +2,7 @@
 
 Replays the retail suite (``examples/retail_agent/replay.toml``, six τ-bench
 tasks with their committed fake-model cassettes) against every mutation and
-benign refactor in ``eval/mutations/``, in four configurations:
+benign refactor in ``eval/mutations/``, in five configurations:
 
 - ``full``: every model and tool call served from the cassette (strict). This
   is the stub-everything baseline: it tests the agent's own code only.
@@ -10,8 +10,15 @@ benign refactor in ``eval/mutations/``, in four configurations:
 - ``model-live``: the model runs (the fake model, or the mutated one for
   ``model`` mutations) against recorded tools (strict: a tool call the
   cassette has no envelope for ends the run).
-- ``model-live+fallback``: the same, but unrecorded tool calls run the real
-  tools, so a model that leaves the recording is judged by the checks.
+- ``model-live+fallback``: the same, but a tool call with no recorded envelope
+  left for that tool runs the real tool instead of ending the run. (A call
+  whose arguments merely differ from the recording is still served the
+  recorded result, flagged ``approximate``.)
+- ``tools-live+strict``: ``tools-live`` with ``fail_on_approximate``, so a served
+  model step whose request differs from the recording fails the scenario
+  (``no_approximate_steps``). This is the drift signal the other configurations
+  only record; it catches changed prompts and changed tool outputs at the cost
+  of false alarms on refactors that change request bytes.
 
 Definitions:
 
@@ -64,6 +71,8 @@ class Config:
     mode: ReplayMode
     policy: Policy
     note: str
+    strict: bool = False
+    """``fail_on_approximate``: a served step whose request differs from the recording fails."""
 
     @property
     def model_live(self) -> bool:
@@ -79,6 +88,14 @@ CONFIGS: tuple[Config, ...] = (
         "model-live",
         "fallback",
         "model runs, tools served; unrecorded tool calls run for real",
+    ),
+    Config(
+        "tools-live+strict",
+        "tools-live",
+        "strict",
+        "tools run, model replies served; a served step whose request differs from the "
+        "recording fails (fail_on_approximate)",
+        strict=True,
     ),
 )
 
@@ -151,6 +168,7 @@ def replay_suite(agent: str, client: str, config: Config) -> Outcome:
                 mode=config.mode,
                 policy=config.policy,
                 client=client if config.model_live else None,
+                fail_on_approximate=True if config.strict else None,
             ),
         )
     finally:
@@ -202,7 +220,14 @@ def run(
         "suite": SUITE.relative_to(ROOT).as_posix(),
         "definitions": _definitions(),
         "configurations": [
-            {"id": c.id, "mode": c.mode, "policy": c.policy, "note": c.note} for c in configs
+            {
+                "id": c.id,
+                "mode": c.mode,
+                "policy": c.policy,
+                "fail_on_approximate": c.strict,
+                "note": c.note,
+            }
+            for c in configs
         ],
         "mutations": mutation_rows,
         "refactors": refactor_rows,
@@ -221,6 +246,8 @@ def _definitions() -> dict[str, JsonValue]:
         "caught_alone": "no other check type caught that mutation in that configuration",
         "false_alarm": "a benign refactor fails the suite in that configuration",
         "full": "every call served from the cassette: the stub-everything baseline",
+        "no_approximate_steps": "with fail_on_approximate, a served step whose request "
+        "differed from the recording (the drift signal) fails the scenario",
     }
 
 
