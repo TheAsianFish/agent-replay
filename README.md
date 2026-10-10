@@ -19,11 +19,11 @@ budget and LLM-judge checks, and fails the build on a regression.
 
 Judges are not oracles, so a judge check is *advisory* until the judge has
 been calibrated against human labels: it reports its verdict but cannot fail
-the build. Agents are not deterministic either, so later milestones re-run a
-scenario, estimate its pass probability with a confidence interval and tell
-flaky from broken.
+the build. Agents are not deterministic either, so `replay flake` re-runs a
+scenario, estimates its pass probability with an interval, gates on it, and
+tells flaky from failing.
 
-**Status: milestone 3 of 7.** Working today:
+**Status: milestone 4 of 7.** Working today:
 - recording through the Anthropic SDK (sync, async, streaming,
   `messages.parse`), Ollama, `@tool`, and the clock and random helpers;
 - the three cut-point modes, fingerprint matching and the three
@@ -36,17 +36,37 @@ flaky from broken.
 - a τ-bench retail example agent with fake-model and live `claude-opus-5-5`
   cassettes;
 - the statistics interface (kappa, bootstrap CI, Wilson, SPRT) with a naive
-  baseline implementation and oracle-tested specs.
+  baseline implementation and oracle-tested specs;
+- `replay flake`: repeated replays with bounded concurrency and rate
+  limiting, a sequential or fixed-sample gate, and passing / flaky / failing
+  classification;
+- a mutation study: 32 injected regressions and 5 benign refactors replayed
+  in every mode, with and without failing on `approximate` steps.
 
-Measured so far ([RESULTS.md](RESULTS.md)): on a live `model-live` run, a
+Measured so far ([RESULTS.md](RESULTS.md)):
+- **Mutation study (offline).** Stubbing everything (`full`) caught 7 of
+  32 injected regressions, including none of the 12 model regressions and
+  none of the 8 tool bugs: 20 of the 32 live in a component it never runs.
+  `model-live` caught all 12 model regressions, `tools-live` 5 of 8 tool
+  bugs, with no false alarm on the 5 benign refactors. Failing on
+  `approximate` steps in `tools-live` caught all 8 tool bugs and the
+  stripped policy, and one benign refactor with them.
+- **Flakiness on live models.** Replayed 20 times per task, the retail agent
+  on `claude-haiku-5-5` passed 119 of 120 runs. The one failure was a refund
+  to the wrong payment method, a policy breach. On `claude-opus-5-5` it
+  passed 30 of 30 (5 per task), at 41× Haiku's cost per run.
+
+Earlier milestones: on a live `model-live` run, a
 25% relative cost limit passed the unchanged agent (within 5% of baseline)
 and failed all six tasks of a variant with prompt caching removed (+76% to
 +155% cost at unchanged token counts). The uncalibrated judge agreed with the
 deterministic checks on 23 of 24 runs; that is a wiring test, not a
 calibration.
 
-Judge calibration, the flakiness engine, dashboard and GitHub Action are
-planned, not built. See [PLAN.md](PLAN.md).
+Judge calibration, the dashboard and the GitHub Action are planned, not
+built, and the statistics core (`agent_replay/stats.py`) is a specification
+until it is written; until then the gate runs the naive baseline (see
+[Statistics](#statistics)). See [PLAN.md](PLAN.md).
 
 ## Quickstart
 
@@ -350,7 +370,9 @@ selects one; the default stays `baseline` until `core` exists.
 `tests/test_stats.py` checks both against scikit-learn and statsmodels with
 Hypothesis, and marks the unimplemented module's tests as expected failures
 (a wrong implementation fails them for real). `make bench-sprt` simulates the
-gate over true pass rates 0.05 to 1.00.
+gate over true pass rates 0.05 to 1.00 and compares its expected runs with
+the smallest fixed-sample test that meets the same error targets. `replay
+flake` gates through the same interface.
 
 ## `replay ci`
 
@@ -398,6 +420,51 @@ tool instead. Set `fail_on_approximate = true` (or pass `--strict` to `replay
 run`) when a wrong answer there would make the rest of the run meaningless;
 leave it off when the drift is in free text, such as a summary argument.
 
+## `replay flake`
+
+```bash
+uv run replay flake examples/retail_agent/replay.toml --client anthropic \
+    --cassette-dir examples/retail_agent/cassettes/live --max-runs 20 --concurrency 4
+```
+
+replays every scenario repeatedly (in `model-live` by default, where sampling
+makes runs differ) and treats the outcomes as Bernoulli trials:
+
+- **Gate.** `--gate sprt` (default) feeds each outcome to
+  `SequentialGate`, which stops as soon as the evidence separates "pass rate
+  `--p-pass`" from "pass rate `--p-fail`" (defaults 0.9 and 0.6, α = β = 0.05),
+  or at `--max-runs`. `--gate wilson` runs exactly `--max-runs` times and passes
+  when the interval's lower bound reaches `--min-pass-rate`. Both use the
+  statistics implementation `REPLAY_STATS_IMPL` selects; with `baseline` the
+  sequential gate is a fixed-k majority vote and the report says so.
+- **Classification.** Over the runs the gate counted, a scenario is
+  `passing` (all passed), `failing` (none did) or `flaky` (some did), with how
+  often each check failed. A scenario can pass the gate and still be flaky;
+  the report shows both.
+- **Concurrency without bias.** Up to `--concurrency` runs are in flight
+  (default 4, or 1 when tools run for real: `tools-live` or `--policy
+  fallback`, since tools may share state such as the retail example's
+  database; a larger value there is honoured with a warning), but
+  outcomes reach the gate in run order: failing runs often finish first, and
+  feeding them as they finish would bias the test towards failing. No run
+  starts more than `--concurrency` places ahead of the gate, so at most
+  `concurrency - 1` runs are wasted when it decides; they are reported as not
+  counted. `--runs-per-minute` spaces run starts.
+- **Reproducible simulations.** Each run gets a seed from `--seed`, the
+  scenario and the run index; a client factory with a `seed` parameter
+  receives it, so a simulated flaky model gives the same report at any
+  concurrency (`make flake-demo`).
+
+Exit codes match `replay ci`: `0` every scenario passed the gate, `1` one
+failed, `2` a scenario could not run. `--json`, `--markdown`, the run store
+and `$GITHUB_STEP_SUMMARY` work as in `replay ci`. Runs execute on threads, one
+replay session each. An agent that hands tool calls to a plain
+`ThreadPoolExecutor` makes calls no session can claim while several runs are
+active; such a scenario is reported `broken` (exit 2) with the fix
+(`agent_replay.ContextThreadPoolExecutor`, or `--concurrency 1`), never as a
+flake. A run that crashes the harness is also `broken`, and the other runs are
+kept.
+
 ## CLI
 
 | Command | What it does |
@@ -406,6 +473,7 @@ leave it off when the drift is in free text, such as a summary argument.
 | `replay run CASSETTE [--mode full\|model-live\|tools-live] [--policy strict\|fallback\|synth] [--client REF] [--agent REF] [--expect a,b] [--strict] [--save FILE] [--json]` | Replay one cassette and run `tool_sequence`; `--strict` also fails on `approximate` steps |
 | `replay ci SUITE [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR] [--baseline FILE] [--json FILE] [--markdown FILE] [--no-store] [--db URL]` | Replay a suite and gate on it |
 | `replay baseline SUITE -o FILE [--runs N] [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR]` | Measure every scenario (no checks) and write median cost, tokens, model calls and p95 latency; exit 2 if a scenario cannot run, 1 if the agent errors (nothing written) |
+| `replay flake SUITE [--gate sprt\|wilson] [--max-runs N] [--p-fail P] [--p-pass P] [--alpha A] [--beta B] [--min-pass-rate R] [--concurrency N] [--runs-per-minute R] [--seed S] [-s SCENARIO] [--mode] [--agent] [--client] [--cassette-dir DIR] [--json FILE] [--markdown FILE] [--no-store]` | Replay each scenario repeatedly, gate on its pass rate, classify passing / flaky / failing |
 | `replay runs [RUN_ID] [--limit N] [--scenario NAME] [--db URL]` | List stored runs, or show one |
 | `replay show CASSETTE` | Print a cassette's header, envelopes and outcome |
 
@@ -474,9 +542,14 @@ rubric, same judge, same transcript gives the same verdict, offline. Every
 criterion is advisory until a calibration report for that exact rubric and
 judge shows a kappa lower bound above the threshold. Cost is gated relative to
 a measured baseline, because cost regressions often leave tokens unchanged.
-The harder parts are later milestones: a judge measured against
-humans before it may fail a build, and failures told apart from flakes with
-statistics rather than retries. PLAN.md has the full component map.
+M4's hard part is telling a real regression from noise without paying
+for twenty runs every time, and knowing what the checks can and cannot see.
+`replay flake` turns repeated runs into a sequential test fed in run order, so
+concurrency does not bias it and early stopping stays valid. The mutation
+study measures detection per check type and per mode, which is where the case
+for cut-point replay comes from: the stub-everything mode missed every model
+and tool regression. The remaining hard part is M6: a judge measured against
+humans before it may fail a build. PLAN.md has the full component map.
 
 ## Design decisions so far
 
@@ -527,6 +600,21 @@ statistics rather than retries. PLAN.md has the full component map.
   oracle tests and a deliberately simple implementation land first, so every
   later number can be compared against "what the naive method would have
   said".
+- **Flakiness is a sequential test, not a retry loop.** Retrying until green
+  hides real failure rates; a fixed k wastes runs on clear cases and, at k =
+  20 with a majority vote, still passes 13% of scenarios whose true pass rate
+  is 0.6. The gate is a Wald SPRT behind the stats interface, compared against
+  the smallest fixed-sample test meeting the same error targets (24 runs).
+- **Outcomes feed the gate in run order.** Feeding by completion would let
+  fast failures decide early and bias the gate; the price is that a slow run
+  holds the others back, bounded by a window of `--concurrency` runs.
+- **Mutations by kind and mode, with benign controls.** Each mutation is an
+  agent, model or tool bug, so detection per mode shows what each cut point
+  can see. Benign refactors measure false alarms. `full` mode is the
+  stub-everything baseline, measured rather than assumed.
+- **State checks only where state is real.** `rule:db_matches_ground_truth`
+  (τ-bench's reward) passes as "not applicable" unless every tool call ran
+  for real, because a served tool never touched the database.
 - **Committed cassettes are regenerated, not hand-edited.** Drift tests
   re-record the toy and retail cassettes and fail if they changed (`make
   cassettes`, `make retail-cassettes`).
@@ -541,6 +629,8 @@ make test-live         # live tests against claude-opus-5-5 (needs a key; a few 
 make cassettes         # re-record the toy agent's cassettes (Anthropic and Ollama fakes)
 make retail-cassettes  # re-record the retail agent's cassettes with the fake model
 make bench-sprt        # simulate the sequential gate over true pass rates (offline)
+make flake-demo        # replay flake offline: fake model passes, seeded flaky model fails
+make eval-mutations    # the mutation study: 32 mutations + 5 benign refactors, 5 configurations (~25 s)
 make eval-judge-smoke  # judge vs deterministic checks on 24 retail runs (offline, from the cache)
 ```
 
@@ -554,11 +644,17 @@ for every measured number.
    random capture, async and streaming, Ollama, the checks library, SQLite
    store, `replay ci`, the τ-bench retail example~~
 3. ~~LLM judge (structured outputs), cost and latency baselines, statistics
-   interface~~ (this milestone)
-4. Flakiness engine (Wilson interval, SPRT early stop) and a mutation study
+   interface~~
+4. ~~Flakiness engine (`replay flake`, Wilson and SPRT gates through the stats
+   interface) and a mutation study~~ (this milestone)
 5. FastAPI + React dashboard with aligned trace diffs
 6. Judge calibration against human labels (kappa, bootstrap CI, bias probes, LLMBar)
 7. GitHub Action, PyPI release, Docker Compose
+
+Later: a tool-result drift check (in `tools-live`, compare each live tool
+result with the recorded one, so that drift is caught without failing on
+every `approximate` model request as `fail_on_approximate` does), and running
+a flake suite's scenarios in parallel as well as their runs.
 
 ## Prior art
 

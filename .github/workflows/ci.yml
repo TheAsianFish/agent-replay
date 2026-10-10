@@ -37,6 +37,13 @@ jobs:
         run: make demo
       - name: replay ci on the retail suite (every mode passes, every mutant fails)
         run: make ci-demo
+      - name: replay flake offline (fake model passes, seeded flaky model fails the gate)
+        run: make flake-demo
+      - name: Mutation study and gate simulation reproduce their committed results
+        run: |
+          make eval-mutations
+          make bench-sprt
+          git diff --exit-code eval/results/mutations.json eval/results/sprt_sim.json
 
   live:
     name: Live API tests

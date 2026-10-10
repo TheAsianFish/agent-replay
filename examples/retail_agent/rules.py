@@ -1,18 +1,21 @@
 """Domain rules over a run's tool calls, for use as ``rule`` checks.
 
-Each rule takes the run's tool calls as ``(name, arguments)`` pairs in call
+The predicates take the run's tool calls as ``(name, arguments)`` pairs in call
 order (:func:`tool_calls` extracts them from a ``RunResult``) and returns
 ``(passed, message)``.
 """
 
 from __future__ import annotations
 
+import copy
+import functools
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from agent_replay.runner import RunResult
-from examples.retail_agent.tasks import TASKS, Action
-from examples.retail_agent.tools import TERMINAL_TOOLS, WRITE_TOOLS
+from agent_replay.trajectory import StepStatus
+from examples.retail_agent.tasks import TASKS, Action, expected_db_hash
+from examples.retail_agent.tools import DB, DB_LOCK, TERMINAL_TOOLS, WRITE_TOOLS, db_hash
 
 ToolCalls = Sequence[tuple[str, Mapping[str, Any]]]
 Verdict = tuple[bool, str]
@@ -105,3 +108,53 @@ def checked_before_writing(run: RunResult) -> Verdict:
         if not verdict[0]:
             return verdict
     return True, "authenticated and checked every order before writing"
+
+
+# Steps that really ran the tool, so their effect on the database happened.
+_RAN = frozenset({StepStatus.LIVE, StepStatus.FALLBACK})
+
+
+@functools.cache
+def _expected_db(task: str) -> tuple[str, dict[str, dict[str, Any]]]:
+    """The ground truth's database hash and tables for ``task``, computed once (leaving
+    the database as it found it).
+
+    Computing it resets and replays the shared database, so it holds ``DB_LOCK``:
+    concurrent runs (``replay flake``) reset the database when they start, and a
+    reset in the middle of the replay would cache a wrong expected state.
+    """
+    with DB_LOCK:
+        saved = copy.deepcopy(DB.snapshot())
+        try:
+            digest = expected_db_hash(TASKS[task])
+            return digest, copy.deepcopy(DB.snapshot())
+        finally:
+            DB.users, DB.orders, DB.products = saved["users"], saved["orders"], saved["products"]
+
+
+def db_matches_ground_truth(run: RunResult, task: str) -> Verdict:
+    """τ-bench's reward: the database after the run equals the one the ground truth leaves.
+
+    Only meaningful when the run's tools really ran (``tools-live``, or every tool
+    call performed under ``fallback``): a tool served from the cassette never
+    touched the database. Then it passes vacuously and says so. It reads the
+    retail ``DB`` as the run left it, so check the run before starting another;
+    ``RetailAgent.run`` resets the database when it starts.
+    """
+    served = [s.name for s in run.trajectory.tool_steps() if s.status not in _RAN]
+    if served:
+        return True, (
+            f"not applicable: {len(served)} tool call(s) were served from the cassette, "
+            "so the run did not touch the database"
+        )
+    digest, expected = _expected_db(task)
+    if db_hash() == digest:
+        return True, "the database equals the ground truth's"
+    actual = DB.snapshot()
+    differing = [
+        f"{table} {key}"
+        for table in sorted(expected)
+        for key in sorted(expected[table].keys() | actual[table].keys())
+        if expected[table].get(key) != actual[table].get(key)
+    ]
+    return False, f"the database differs from the ground truth's in {', '.join(differing)}"

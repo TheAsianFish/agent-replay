@@ -1,0 +1,2243 @@
+{
+  "suite": "examples/retail_agent/replay.toml",
+  "stats_impl": "baseline",
+  "settings": {
+    "gate": "sprt",
+    "p_fail": 0.6,
+    "p_pass": 0.9,
+    "alpha": 0.05,
+    "beta": 0.05,
+    "max_runs": 20,
+    "min_pass_rate": 0.8,
+    "confidence": 0.95,
+    "concurrency": 4,
+    "runs_per_minute": null,
+    "seed": 0
+  },
+  "passed": true,
+  "started_at": "2026-10-10T04:42:12.870902Z",
+  "duration_ms": 164081.624,
+  "git_sha": "ff07cef68c505c696ab3605f34a7581b6fd40570",
+  "suite_id": null,
+  "scenarios": [
+    {
+      "name": "cancel_pending_laptop",
+      "cassette": "examples/retail_agent/cassettes/live/cancel_pending_laptop.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 20,
+      "passes": 20,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 20,
+      "cost_usd": 0.01336632,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 718266358,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00067331,
+          "tokens": 27242,
+          "duration_ms": 5544.427,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 1573449568,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00065956,
+          "tokens": 27192,
+          "duration_ms": 5462.407,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 3301031642,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00066593,
+          "tokens": 27216,
+          "duration_ms": 5558.444,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 3016134220,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00066819,
+          "tokens": 27225,
+          "duration_ms": 5597.422,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 765598703,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00065993,
+          "tokens": 27195,
+          "duration_ms": 5021.845,
+          "run_id": null
+        },
+        {
+          "index": 5,
+          "seed": 1520774009,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00066106,
+          "tokens": 27201,
+          "duration_ms": 5290.971,
+          "run_id": null
+        },
+        {
+          "index": 6,
+          "seed": 3282860739,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00068319,
+          "tokens": 27270,
+          "duration_ms": 5474.103,
+          "run_id": null
+        },
+        {
+          "index": 7,
+          "seed": 3031124565,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00068181,
+          "tokens": 27271,
+          "duration_ms": 5386.336,
+          "run_id": null
+        },
+        {
+          "index": 8,
+          "seed": 605312964,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00065356,
+          "tokens": 27171,
+          "duration_ms": 5334.314,
+          "run_id": null
+        },
+        {
+          "index": 9,
+          "seed": 1393780562,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00065156,
+          "tokens": 27170,
+          "duration_ms": 5167.187,
+          "run_id": null
+        },
+        {
+          "index": 10,
+          "seed": 3107223190,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00065356,
+          "tokens": 27180,
+          "duration_ms": 5135.919,
+          "run_id": null
+        },
+        {
+          "index": 11,
+          "seed": 3459466752,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00062243,
+          "tokens": 27084,
+          "duration_ms": 4865.287,
+          "run_id": null
+        },
+        {
+          "index": 12,
+          "seed": 1463424954,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.0008518,
+          "tokens": 27274,
+          "duration_ms": 5078.135,
+          "run_id": null
+        },
+        {
+          "index": 13,
+          "seed": 540878636,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00067294,
+          "tokens": 27236,
+          "duration_ms": 5301.171,
+          "run_id": null
+        },
+        {
+          "index": 14,
+          "seed": 3193549455,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00065056,
+          "tokens": 27174,
+          "duration_ms": 4901.742,
+          "run_id": null
+        },
+        {
+          "index": 15,
+          "seed": 3378414105,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00067019,
+          "tokens": 27229,
+          "duration_ms": 5149.871,
+          "run_id": null
+        },
+        {
+          "index": 16,
+          "seed": 1347933091,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00066906,
+          "tokens": 27226,
+          "duration_ms": 5162.09,
+          "run_id": null
+        },
+        {
+          "index": 17,
+          "seed": 659612469,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00064481,
+          "tokens": 27152,
+          "duration_ms": 4757.667,
+          "run_id": null
+        },
+        {
+          "index": 18,
+          "seed": 3085958820,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00064394,
+          "tokens": 27145,
+          "duration_ms": 4810.613,
+          "run_id": null
+        },
+        {
+          "index": 19,
+          "seed": 3236482610,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 6
+          },
+          "cost_usd": 0.00062893,
+          "tokens": 27100,
+          "duration_ms": 4669.051,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "modify_address_suite",
+      "cassette": "examples/retail_agent/cassettes/live/modify_address_suite.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 20,
+      "passes": 20,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 20,
+      "cost_usd": 0.01287042,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 2279990035,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00108435,
+          "tokens": 16187,
+          "duration_ms": 3132.188,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 4041397125,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00109535,
+          "tokens": 16224,
+          "duration_ms": 3140.265,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 1777041983,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00108484,
+          "tokens": 16188,
+          "duration_ms": 3194.188,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 518828713,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00108597,
+          "tokens": 16191,
+          "duration_ms": 3086.799,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 2156406538,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00048568,
+          "tokens": 16197,
+          "duration_ms": 3244.738,
+          "run_id": null
+        },
+        {
+          "index": 5,
+          "seed": 4153350044,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 3
+          },
+          "cost_usd": 0.00062099,
+          "tokens": 20722,
+          "duration_ms": 3689.55,
+          "run_id": null
+        },
+        {
+          "index": 6,
+          "seed": 1854293542,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00048993,
+          "tokens": 16204,
+          "duration_ms": 3070.197,
+          "run_id": null
+        },
+        {
+          "index": 7,
+          "seed": 427914928,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 3
+          },
+          "cost_usd": 0.00063337,
+          "tokens": 20758,
+          "duration_ms": 3827.063,
+          "run_id": null
+        },
+        {
+          "index": 8,
+          "seed": 2302569249,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00050193,
+          "tokens": 16249,
+          "duration_ms": 3157.059,
+          "run_id": null
+        },
+        {
+          "index": 9,
+          "seed": 4265171895,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 3
+          },
+          "cost_usd": 0.00062559,
+          "tokens": 20734,
+          "duration_ms": 4295.081,
+          "run_id": null
+        },
+        {
+          "index": 10,
+          "seed": 1777945181,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 3
+          },
+          "cost_usd": 0.00054714,
+          "tokens": 20754,
+          "duration_ms": 3814.44,
+          "run_id": null
+        },
+        {
+          "index": 11,
+          "seed": 519994059,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00048555,
+          "tokens": 16190,
+          "duration_ms": 3219.804,
+          "run_id": null
+        },
+        {
+          "index": 12,
+          "seed": 2281122673,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00048693,
+          "tokens": 16195,
+          "duration_ms": 3102.603,
+          "run_id": null
+        },
+        {
+          "index": 13,
+          "seed": 4042267623,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 3
+          },
+          "cost_usd": 0.00062774,
+          "tokens": 20737,
+          "duration_ms": 3734.676,
+          "run_id": null
+        },
+        {
+          "index": 14,
+          "seed": 1855229508,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 3
+          },
+          "cost_usd": 0.00062475,
+          "tokens": 20731,
+          "duration_ms": 3634.763,
+          "run_id": null
+        },
+        {
+          "index": 15,
+          "seed": 429113042,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00048005,
+          "tokens": 16179,
+          "duration_ms": 3162.104,
+          "run_id": null
+        },
+        {
+          "index": 16,
+          "seed": 2157637480,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00039094,
+          "tokens": 16188,
+          "duration_ms": 3044.699,
+          "run_id": null
+        },
+        {
+          "index": 17,
+          "seed": 4154318846,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00048568,
+          "tokens": 16197,
+          "duration_ms": 3011.331,
+          "run_id": null
+        },
+        {
+          "index": 18,
+          "seed": 1730331247,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 3
+          },
+          "cost_usd": 0.00055096,
+          "tokens": 20770,
+          "duration_ms": 3958.934,
+          "run_id": null
+        },
+        {
+          "index": 19,
+          "seed": 270922489,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 3
+          },
+          "cost_usd": 0.00048268,
+          "tokens": 16188,
+          "duration_ms": 3499.585,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "return_damaged_bicycle",
+      "cassette": "examples/retail_agent/cassettes/live/return_damaged_bicycle.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 20,
+      "passes": 20,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 20,
+      "cost_usd": 0.02062132,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 749317351,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00157496,
+          "tokens": 29433,
+          "duration_ms": 5658.556,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 1538169969,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00155783,
+          "tokens": 29339,
+          "duration_ms": 5334.229,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 3265777099,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00155108,
+          "tokens": 29336,
+          "duration_ms": 5501.397,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 3047226717,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00153227,
+          "tokens": 29237,
+          "duration_ms": 5488.785,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 734292222,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00101935,
+          "tokens": 29209,
+          "duration_ms": 5400.957,
+          "run_id": null
+        },
+        {
+          "index": 5,
+          "seed": 1556306024,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00104714,
+          "tokens": 29359,
+          "duration_ms": 5622.376,
+          "run_id": null
+        },
+        {
+          "index": 6,
+          "seed": 3318352338,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00102071,
+          "tokens": 29269,
+          "duration_ms": 5151.391,
+          "run_id": null
+        },
+        {
+          "index": 7,
+          "seed": 2999793988,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00101077,
+          "tokens": 29204,
+          "duration_ms": 5138.86,
+          "run_id": null
+        },
+        {
+          "index": 8,
+          "seed": 577905877,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00094315,
+          "tokens": 29200,
+          "duration_ms": 4964.423,
+          "run_id": null
+        },
+        {
+          "index": 9,
+          "seed": 1433736259,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00073327,
+          "tokens": 29245,
+          "duration_ms": 5369.481,
+          "run_id": null
+        },
+        {
+          "index": 10,
+          "seed": 3548524567,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00104371,
+          "tokens": 29337,
+          "duration_ms": 5579.267,
+          "run_id": null
+        },
+        {
+          "index": 11,
+          "seed": 2760179841,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00099502,
+          "tokens": 29156,
+          "duration_ms": 5029.373,
+          "run_id": null
+        },
+        {
+          "index": 12,
+          "seed": 1032606011,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00095699,
+          "tokens": 29219,
+          "duration_ms": 5467.414,
+          "run_id": null
+        },
+        {
+          "index": 13,
+          "seed": 1250648493,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00072593,
+          "tokens": 29194,
+          "duration_ms": 5231.586,
+          "run_id": null
+        },
+        {
+          "index": 14,
+          "seed": 3572495374,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00072865,
+          "tokens": 29223,
+          "duration_ms": 5152.167,
+          "run_id": null
+        },
+        {
+          "index": 15,
+          "seed": 2749940888,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00098254,
+          "tokens": 29311,
+          "duration_ms": 5565.58,
+          "run_id": null
+        },
+        {
+          "index": 16,
+          "seed": 987862306,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00073468,
+          "tokens": 29210,
+          "duration_ms": 5186.233,
+          "run_id": null
+        },
+        {
+          "index": 17,
+          "seed": 1306961332,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00074715,
+          "tokens": 29310,
+          "duration_ms": 5714.213,
+          "run_id": null
+        },
+        {
+          "index": 18,
+          "seed": 3713644581,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00098235,
+          "tokens": 29257,
+          "duration_ms": 5520.343,
+          "run_id": null
+        },
+        {
+          "index": 19,
+          "seed": 2858322099,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 7
+          },
+          "cost_usd": 0.00073377,
+          "tokens": 29272,
+          "duration_ms": 4949.692,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "exchange_waterproof_boots",
+      "cassette": "examples/retail_agent/cassettes/live/exchange_waterproof_boots.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 20,
+      "passes": 20,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 20,
+      "cost_usd": 0.02606032,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 1061930840,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00193834,
+          "tokens": 39554,
+          "duration_ms": 6768.332,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 1213003726,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00194931,
+          "tokens": 39623,
+          "duration_ms": 6678.244,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 3511002740,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00196193,
+          "tokens": 39644,
+          "duration_ms": 6690.928,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 2789381858,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.0019194,
+          "tokens": 39521,
+          "duration_ms": 6429.213,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 942015297,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00117195,
+          "tokens": 39717,
+          "duration_ms": 7096.509,
+          "run_id": null
+        },
+        {
+          "index": 5,
+          "seed": 1327576023,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00114072,
+          "tokens": 39636,
+          "duration_ms": 6797.607,
+          "run_id": null
+        },
+        {
+          "index": 6,
+          "seed": 3592970861,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00136948,
+          "tokens": 39516,
+          "duration_ms": 6365.401,
+          "run_id": null
+        },
+        {
+          "index": 7,
+          "seed": 2704233211,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.0011173,
+          "tokens": 39559,
+          "duration_ms": 6407.113,
+          "run_id": null
+        },
+        {
+          "index": 8,
+          "seed": 831541098,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00113873,
+          "tokens": 39611,
+          "duration_ms": 6675.33,
+          "run_id": null
+        },
+        {
+          "index": 9,
+          "seed": 1184333820,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00110348,
+          "tokens": 39484,
+          "duration_ms": 6170.959,
+          "run_id": null
+        },
+        {
+          "index": 10,
+          "seed": 2286910561,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00135608,
+          "tokens": 39502,
+          "duration_ms": 6344.322,
+          "run_id": null
+        },
+        {
+          "index": 11,
+          "seed": 4282928375,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00111499,
+          "tokens": 39475,
+          "duration_ms": 6356.073,
+          "run_id": null
+        },
+        {
+          "index": 12,
+          "seed": 1715543373,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00110529,
+          "tokens": 39504,
+          "duration_ms": 6128.643,
+          "run_id": null
+        },
+        {
+          "index": 13,
+          "seed": 289811931,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00114069,
+          "tokens": 39601,
+          "duration_ms": 6640.993,
+          "run_id": null
+        },
+        {
+          "index": 14,
+          "seed": 2401417336,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00111933,
+          "tokens": 39548,
+          "duration_ms": 6598.327,
+          "run_id": null
+        },
+        {
+          "index": 15,
+          "seed": 4163209454,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00110739,
+          "tokens": 39510,
+          "duration_ms": 6047.186,
+          "run_id": null
+        },
+        {
+          "index": 16,
+          "seed": 1630329172,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00111193,
+          "tokens": 39536,
+          "duration_ms": 6591.752,
+          "run_id": null
+        },
+        {
+          "index": 17,
+          "seed": 371976642,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.0009677,
+          "tokens": 39562,
+          "duration_ms": 6574.197,
+          "run_id": null
+        },
+        {
+          "index": 18,
+          "seed": 2257908819,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00112477,
+          "tokens": 39525,
+          "duration_ms": 6662.806,
+          "run_id": null
+        },
+        {
+          "index": 19,
+          "seed": 4052993221,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 6,
+            "exact": 8
+          },
+          "cost_usd": 0.00110151,
+          "tokens": 39492,
+          "duration_ms": 6500.097,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "lookup_latest_order_total",
+      "cassette": "examples/retail_agent/cassettes/live/lookup_latest_order_total.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 20,
+      "passes": 20,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 20,
+      "cost_usd": 0.01394837,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 2070263533,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.0012345,
+          "tokens": 20570,
+          "duration_ms": 4881.192,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 207783547,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.0011945,
+          "tokens": 20490,
+          "duration_ms": 4572.138,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 2506872769,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.001269,
+          "tokens": 20639,
+          "duration_ms": 5044.393,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 3798787927,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.0012215,
+          "tokens": 20544,
+          "duration_ms": 4694.158,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 2080928500,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00071072,
+          "tokens": 20651,
+          "duration_ms": 4980.117,
+          "run_id": null
+        },
+        {
+          "index": 5,
+          "seed": 185549410,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00052207,
+          "tokens": 20561,
+          "duration_ms": 4669.552,
+          "run_id": null
+        },
+        {
+          "index": 6,
+          "seed": 2449871832,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00050257,
+          "tokens": 20522,
+          "duration_ms": 4685.323,
+          "run_id": null
+        },
+        {
+          "index": 7,
+          "seed": 3842057038,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00049307,
+          "tokens": 20503,
+          "duration_ms": 4644.115,
+          "run_id": null
+        },
+        {
+          "index": 8,
+          "seed": 1975402207,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00049857,
+          "tokens": 20514,
+          "duration_ms": 4434.099,
+          "run_id": null
+        },
+        {
+          "index": 9,
+          "seed": 45682249,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00050107,
+          "tokens": 20519,
+          "duration_ms": 4390.028,
+          "run_id": null
+        },
+        {
+          "index": 10,
+          "seed": 855643411,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00068022,
+          "tokens": 20587,
+          "duration_ms": 4714.202,
+          "run_id": null
+        },
+        {
+          "index": 11,
+          "seed": 1141319045,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00049807,
+          "tokens": 20513,
+          "duration_ms": 4392.582,
+          "run_id": null
+        },
+        {
+          "index": 12,
+          "seed": 3708711999,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00051857,
+          "tokens": 20554,
+          "duration_ms": 4658.808,
+          "run_id": null
+        },
+        {
+          "index": 13,
+          "seed": 2852734121,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00051057,
+          "tokens": 20538,
+          "duration_ms": 4437.301,
+          "run_id": null
+        },
+        {
+          "index": 14,
+          "seed": 879612170,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00063672,
+          "tokens": 20503,
+          "duration_ms": 4262.194,
+          "run_id": null
+        },
+        {
+          "index": 15,
+          "seed": 1131078044,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00053957,
+          "tokens": 20596,
+          "duration_ms": 5058.517,
+          "run_id": null
+        },
+        {
+          "index": 16,
+          "seed": 3663966246,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00048857,
+          "tokens": 20494,
+          "duration_ms": 4621.293,
+          "run_id": null
+        },
+        {
+          "index": 17,
+          "seed": 2909044912,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00057057,
+          "tokens": 20658,
+          "duration_ms": 5282.923,
+          "run_id": null
+        },
+        {
+          "index": 18,
+          "seed": 1037802785,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00068897,
+          "tokens": 20606,
+          "duration_ms": 4869.317,
+          "run_id": null
+        },
+        {
+          "index": 19,
+          "seed": 1255976375,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 4,
+            "exact": 5
+          },
+          "cost_usd": 0.00066897,
+          "tokens": 20557,
+          "duration_ms": 4805.795,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "transfer_swapped_refunds",
+      "cassette": "examples/retail_agent/cassettes/live/transfer_swapped_refunds.jsonl",
+      "agent": "examples.retail_agent.variants:run_haiku",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "flaky",
+      "decision": "pass",
+      "runs": 20,
+      "passes": 19,
+      "pass_rate": 0.95,
+      "interval": [
+        0.8544831705972787,
+        1.0
+      ],
+      "failures": {
+        "error:UnrecordedCallError": 1,
+        "forbidden_tools": 1,
+        "rule:matches_ground_truth": 1,
+        "tool_sequence": 1
+      },
+      "executed": 20,
+      "cost_usd": 0.01766408,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 1391082204,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00136838,
+          "tokens": 26630,
+          "duration_ms": 5693.203,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 636291658,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00139638,
+          "tokens": 26722,
+          "duration_ms": 5903.358,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 3169082352,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00132476,
+          "tokens": 26488,
+          "duration_ms": 5319.358,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 3420679014,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00141264,
+          "tokens": 26765,
+          "duration_ms": 6046.275,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 1434975941,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00066531,
+          "tokens": 26504,
+          "duration_ms": 5439.349,
+          "run_id": null
+        },
+        {
+          "index": 5,
+          "seed": 578866771,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00070231,
+          "tokens": 26617,
+          "duration_ms": 5873.152,
+          "run_id": null
+        },
+        {
+          "index": 6,
+          "seed": 3146358761,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00069806,
+          "tokens": 26595,
+          "duration_ms": 5563.979,
+          "run_id": null
+        },
+        {
+          "index": 7,
+          "seed": 3431903103,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00071181,
+          "tokens": 26651,
+          "duration_ms": 5745.453,
+          "run_id": null
+        },
+        {
+          "index": 8,
+          "seed": 1546760942,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00070106,
+          "tokens": 26604,
+          "duration_ms": 5790.058,
+          "run_id": null
+        },
+        {
+          "index": 9,
+          "seed": 724992632,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00073644,
+          "tokens": 26731,
+          "duration_ms": 5861.049,
+          "run_id": null
+        },
+        {
+          "index": 10,
+          "seed": 1660394149,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00082681,
+          "tokens": 27007,
+          "duration_ms": 6397.22,
+          "run_id": null
+        },
+        {
+          "index": 11,
+          "seed": 368093747,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00067457,
+          "tokens": 26527,
+          "duration_ms": 5646.826,
+          "run_id": null
+        },
+        {
+          "index": 12,
+          "seed": 2365193097,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00073994,
+          "tokens": 26729,
+          "duration_ms": 5858.126,
+          "run_id": null
+        },
+        {
+          "index": 13,
+          "seed": 4227779359,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00070944,
+          "tokens": 26641,
+          "duration_ms": 5815.43,
+          "run_id": null
+        },
+        {
+          "index": 14,
+          "seed": 1704615612,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00080681,
+          "tokens": 26937,
+          "duration_ms": 6322.264,
+          "run_id": null
+        },
+        {
+          "index": 15,
+          "seed": 312307242,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00069781,
+          "tokens": 26596,
+          "duration_ms": 5859.816,
+          "run_id": null
+        },
+        {
+          "index": 16,
+          "seed": 2341748624,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00075294,
+          "tokens": 26779,
+          "duration_ms": 6048.634,
+          "run_id": null
+        },
+        {
+          "index": 17,
+          "seed": 4237496070,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00074619,
+          "tokens": 26743,
+          "duration_ms": 5915.204,
+          "run_id": null
+        },
+        {
+          "index": 18,
+          "seed": 1814827671,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 5,
+            "exact": 4,
+            "approximate": 1
+          },
+          "cost_usd": 0.00072706,
+          "tokens": 26686,
+          "duration_ms": 5913.175,
+          "run_id": null
+        },
+        {
+          "index": 19,
+          "seed": 455811585,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": {
+            "type": "UnrecordedCallError",
+            "module": "agent_replay.errors",
+            "message": "the agent made a tool call 'return_delivered_order_items' that the cassette never recorded (or made it more times than recorded); request: {\"item_ids\":[\"4579334072\",\"1421289881\",\"6117189161\",\"4947717507\"],\"order_id\":\"#W5490111\",\"payment_method_id\":\"paypal_9497703\"}. If the change is intended, re-record the cassette with `replay record`, or replay with --policy fallback (perform it for real) or --policy synth (stub it)."
+          },
+          "failed_checks": [
+            "tool_sequence",
+            "rule:matches_ground_truth",
+            "forbidden_tools"
+          ],
+          "steps": {
+            "live": 6,
+            "exact": 4,
+            "unrecorded": 1,
+            "approximate": 1
+          },
+          "cost_usd": 0.00126536,
+          "tokens": 34303,
+          "duration_ms": 8713.165,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "failed": [],
+  "flaky": [
+    "transfer_swapped_refunds"
+  ],
+  "broken": [],
+  "runs": 120,
+  "cost_usd": 0.10453083
+}

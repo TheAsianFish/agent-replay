@@ -5,6 +5,8 @@
 # In full mode served steps carry their recorded cost and latency, so the budget
 # bites when a cassette is re-recorded or a scenario runs model-live. Paths are
 # relative to this file. Every scenario runs the [defaults] checks, then its own.
+# db_matches_ground_truth is τ-bench's reward (final database = ground truth's); it
+# only bites when the tools ran (tools-live) and passes vacuously when they were served.
 
 [defaults]
 agent = "examples.retail_agent.agent:run"
@@ -34,6 +36,7 @@ name = "cancel_pending_laptop"
 cassette = "cassettes/live/cancel_pending_laptop.jsonl"
 checks = [
   { type = "rule", ref = "examples.retail_agent.rules:matches_ground_truth", args = { task = "cancel_pending_laptop" } },
+  { type = "rule", ref = "examples.retail_agent.rules:db_matches_ground_truth", args = { task = "cancel_pending_laptop" } },
   { type = "arg_schema", tool = "cancel_pending_order", must_call = true, schema = { type = "object", required = ["order_id", "reason"], properties = { order_id = { type = "string", pattern = "^#W[0-9]{7}$" }, reason = { enum = ["no longer needed", "ordered by mistake"] } } } },
 ]
 
@@ -42,6 +45,7 @@ name = "modify_address_suite"
 cassette = "cassettes/live/modify_address_suite.jsonl"
 checks = [
   { type = "rule", ref = "examples.retail_agent.rules:matches_ground_truth", args = { task = "modify_address_suite" } },
+  { type = "rule", ref = "examples.retail_agent.rules:db_matches_ground_truth", args = { task = "modify_address_suite" } },
   { type = "required_tools", tools = ["get_order_details", "modify_pending_order_address"] },
 ]
 
@@ -50,6 +54,7 @@ name = "return_damaged_bicycle"
 cassette = "cassettes/live/return_damaged_bicycle.jsonl"
 checks = [
   { type = "rule", ref = "examples.retail_agent.rules:matches_ground_truth", args = { task = "return_damaged_bicycle" } },
+  { type = "rule", ref = "examples.retail_agent.rules:db_matches_ground_truth", args = { task = "return_damaged_bicycle" } },
   { type = "arg_schema", tool = "return_delivered_order_items", must_call = true, schema = { type = "object", required = ["item_ids", "payment_method_id"], properties = { item_ids = { type = "array", minItems = 1 } } } },
 ]
 
@@ -58,6 +63,7 @@ name = "exchange_waterproof_boots"
 cassette = "cassettes/live/exchange_waterproof_boots.jsonl"
 checks = [
   { type = "rule", ref = "examples.retail_agent.rules:matches_ground_truth", args = { task = "exchange_waterproof_boots" } },
+  { type = "rule", ref = "examples.retail_agent.rules:db_matches_ground_truth", args = { task = "exchange_waterproof_boots" } },
   { type = "required_tools", tools = ["get_product_details", "exchange_delivered_order_items"] },
 ]
 
@@ -66,6 +72,7 @@ name = "lookup_latest_order_total"
 cassette = "cassettes/live/lookup_latest_order_total.jsonl"
 checks = [
   { type = "rule", ref = "examples.retail_agent.rules:matches_ground_truth", args = { task = "lookup_latest_order_total" } },
+  { type = "rule", ref = "examples.retail_agent.rules:db_matches_ground_truth", args = { task = "lookup_latest_order_total" } },
   { type = "forbidden_tools", tools = ["cancel_pending_order", "modify_pending_order_address", "return_delivered_order_items", "exchange_delivered_order_items"] },
   { type = "output_schema", schema = { type = "string", pattern = "\\$829\\.43" } },
 ]
@@ -75,6 +82,7 @@ name = "transfer_swapped_refunds"
 cassette = "cassettes/live/transfer_swapped_refunds.jsonl"
 checks = [
   { type = "rule", ref = "examples.retail_agent.rules:matches_ground_truth", args = { task = "transfer_swapped_refunds" } },
+  { type = "rule", ref = "examples.retail_agent.rules:db_matches_ground_truth", args = { task = "transfer_swapped_refunds" } },
   { type = "required_tools", tools = ["transfer_to_human_agents"] },
   { type = "forbidden_tools", tools = ["cancel_pending_order", "modify_pending_order_address", "return_delivered_order_items", "exchange_delivered_order_items"] },
 ]

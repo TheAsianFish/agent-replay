@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typing import ClassVar
 
 import pytest
+from scipy.stats import binom
 
 from agent_replay import stats, stats_baseline
 from eval import sprt_sim
@@ -120,3 +121,53 @@ def test_main_skips_an_unimplemented_core(
     captured = capsys.readouterr()
     assert "baseline mean runs" in captured.out
     assert "core mean runs" not in captured.out
+
+
+def _scipy_design(params: sprt_sim.GateParams) -> tuple[int, int]:
+    for n in range(1, 200):
+        for c in range(n + 1):
+            false_pass = binom.sf(c - 1, n, params.p_fail)
+            false_fail = binom.cdf(c - 1, n, params.p_pass)
+            if false_pass <= params.alpha and false_fail <= params.beta:
+                return n, c
+    raise AssertionError("no design")
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        sprt_sim.GateParams(),
+        sprt_sim.GateParams(p_fail=0.5, p_pass=0.8, alpha=0.1, beta=0.05),
+        sprt_sim.GateParams(p_fail=0.7, p_pass=0.95, alpha=0.01, beta=0.1),
+    ],
+)
+def test_fixed_sample_design_matches_scipy(params: sprt_sim.GateParams) -> None:
+    design = sprt_sim.fixed_sample_design(params)
+    assert (design.runs, design.min_passes) == _scipy_design(params)
+    assert design.false_pass_rate <= params.alpha
+    assert design.false_fail_rate <= params.beta
+
+
+def test_default_fixed_sample_design() -> None:
+    # p_fail 0.6 vs p_pass 0.9 at 5%/5% needs 24 runs; the fixed-20 majority gate misses alpha.
+    design = sprt_sim.fixed_sample_design(sprt_sim.GateParams())
+    assert (design.runs, design.min_passes) == (24, 19)
+    assert design.false_pass_rate == pytest.approx(0.03997, abs=1e-5)
+    assert design.false_fail_rate == pytest.approx(0.02766, abs=1e-5)
+
+
+def test_fixed_sample_design_reports_an_impossible_target() -> None:
+    with pytest.raises(ValueError, match="no fixed-sample test of at most 3 runs"):
+        sprt_sim.fixed_sample_design(sprt_sim.GateParams(), limit=3)
+
+
+def test_main_reports_the_fixed_sample_yardstick(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = tmp_path / "sprt.json"
+    assert sprt_sim.main(["--impl", "baseline", "--trials", "10", "--out", str(out)]) == 0
+    stdout = capsys.readouterr().out
+    assert "fixed-sample test meeting alpha=0.05, beta=0.05 (exact binomial): 24 runs" in stdout
+    assert "runs vs the fixed-sample test: 83% at p_fail, 83% at p_pass" in stdout
+    design = json.loads(out.read_text())["fixed_sample_design"]
+    assert (design["runs"], design["min_passes"]) == (24, 19)

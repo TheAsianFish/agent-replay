@@ -21,6 +21,15 @@ class AgentLoadError(ReplayError):
     """An ``module:attribute`` reference could not be imported."""
 
 
+class UnattributedCallError(ReplayError):
+    """A call from a thread with no session context while several sessions are active.
+
+    It cannot be attributed to one of them, so every active session fails: this is
+    a problem with how the agent starts threads (or with running sessions
+    concurrently), not a regression of the agent.
+    """
+
+
 class UnrecordedCallError(ReplayError):
     """During replay the agent made a call that the cassette has no envelope for."""
 

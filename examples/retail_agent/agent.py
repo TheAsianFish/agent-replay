@@ -2,20 +2,21 @@
 
 Like the toy agent, nothing here knows about recording or replay except the
 ``@tool`` decorator on the tools; the client it receives is wrapped by whoever
-runs it. The tools act on ``tools.DB``; call ``tools.reset_db()`` between runs.
+runs it. The tools act on ``tools.DB``, which every run starts by resetting.
 """
 
 from __future__ import annotations
 
 import json
-from typing import Any
+from collections.abc import Mapping
+from typing import Any, ClassVar
 
 from anthropic import Anthropic, omit
 from anthropic.types import ContentBlock, MessageParam, ToolResultBlockParam, ToolUseBlock
 
 from agent_replay import Tool
 from agent_replay._json import to_jsonable
-from examples.retail_agent.tools import ALL_TOOLS, DATA
+from examples.retail_agent.tools import ALL_TOOLS, DATA, reset_db
 
 MODEL = "claude-opus-5-5"
 
@@ -36,19 +37,28 @@ SYSTEM = POLICY + SINGLE_TURN_NOTE
 
 TOOLS: dict[str, Tool[..., Any]] = {t.name: t for t in ALL_TOOLS}
 
+ToolTable = Mapping[str, Tool[..., Any]]
+
 
 class RetailAgent:
+    model = MODEL
     max_turns = 12
     prompt_cache = True
+    tools: ClassVar[ToolTable] = TOOLS
+    """The tools offered to the model and run for it, by name. A subclass swaps one
+    entry to change a tool's behaviour behind the same name and schema."""
 
     def run(self, client: Anthropic, task: str) -> str:
+        # τ-bench resets the environment for every task, so a run never sees an
+        # earlier run's writes (sequential replays in tools-live included).
+        reset_db()
         messages: list[MessageParam] = [{"role": "user", "content": task}]
         for _ in range(self.max_turns):
             response = client.messages.create(
-                model=MODEL,
+                model=self.model,
                 max_tokens=4096,
                 system=SYSTEM,
-                tools=[t.to_anthropic() for t in TOOLS.values()],
+                tools=[t.to_anthropic() for t in self.tools.values()],
                 messages=messages,
                 output_config={"effort": "low"},
                 # Caches the growing prefix (tools, policy, earlier turns) for the next turn.
@@ -63,16 +73,26 @@ class RetailAgent:
 
     def handle_tool_uses(self, blocks: list[ToolUseBlock]) -> list[ToolResultBlockParam]:
         """Run every requested tool; all results go back in one user message."""
-        return [execute(block) for block in blocks]
+        return [self.execute(block) for block in blocks]
+
+    def execute(self, block: ToolUseBlock) -> ToolResultBlockParam:
+        return call_tool(block.id, block.name, block.input, tools=self.tools)
+
+    def call_tool(
+        self, tool_use_id: str, name: str, arguments: dict[str, Any]
+    ) -> ToolResultBlockParam:
+        return call_tool(tool_use_id, name, arguments, tools=self.tools)
 
 
-def execute(block: ToolUseBlock) -> ToolResultBlockParam:
-    return call_tool(block.id, block.name, block.input)
+def execute(block: ToolUseBlock, *, tools: ToolTable = TOOLS) -> ToolResultBlockParam:
+    return call_tool(block.id, block.name, block.input, tools=tools)
 
 
-def call_tool(tool_use_id: str, name: str, arguments: dict[str, Any]) -> ToolResultBlockParam:
+def call_tool(
+    tool_use_id: str, name: str, arguments: dict[str, Any], *, tools: ToolTable = TOOLS
+) -> ToolResultBlockParam:
     """Run one tool; a failure becomes an ``is_error`` result worded like tau-bench's."""
-    tool = TOOLS.get(name)
+    tool = tools.get(name)
     if tool is None:
         return error_result(tool_use_id, f"unknown tool {name}")
     try:

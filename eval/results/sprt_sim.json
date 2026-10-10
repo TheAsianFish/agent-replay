@@ -8,6 +8,12 @@
     "trials": 2000,
     "seed": 0
   },
+  "fixed_sample_design": {
+    "runs": 24,
+    "min_passes": 19,
+    "false_pass_rate": 0.039971,
+    "false_fail_rate": 0.027658
+  },
   "results": {
     "baseline": {
       "summary": {

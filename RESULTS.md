@@ -308,17 +308,22 @@ as a taxonomy before calibration. With a deterministic reference this agreeable
 on a small, easy set, the numbers say the wiring works, not that the judge is
 accurate.
 
-## Sequential gate simulation, baseline only (M3, offline)
+## Sequential gate simulation (M3, extended in M4; offline)
 
-The CI gate's operating characteristic before the SPRT exists. `agent_replay/stats.py`
-(the SPRT, Wilson and kappa) is a specification with unimplemented bodies;
-`agent_replay/stats_baseline.py` is the naive reference: run `max_runs` times
-and pass on a majority (pass rate ≥ (p_fail + p_pass) / 2).
+The CI gate's operating characteristic. `agent_replay/stats.py` (the SPRT,
+Wilson and kappa) is still a specification with unimplemented bodies, so only
+`agent_replay/stats_baseline.py` runs: `max_runs` runs, then pass on a
+majority (pass rate ≥ (p_fail + p_pass) / 2). M4 adds the yardstick that
+"runs saved" will be measured against: the smallest fixed-sample test that
+meets the same error targets, computed exactly from the binomial distribution
+(`fixed_sample_design` in `eval/sprt_sim.py`, checked against scipy in
+`tests/test_sprt_sim.py`).
 
 - **Method:** for each true pass rate p, 2000 simulated sequences of
   Bernoulli(p) run outcomes (seed 0) through a fresh gate; p_fail = 0.6,
   p_pass = 0.9, α = β = 0.05, max_runs = 20.
-- **Command:** `make bench-sprt` (= `uv run python eval/sprt_sim.py --out eval/results/sprt_sim.json`), about 1.3 s.
+- **Command:** `make bench-sprt` (= `uv run python eval/sprt_sim.py --out eval/results/sprt_sim.json`), about 1.3 s. CI re-runs it and fails if
+  `eval/results/sprt_sim.json` changes.
 
 ```
 core: agent_replay/stats.py is not implemented yet; skipped
@@ -347,13 +352,19 @@ SPRT gate simulation: p_fail=0.6, p_pass=0.9, alpha=0.05, beta=0.05, max_runs=20
 | 0.95 | 20.00 | 1.000 |
 | 1.00 | 20.00 | 1.000 |
 
-- baseline: expected runs 20.00 at p_fail, 20.00 at p_pass; false-pass rate at p_fail 0.134, false-fail rate at p_pass 0.007
+- baseline: expected runs 20.00 at p_fail, 20.00 at p_pass; false-pass rate at p_fail 0.134, false-fail rate at p_pass 0.007; runs vs the fixed-sample test: 83% at p_fail, 83% at p_pass
+- fixed-sample test meeting alpha=0.05, beta=0.05 (exact binomial): 24 runs, pass on at least 19; false-pass rate 0.040, false-fail rate 0.028
+
+wrote eval/results/sprt_sim.json
 ```
 
-The fixed-20 majority gate passes 13.4% of scenarios whose true pass rate is
-0.6 (exact binomial: P(X ≥ 15 | n = 20, p = 0.6) ≈ 0.126), well over the 5%
-the SPRT targets, and always spends 20 runs. The SPRT's numbers join this
-table when `stats.py` is implemented; the same command produces them.
+Two findings so far. The fixed-20 majority gate passes 13.4% of scenarios
+whose true pass rate is 0.6 (exact binomial: P(X ≥ 15 | n = 20, p = 0.6) ≈
+0.126), well over the 5% target, and always spends 20 runs. Meeting
+α = β = 0.05 with a fixed sample takes **24 runs** (pass on at least 19; exact
+error rates 4.0% and 2.8%). The SPRT's expected runs at p_fail and p_pass, as
+a fraction of those 24, are the "runs saved" number; the same command prints
+them once `stats.py` is implemented (see "To measure").
 
 ## Judge live test (M3)
 
@@ -371,16 +382,355 @@ accurate_report: pass - The reply says #W2417020 is cancelled, which matches the
 1 passed
 ```
 
+## Mutation study (M4, offline)
+
+Which injected regressions does each check type catch, and in which replay
+mode? 32 scripted mutations of the retail agent, each one a realistic bug,
+plus 5 behaviour-preserving refactors that must not fail anything.
+
+- **Dataset (D4):** `eval/mutations/`, three kinds:
+  - **agent** (12): orchestration-code bugs in a `RetailAgent` subclass:
+    skipped lookups, a changed write argument, dropped parallel calls,
+    truncated tool results, a turn limit too low, mismatched `tool_use` ids,
+    a stripped policy, and so on (the three M2 mutants are among them);
+  - **model** (12): simulated prompt or model regressions, written as
+    wrappers around the deterministic fake model's policy: skipping
+    authentication, a wrong cancel reason, refunding to the wrong payment
+    method, transferring instead of acting, a rounded total, repeated
+    lookups, and so on;
+  - **tool** (8): tool-code bugs behind the same name and schema: a cancel
+    that leaves the status unchanged, a return that ignores the item ids,
+    stale order details, and so on.
+  The **benign** refactors are an extracted loop, parallel tool execution, a
+  different JSON layout for tool results, a higher turn limit and an async
+  agent.
+- **Suite:** `examples/retail_agent/replay.toml`, six τ-bench tasks, its
+  committed fake-model cassettes and every check type except `judge` (no
+  verdict cache exists for mutant transcripts). M4 added
+  `rule:db_matches_ground_truth`, τ-bench's reward: the database after the
+  run equals the one the ground-truth actions leave. It applies only when
+  every tool call really ran; otherwise it passes as "not applicable".
+- **Configurations:** `full` (everything from the cassette: the
+  stub-everything baseline), `tools-live`, `model-live` (the fake model, or
+  the mutated one, plays the live model), `model-live` with the `fallback`
+  policy (a tool call with no recorded envelope left runs for real) and
+  `tools-live+strict` (`tools-live` with `fail_on_approximate`: a served
+  model step whose request differs from the recording fails the scenario).
+  Strict policy otherwise.
+- **Method:** a mutation is detected when the suite fails. A check type
+  catches it when it is among the blocking failed checks of at least one
+  scenario; `run_error:<Type>` is a run that ended in that exception; "alone"
+  means no other check type caught that mutation in that configuration.
+- **Command:** `make eval-mutations` (= `uv run python eval/mutation_study.py --out eval/results/mutations.json`), about 25 s. Deterministic: CI
+  re-runs it and fails if `eval/results/mutations.json` changes.
+
+Raw output (the per-mutation matrix is folded below):
+
+```
+## Mutation study: retail suite
+
+32 mutations (12 agent, 12 model, 8 tool) and 5 benign refactors, each replayed against the six-scenario suite `examples/retail_agent/replay.toml` in 5 configurations. `full` serves every call from the cassette: it is the stub-everything baseline.
+
+Detected: the suite fails. A check type catches a mutation when it is among the blocking failed checks of some scenario; `run_error:<Type>` is a run that ended in that exception. Alone: no other check type caught it in that configuration.
+
+### Detection rate by configuration
+
+| configuration | all | agent | model | tool |
+|---|---|---|---|---|
+| full | 7/32 (22%) | 7/12 (58%) | 0/12 (0%) | 0/8 (0%) |
+| tools-live | 12/32 (38%) | 7/12 (58%) | 0/12 (0%) | 5/8 (62%) |
+| model-live | 22/32 (69%) | 10/12 (83%) | 12/12 (100%) | 0/8 (0%) |
+| model-live+fallback | 22/32 (69%) | 10/12 (83%) | 12/12 (100%) | 0/8 (0%) |
+| tools-live+strict | 19/32 (59%) | 11/12 (92%) | 0/12 (0%) | 8/8 (100%) |
+
+### Mutations caught per check type (caught / all mutations, alone)
+
+| check type | full | tools-live | model-live | model-live+fallback | tools-live+strict |
+|---|---|---|---|---|---|
+| `arg_schema` | 1/32 (alone 0) | 1/32 (alone 0) | 6/32 (alone 0) | 6/32 (alone 0) | 1/32 (alone 0) |
+| `budget` | 0/32 (alone 0) | 0/32 (alone 0) | 3/32 (alone 1) | 3/32 (alone 1) | 0/32 (alone 0) |
+| `forbidden_tools` | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) |
+| `max_tool_calls` | 0/32 (alone 0) | 0/32 (alone 0) | 1/32 (alone 0) | 1/32 (alone 0) | 0/32 (alone 0) |
+| `no_approximate_steps` | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 14/32 (alone 7) |
+| `output_schema` | 2/32 (alone 0) | 2/32 (alone 0) | 7/32 (alone 0) | 7/32 (alone 0) | 2/32 (alone 0) |
+| `required_tools` | 4/32 (alone 0) | 4/32 (alone 0) | 9/32 (alone 0) | 9/32 (alone 0) | 4/32 (alone 0) |
+| `rule:checked_before_writing` | 2/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) |
+| `rule:db_matches_ground_truth` | 0/32 (alone 0) | 7/32 (alone 5) | 0/32 (alone 0) | 0/32 (alone 0) | 7/32 (alone 2) |
+| `rule:matches_ground_truth` | 4/32 (alone 1) | 4/32 (alone 0) | 19/32 (alone 6) | 19/32 (alone 6) | 4/32 (alone 0) |
+| `run_error:JSONDecodeError` | 0/32 (alone 0) | 0/32 (alone 0) | 2/32 (alone 0) | 2/32 (alone 0) | 0/32 (alone 0) |
+| `run_error:KeyError` | 0/32 (alone 0) | 0/32 (alone 0) | 1/32 (alone 0) | 1/32 (alone 0) | 0/32 (alone 0) |
+| `run_error:RuntimeError` | 1/32 (alone 0) | 1/32 (alone 0) | 2/32 (alone 0) | 3/32 (alone 0) | 1/32 (alone 0) |
+| `run_error:UnrecordedCallError` | 1/32 (alone 0) | 0/32 (alone 0) | 4/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) |
+| `tool_sequence` | 5/32 (alone 0) | 5/32 (alone 0) | 13/32 (alone 0) | 13/32 (alone 0) | 5/32 (alone 0) |
+
+### Benign refactors (false alarms; approximate steps)
+
+| refactor | full | tools-live | model-live | model-live+fallback | tools-live+strict |
+|---|---|---|---|---|---|
+| `extracted_loop` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| `parallel_tools` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| `compact_tool_json` | pass; 17 approx | pass; 17 approx | pass; 0 approx | pass; 0 approx | FALSE ALARM: no_approximate_steps; 17 approx |
+| `more_turns` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| `async_agent` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+
+False alarms: full 0/5, tools-live 0/5, model-live 0/5, model-live+fallback 0/5, tools-live+strict 1/5.
+Survived every configuration: `drops_error_flag`.
+```
+
+<details><summary>Per-mutation matrix</summary>
+
+### Per mutation (check types that caught it; — survived)
+
+| mutation | target | full | tools-live | model-live | model-live+fallback | tools-live+strict |
+|---|---|---|---|---|---|---|
+| `skips_order_lookup` | agent | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `arg_schema`, `budget`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `budget`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `no_approximate_steps`, `required_tools`, `rule:checked_before_writing`, `tool_sequence` |
+| `wrong_write_argument` | agent | `rule:matches_ground_truth` | `rule:db_matches_ground_truth`, `rule:matches_ground_truth` | `rule:matches_ground_truth` | `rule:matches_ground_truth` | `no_approximate_steps`, `rule:db_matches_ground_truth`, `rule:matches_ground_truth` |
+| `first_tool_only` | agent | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `budget` | `budget` | `no_approximate_steps`, `required_tools`, `rule:checked_before_writing`, `tool_sequence` |
+| `drops_error_flag` | agent | — | — | — | — | — |
+| `truncates_tool_results` | agent | — | — | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `no_approximate_steps` |
+| `max_turns_too_low` | agent | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:db_matches_ground_truth`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:db_matches_ground_truth`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` |
+| `returns_empty_answer` | agent | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` |
+| `repeats_write_calls` | agent | `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` | `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` |
+| `mismatches_tool_use_ids` | agent | — | — | `required_tools`, `rule:matches_ground_truth`, `run_error:KeyError`, `tool_sequence` | `required_tools`, `rule:matches_ground_truth`, `run_error:KeyError`, `tool_sequence` | `no_approximate_steps` |
+| `unregisters_product_tool` | agent | `required_tools`, `tool_sequence` | `required_tools`, `tool_sequence` | `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `no_approximate_steps`, `required_tools`, `tool_sequence` |
+| `strips_policy` | agent | — | — | — | — | `no_approximate_steps` |
+| `truncates_history` | agent | — | — | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | `no_approximate_steps` |
+| `skips_authentication` | model | — | — | `rule:checked_before_writing`, `tool_sequence` | `rule:checked_before_writing`, `tool_sequence` | — |
+| `skips_order_check` | model | — | — | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | `required_tools`, `rule:checked_before_writing`, `tool_sequence` | — |
+| `wrong_cancel_reason` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `product_ids_as_item_ids` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `refunds_to_first_method` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `suite_in_address1` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `wrong_exchange_variant` | model | — | — | `rule:matches_ground_truth` | `rule:matches_ground_truth` | — |
+| `transfers_instead_of_acting` | model | — | — | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | — |
+| `transfers_after_acting` | model | — | — | `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `rule:matches_ground_truth`, `tool_sequence` | — |
+| `claims_without_acting` | model | — | — | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `tool_sequence` | — |
+| `repeats_lookups` | model | — | — | `budget`, `max_tool_calls`, `output_schema`, `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `budget`, `max_tool_calls`, `output_schema`, `rule:matches_ground_truth`, `run_error:RuntimeError`, `tool_sequence` | — |
+| `rounds_reported_total` | model | — | — | `output_schema`, `rule:matches_ground_truth` | `output_schema`, `rule:matches_ground_truth` | — |
+| `cancel_keeps_status` | tool | — | `rule:db_matches_ground_truth` | — | — | `rule:db_matches_ground_truth` |
+| `cancel_skips_gift_card_refund` | tool | — | `rule:db_matches_ground_truth` | — | — | `rule:db_matches_ground_truth` |
+| `address_drops_address2` | tool | — | `rule:db_matches_ground_truth` | — | — | `no_approximate_steps`, `rule:db_matches_ground_truth` |
+| `return_ignores_item_ids` | tool | — | `rule:db_matches_ground_truth` | — | — | `no_approximate_steps`, `rule:db_matches_ground_truth` |
+| `exchange_flips_price_difference` | tool | — | `rule:db_matches_ground_truth` | — | — | `no_approximate_steps`, `rule:db_matches_ground_truth` |
+| `user_lookup_builds_id` | tool | — | — | — | — | `no_approximate_steps` |
+| `product_details_all_unavailable` | tool | — | — | — | — | `no_approximate_steps` |
+| `order_details_stale_status` | tool | — | — | — | — | `no_approximate_steps` |
+
+</details>
+
+What this shows:
+
+- **Each mode catches what it runs live, and only that.** `full` serves the
+  recording's model replies and tool results, so a model or tool bug cannot
+  take effect there; a tool bug cannot take effect in `model-live` either.
+  Of the 32 mutations, 20 live in a component `full` never runs, so a suite
+  that only stubs everything passes them by construction: it caught 7/32,
+  and 7/12 of the mutations that could take effect. Over the mutations that
+  can take effect in each configuration: `tools-live` 12/20, `model-live`
+  22/24, `tools-live+strict` 19/20. This is the measured case for cut-point
+  replay: where the bug lives decides which cut point can see it.
+- **Ground-truth rules carry most of the weight.**
+  `rule:matches_ground_truth` caught 19/32 in `model-live`, 6 of them alone
+  (a wrong cancel reason, a wrong exchange variant and the like leave the
+  tool sequence intact). For 9 of those 19 mutations a run ended in an
+  exception, and the rule and the other checks fail there as a side effect
+  of the run stopping early. The state check `rule:db_matches_ground_truth` caught 7/32
+  in `tools-live`, 5 alone; it cannot apply in either `model-live`
+  configuration (served tool calls never touch the database), so its 0/32
+  there is structural. `tool_sequence` caught 13 but never alone. `budget`
+  (model-call limit) caught dropped parallel calls alone.
+- **The drift signal is already there, and it is a trade-off.** Every
+  served step whose request differs from the recording is flagged
+  `approximate`; the four lenient configurations record the count without
+  failing on it. `tools-live+strict` (`fail_on_approximate`) turns it into a
+  check: `no_approximate_steps` caught 14/32, 7 of them alone, including
+  all 8 tool bugs (the three read-only ones change only what a tool
+  returns, which the next model request carries) and the stripped policy
+  (every later request differs). The price is 1/5 false alarms: the
+  JSON-layout refactor changes the same request bytes. The lenient
+  configurations stayed at 0/5.
+- **False alarms.** 0/5 benign refactors failed in the four lenient
+  configurations and 1/5 in the strict one. Five refactors is a small
+  control group, and four of them send byte-identical requests, so only
+  `compact_tool_json` exercises the matcher.
+- **One mutation survives everything.** `drops_error_flag` (not marking a
+  failed tool result `is_error`) is equivalent to the original on this
+  suite: no recorded run has a failing tool, and it leaves 0 approximate
+  steps in every configuration.
+- **Caveats.** The fake model stands in for a live one; it ignores the
+  prompt, so `strips_policy` is invisible in `model-live`. Three
+  `run_error` catches (`JSONDecodeError` for `truncates_tool_results` and
+  `unregisters_product_tool`, `KeyError` for `mismatches_tool_use_ids`) are
+  the fake model crashing on a conversation the mutant corrupted; a real
+  model would misbehave differently. With `fallback`, a tool call that has
+  no recorded envelope left runs for real instead of ending the run, but a
+  call whose arguments merely differ is still served the recorded result
+  (flagged `approximate`), so the checks judge the requested arguments, not
+  a real tool's answer; the same 22 are caught.
+
+## `replay flake` on live models (M4)
+
+Does the retail agent reach the same outcomes run after run when the model
+is live, and does a cheaper model? `replay flake` replays each scenario
+repeatedly in `model-live` (tools served from the Opus recordings), counts
+passes and classifies each scenario passing, flaky or failing. These are the
+first repeated live runs in the project.
+
+- **Dataset:** the six live retail recordings
+  (`examples/retail_agent/cassettes/live`), suite
+  `examples/retail_agent/replay.toml` (every check of the mutation study, no
+  judge).
+- **Agents:** the shipped agent (`claude-opus-5-5`, effort `low`) and
+  `examples.retail_agent.variants:run_haiku`, the same agent with
+  `claude-haiku-5-5`. Haiku cache prices in `agent_replay/pricing.py` are
+  the standard multipliers of its $0.10 input price, not separately
+  published figures.
+- **Statistics:** `REPLAY_STATS_IMPL=baseline`, because `stats.py` is not
+  written yet. The gate is therefore the fixed-k majority stand-in (k =
+  `--max-runs`), and the printed intervals are Wald intervals, which collapse
+  to [1.00, 1.00] at k/k. Read the pass counts; Wilson intervals come with
+  the core implementation (see "To measure").
+- **Date:** 2026-10-10. Spend: $0.1045 (Haiku, 120 runs), $1.0696 (Opus, 30
+  runs), $0.00137 (one Haiku smoke run before them).
+
+**Haiku 5.5, 20 runs per scenario.** Raw JSON: `eval/results/m4_flake_haiku.json`.
+
+```
+$ uv run replay flake examples/retail_agent/replay.toml --no-store --cassette-dir examples/retail_agent/cassettes/live --client anthropic --agent examples.retail_agent.variants:run_haiku --max-runs 20 --concurrency 4 --json eval/results/m4_flake_haiku.json
+PASS cancel_pending_laptop (passing 20/20 (100%), interval [1.00, 1.00])
+PASS modify_address_suite (passing 20/20 (100%), interval [1.00, 1.00])
+PASS return_damaged_bicycle (passing 20/20 (100%), interval [1.00, 1.00])
+PASS exchange_waterproof_boots (passing 20/20 (100%), interval [1.00, 1.00])
+PASS lookup_latest_order_total (passing 20/20 (100%), interval [1.00, 1.00])
+PASS transfer_swapped_refunds (flaky 19/20 (95%), interval [0.85, 1.00])
+    error:UnrecordedCallError: failed 1/20 runs
+    forbidden_tools: failed 1/20 runs
+    rule:matches_ground_truth: failed 1/20 runs
+    tool_sequence: failed 1/20 runs
+6/6 scenario(s) passed the gate (1 flaky; 120 runs, $0.1045; gate: fixed 20 
+runs, pass on a pass rate of at least 0.75 (the baseline stand-in for the SPRT);
+Wald intervals): passed
+```
+
+The one failure is the last of the 20 runs of `transfer_swapped_refunds`
+(index 19 in the JSON), where the user asks
+to refund each order to the other order's payment method. Policy allows only
+the original method or a gift card, so the right action is a transfer to a
+human. In that run Haiku instead called `return_delivered_order_items` on
+order #W5490111 with `paypal_9497703`. That is a policy breach, and
+`forbidden_tools`, `rule:matches_ground_truth` and `tool_sequence` all
+caught it. The other 19 runs of that task, and all 100 runs of the other five
+tasks, passed.
+
+**Opus 5.5, 5 runs per scenario.** Raw JSON: `eval/results/m4_flake_opus.json`.
+
+```
+$ uv run replay flake examples/retail_agent/replay.toml --no-store --cassette-dir examples/retail_agent/cassettes/live --client anthropic --max-runs 5 --concurrency 3 --json eval/results/m4_flake_opus.json
+PASS cancel_pending_laptop (passing 5/5 (100%), interval [1.00, 1.00])
+PASS modify_address_suite (passing 5/5 (100%), interval [1.00, 1.00])
+PASS return_damaged_bicycle (passing 5/5 (100%), interval [1.00, 1.00])
+PASS exchange_waterproof_boots (passing 5/5 (100%), interval [1.00, 1.00])
+PASS lookup_latest_order_total (passing 5/5 (100%), interval [1.00, 1.00])
+PASS transfer_swapped_refunds (passing 5/5 (100%), interval [1.00, 1.00])
+6/6 scenario(s) passed the gate (0 flaky; 30 runs, $1.0696; gate: fixed 5 runs, 
+pass on a pass rate of at least 0.75 (the baseline stand-in for the SPRT); Wald 
+intervals): passed
+```
+
+| Agent | Runs | Passed | Flaky scenarios | Cost | Cost per run |
+|---|---|---|---|---|---|
+| `claude-opus-5-5` | 30 | 30 | 0/6 | $1.0696 | $0.0357 |
+| `claude-haiku-5-5` | 120 | 119 | 1/6 | $0.1045 | $0.0009 |
+
+What this does and does not show: Haiku ran these six tasks for about 1/41
+of Opus's cost per run and failed one run in 120, a policy breach that a
+single CI run would have caught only by luck. With 30 runs of Opus and one
+failure in 120 for Haiku, the data cannot tell the two models' failure rates
+apart; it does show that the swap is not free on the refund-policy task. The
+gate passed Haiku's flaky scenario (19/20 is above the majority threshold)
+while the report flagged it flaky; separating "passes the gate" from
+"never fails" is the point of the classification.
+
+**Provenance, and a repeat.** Both JSON reports record commit `ff07cef`,
+which predates the scheduler rework in `1342707` (the window bound and the
+`broken` handling); with the fixed-k baseline gate every run is counted, so
+neither number depends on it. A repeat with 5 runs per scenario on the
+reviewed engine (`7ac313c`, `eval/results/m4_flake_haiku_5runs.json`) passed
+30/30 for $0.0379:
+
+```
+$ uv run replay flake examples/retail_agent/replay.toml --no-store --cassette-dir examples/retail_agent/cassettes/live --client anthropic --agent examples.retail_agent.variants:run_haiku --max-runs 5 --concurrency 4 --json eval/results/m4_flake_haiku_5runs.json
+PASS cancel_pending_laptop (passing 5/5 (100%), interval [1.00, 1.00])
+PASS modify_address_suite (passing 5/5 (100%), interval [1.00, 1.00])
+PASS return_damaged_bicycle (passing 5/5 (100%), interval [1.00, 1.00])
+PASS exchange_waterproof_boots (passing 5/5 (100%), interval [1.00, 1.00])
+PASS lookup_latest_order_total (passing 5/5 (100%), interval [1.00, 1.00])
+PASS transfer_swapped_refunds (passing 5/5 (100%), interval [1.00, 1.00])
+6/6 scenario(s) passed the gate (0 flaky; 30 runs, $0.0379; gate: fixed 5 runs, 
+pass on a pass rate of at least 0.75 (the baseline stand-in for the SPRT); Wald 
+intervals): passed
+```
+
+Its cost per run ($0.0013) is above the 120-run figure ($0.0009): with
+fewer runs per scenario, a larger share of each run's prompt is a cache
+write rather than a cache read.
+
+## `replay flake` offline (M4)
+
+`make flake-demo` (a CI step) runs the engine with no network. The plain fake
+model passes every scenario's gate. A seeded flaky fake model
+(`examples/retail_agent/flaky_model.py`) repeats its first lookup with a
+per-task probability (0 for three tasks, 0.05, 0.3 and 1.0 for the others),
+and must fail the gate (exit 1):
+
+```
+$ uv run replay flake examples/retail_agent/replay.toml --no-store --client examples.retail_agent.flaky_model:make_client
+PASS cancel_pending_laptop (passing 20/20 (100%), interval [1.00, 1.00])
+PASS modify_address_suite (passing 20/20 (100%), interval [1.00, 1.00])
+PASS return_damaged_bicycle (flaky 19/20 (95%), interval [0.85, 1.00])
+    arg_schema:return_delivered_order_items: failed 1/20 runs
+    error:UnrecordedCallError: failed 1/20 runs
+    rule:matches_ground_truth: failed 1/20 runs
+    tool_sequence: failed 1/20 runs
+FAIL exchange_waterproof_boots (flaky 14/20 (70%), interval [0.50, 0.90])
+    error:UnrecordedCallError: failed 6/20 runs
+    required_tools: failed 6/20 runs
+    rule:matches_ground_truth: failed 6/20 runs
+    tool_sequence: failed 6/20 runs
+PASS lookup_latest_order_total (passing 20/20 (100%), interval [1.00, 1.00])
+FAIL transfer_swapped_refunds (failing 0/20 (0%), interval [0.00, 0.00])
+    error:UnrecordedCallError: failed 20/20 runs
+    required_tools: failed 20/20 runs
+    rule:matches_ground_truth: failed 20/20 runs
+    tool_sequence: failed 20/20 runs
+4/6 scenario(s) passed the gate (2 flaky; 120 runs, $0.0000; gate: fixed 20 
+runs, pass on a pass rate of at least 0.75 (the baseline stand-in for the SPRT);
+Wald intervals): failed
+```
+
+Each run gets a seed derived from the scenario and run index, and outcomes are
+fed to the gate in run order, so the result is the same at any
+`--concurrency` (asserted in `tests/test_flake.py`).
+
 ## To measure
 
+- **SPRT savings vs the fixed-sample test.** `make bench-sprt` (offline, about
+  1 s) once `agent_replay/stats.py` is implemented: the core rows and
+  "runs vs the fixed-sample test" lines join the table above with no other
+  change.
+- **Wilson intervals for the live flake runs.** Re-run `replay flake` with
+  `REPLAY_STATS_IMPL=core`, or recompute from the pass counts in
+  `eval/results/m4_flake_*.json`.
+- **D3, the full flake benchmark** (30 scenarios × 20 runs in `model-live`)
+  needs a larger golden set (M6). At the measured cost per run that is about
+  $21 with Opus 5.5 or $0.52 with Haiku 5.5.
 - **Judge-human agreement (kappa with bootstrap CI)** needs the golden set
   (D1) and `replay calibrate` (M6). The judge, its rubric and the calibration
   report format exist; the report that would let a criterion gate does not.
-- **SPRT savings vs fixed k** (`make bench-sprt`, offline) once
-  `agent_replay/stats.py` is implemented.
 - The M2 live smoke test above can be re-run with the two commands in its
   section (about $0.30 each with `claude-opus-5-5` and a cold prompt cache);
-  the M3 cost-gate run with the two commands in its section (about $1.00).
+  the M3 cost-gate run with the two commands in its section (about $1.00);
+  the M4 flake runs with the three commands in their section ($0.10, $1.07 and $0.04).
 
 API spend in M3: $1.408 (cost gate $0.974; judge on recordings and mutants
 $0.358; three runs of the judge's live test $0.076, two of them while the
@@ -389,5 +739,9 @@ but terse reply and led to the criterion's current wording). The committed
 artefacts account for $1.329 of that (cost-gate reports $0.974, the 21 cached
 verdicts $0.330, the live test above $0.025); the remaining $0.079 (two
 re-judged duplicate mutant transcripts, two earlier live-test runs) comes from
-the session log, not from a file in this repo. Project total: $2.113
-(M1 $0.014, M2 $0.691, M3 $1.408).
+the session log, not from a file in this repo.
+
+API spend in M4: $1.213 (Opus flake runs $1.06960, Haiku flake runs
+$0.10453 and the Haiku repeat $0.03786, all in their committed JSON reports;
+one Haiku smoke run $0.00137, from the session log; sum $1.21336). Project
+total: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213).

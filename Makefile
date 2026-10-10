@@ -2,7 +2,7 @@
 # are added with the code they run.
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
-	bench-sprt
+	bench-sprt flake-demo eval-mutations
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -68,6 +68,13 @@ ci-demo:
 		test $$? -eq 1 || { echo "mutant $$mutant was not caught"; exit 1; }; \
 	done
 
+# replay flake offline: the fake model passes every scenario's gate; a seeded flaky
+# model is classified passing, flaky or failing per scenario and fails the gate (exit 1).
+flake-demo:
+	uv run replay flake $(RETAIL_SUITE) --no-store --client examples.retail_agent.fake_model:make_client
+	uv run replay flake $(RETAIL_SUITE) --no-store \
+		--client examples.retail_agent.flaky_model:make_client; test $$? -eq 1
+
 # Simulate the sequential CI gate over a grid of true pass rates (offline, ~seconds).
 bench-sprt:
 	uv run python eval/sprt_sim.py --out eval/results/sprt_sim.json
@@ -77,3 +84,10 @@ bench-sprt:
 # cache misses with claude-opus-5-5 (needs ANTHROPIC_API_KEY, about $0.015 a run).
 eval-judge-smoke:
 	uv run python eval/judge_smoke.py --offline --out eval/results/judge_smoke.json
+
+# The mutation study: 32 known-bad variants and 5 benign refactors of the retail agent,
+# replayed in full, tools-live, model-live, model-live with fallback and tools-live with
+# fail_on_approximate; detection rate per check type and per configuration (offline,
+# ~25 s). The JSON is byte-stable across runs.
+eval-mutations:
+	uv run python eval/mutation_study.py --out eval/results/mutations.json

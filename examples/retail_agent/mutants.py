@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from anthropic.types import ToolResultBlockParam, ToolUseBlock
 
-from examples.retail_agent.agent import RetailAgent, call_tool, error_result, execute
+from examples.retail_agent.agent import RetailAgent, error_result
 
 
 class SkipsOrderLookup(RetailAgent):
@@ -12,7 +12,9 @@ class SkipsOrderLookup(RetailAgent):
 
     def handle_tool_uses(self, blocks: list[ToolUseBlock]) -> list[ToolResultBlockParam]:
         return [
-            error_result(b.id, "lookup skipped") if b.name == "get_order_details" else execute(b)
+            error_result(b.id, "lookup skipped")
+            if b.name == "get_order_details"
+            else self.execute(b)
             for b in blocks
         ]
 
@@ -39,14 +41,14 @@ class WrongWriteArgument(RetailAgent):
     """Changes one argument of every write action before calling the tool."""
 
     def handle_tool_uses(self, blocks: list[ToolUseBlock]) -> list[ToolResultBlockParam]:
-        return [call_tool(b.id, b.name, _corrupt(b.name, b.input)) for b in blocks]
+        return [self.call_tool(b.id, b.name, _corrupt(b.name, b.input)) for b in blocks]
 
 
 class FirstToolOnly(RetailAgent):
     """Handles only the first tool call of each turn, a classic parallel-tool-use bug."""
 
     def handle_tool_uses(self, blocks: list[ToolUseBlock]) -> list[ToolResultBlockParam]:
-        return [execute(blocks[0])]
+        return [self.execute(blocks[0])]
 
 
 class NoPromptCache(RetailAgent):

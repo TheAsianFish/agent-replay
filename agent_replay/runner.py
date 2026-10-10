@@ -79,8 +79,13 @@ class RunResult(BaseModel):
         return [c(self) for c in checks]
 
 
-def make_client(ref: str) -> object:
-    """A model client from ``"anthropic"`` (the real API) or a ``module:factory`` reference."""
+def make_client(ref: str, *, seed: int | None = None) -> object:
+    """A model client from ``"anthropic"`` (the real API) or a ``module:factory`` reference.
+
+    A factory with a ``seed`` parameter is called with ``seed=`` when one is
+    given (``replay flake`` passes one per run), so a simulated flaky model is
+    reproducible; other factories are called without arguments.
+    """
     if ref == "anthropic":
         import anthropic  # noqa: PLC0415 - only needed for live calls
 
@@ -96,9 +101,20 @@ def make_client(ref: str) -> object:
     if not callable(factory):
         raise AgentLoadError(f"client {ref!r} is not callable; it must return a model client")
     try:
+        if seed is not None and _takes_seed(factory):
+            return factory(seed=seed)
         return factory()
     except Exception as exc:
         raise AgentLoadError(f"client {ref!r} raised {type(exc).__name__}: {exc}") from exc
+
+
+def _takes_seed(factory: Callable[..., object]) -> bool:
+    """Whether ``factory`` accepts ``seed=`` by keyword."""
+    try:
+        parameter = inspect.signature(factory).parameters.get("seed")
+    except (TypeError, ValueError):  # builtins and C callables may have no signature
+        return False
+    return parameter is not None and parameter.kind is not inspect.Parameter.POSITIONAL_ONLY
 
 
 def load_agent(ref: str) -> Agent:

@@ -57,7 +57,10 @@ It reads `tasks_test.py` with `ast` (never importing it) and keeps:
   other than reads (writes and the transfer), `expected_outputs` its outputs.
   `expected_db_hash(task)` resets the database, applies those actions with the
   real tools and hashes the result, so "final database equals expected
-  database" is τ-bench's reward.
+  database" is τ-bench's reward. The rule `db_matches_ground_truth` checks it
+  when the tools ran for real (`tools-live`) and passes vacuously when they were
+  served from the cassette. Like τ-bench, which resets the environment per task,
+  `RetailAgent.run` starts every run from the vendored database.
 - **Tools.** Same names, arguments, behaviour and error messages, with two
   changes: failures raise `ValueError("<message>")` and the agent reports them
   as `is_error` results reading `Error: <message>` (τ-bench returns that
