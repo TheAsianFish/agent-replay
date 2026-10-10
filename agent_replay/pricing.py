@@ -38,6 +38,9 @@ class ModelPrice:
 PRICES: dict[str, ModelPrice] = {
     "claude-opus-5-5": ModelPrice(input=4.00, output=20.00, cache_read=0.20, cache_write=5.00),
     "claude-sonnet-5-5": ModelPrice(input=2.00, output=10.00, cache_read=0.20, cache_write=2.50),
+    # Added 2026-10-10. Prompts up to 100K tokens (longer ones cost $0.50 / $2.50). Cache
+    # prices are the standard 0.1x read and 1.25x five-minute write multipliers.
+    "claude-haiku-5-5": ModelPrice(input=0.10, output=0.50, cache_read=0.01, cache_write=0.125),
 }
 
 

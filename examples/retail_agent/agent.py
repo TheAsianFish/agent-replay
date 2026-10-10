@@ -41,6 +41,7 @@ ToolTable = Mapping[str, Tool[..., Any]]
 
 
 class RetailAgent:
+    model = MODEL
     max_turns = 12
     prompt_cache = True
     tools: ClassVar[ToolTable] = TOOLS
@@ -54,7 +55,7 @@ class RetailAgent:
         messages: list[MessageParam] = [{"role": "user", "content": task}]
         for _ in range(self.max_turns):
             response = client.messages.create(
-                model=MODEL,
+                model=self.model,
                 max_tokens=4096,
                 system=SYSTEM,
                 tools=[t.to_anthropic() for t in self.tools.values()],
