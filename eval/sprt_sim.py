@@ -12,6 +12,13 @@ Reported per point: mean runs used and P(gate says pass). Summary: expected runs
 at ``p_fail`` and at ``p_pass``, the false-pass rate at ``p = p_fail`` and the
 false-fail rate at ``p = p_pass``.
 
+The yardstick for "runs saved" is the smallest *fixed-sample* test that meets
+the same error targets: ``n`` runs, pass on at least ``c`` passes, with the
+exact binomial false-pass rate at ``p_fail`` at most ``alpha`` and false-fail
+rate at ``p_pass`` at most ``beta`` (:func:`fixed_sample_design`, computed,
+not simulated). Each implementation's expected runs at ``p_fail`` and
+``p_pass`` are reported as a fraction of that ``n``.
+
 Usage::
 
     uv run python eval/sprt_sim.py --out eval/results/sprt_sim.json
@@ -24,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import random
 import sys
 from collections.abc import Sequence
@@ -62,6 +70,42 @@ class Summary:
     expected_runs_at_p_pass: float
     false_pass_rate_at_p_fail: float
     false_fail_rate_at_p_pass: float
+
+
+@dataclass(frozen=True)
+class FixedDesign:
+    """A fixed-sample test: run ``runs`` times, pass on at least ``min_passes`` passes."""
+
+    runs: int
+    min_passes: int
+    false_pass_rate: float
+    """Exact P(at least ``min_passes`` passes | pass rate ``p_fail``)."""
+    false_fail_rate: float
+    """Exact P(fewer than ``min_passes`` passes | pass rate ``p_pass``)."""
+
+
+def _binomial_tail(n: int, c: int, p: float) -> float:
+    """P(X >= c) for X ~ Binomial(n, p)."""
+    return sum(math.comb(n, k) * p**k * (1 - p) ** (n - k) for k in range(c, n + 1))
+
+
+def fixed_sample_design(params: GateParams, *, limit: int = 1000) -> FixedDesign:
+    """The smallest ``n`` (and the ``c`` for it) whose exact error rates meet ``alpha`` and
+    ``beta``; for that ``n`` the smallest qualifying ``c``.
+
+    Raises:
+        ValueError: no ``n`` up to ``limit`` meets both targets.
+    """
+    for n in range(1, limit + 1):
+        for c in range(n + 1):
+            false_pass = _binomial_tail(n, c, params.p_fail)
+            false_fail = 1 - _binomial_tail(n, c, params.p_pass)
+            if false_pass <= params.alpha and false_fail <= params.beta:
+                return FixedDesign(n, c, false_pass, false_fail)
+    raise ValueError(
+        f"no fixed-sample test of at most {limit} runs separates p_fail={params.p_fail} from "
+        f"p_pass={params.p_pass} at alpha={params.alpha}, beta={params.beta}"
+    )
 
 
 def default_grid(params: GateParams) -> list[float]:
@@ -145,6 +189,7 @@ def summarize(points: Sequence[Point], params: GateParams) -> Summary:
 def markdown(results: dict[str, list[Point]], params: GateParams, trials: int, seed: int) -> str:
     """The per-point table and the summary lines as Markdown."""
     names = list(results)
+    fixed = fixed_sample_design(params)
     lines = [
         f"SPRT gate simulation: p_fail={params.p_fail}, p_pass={params.p_pass}, "
         f"alpha={params.alpha}, beta={params.beta}, max_runs={params.max_runs}, "
@@ -166,8 +211,15 @@ def markdown(results: dict[str, list[Point]], params: GateParams, trials: int, s
             f"- {name}: expected runs {s.expected_runs_at_p_fail:.2f} at p_fail, "
             f"{s.expected_runs_at_p_pass:.2f} at p_pass; "
             f"false-pass rate at p_fail {s.false_pass_rate_at_p_fail:.3f}, "
-            f"false-fail rate at p_pass {s.false_fail_rate_at_p_pass:.3f}"
+            f"false-fail rate at p_pass {s.false_fail_rate_at_p_pass:.3f}; "
+            f"runs vs the fixed-sample test: {s.expected_runs_at_p_fail / fixed.runs:.0%} at "
+            f"p_fail, {s.expected_runs_at_p_pass / fixed.runs:.0%} at p_pass"
         )
+    lines.append(
+        f"- fixed-sample test meeting alpha={params.alpha}, beta={params.beta} (exact "
+        f"binomial): {fixed.runs} runs, pass on at least {fixed.min_passes}; false-pass rate "
+        f"{fixed.false_pass_rate:.3f}, false-fail rate {fixed.false_fail_rate:.3f}"
+    )
     return "\n".join(lines)
 
 
@@ -177,8 +229,10 @@ def to_json(results: dict[str, list[Point]], params: GateParams, trials: int, se
     def rounded(d: dict[str, float]) -> dict[str, float]:
         return {k: round(v, 6) for k, v in d.items()}
 
+    fixed = fixed_sample_design(params)
     payload = {
         "parameters": {**asdict(params), "trials": trials, "seed": seed},
+        "fixed_sample_design": rounded(asdict(fixed)),
         "results": {
             name: {
                 "summary": rounded(asdict(summarize(points, params))),
