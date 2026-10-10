@@ -44,6 +44,8 @@ make ci-demo      replay ci on the retail suite in every mode; each seeded regre
                   the live suite against its cost baseline, judged offline from the committed cache
 make bench-sprt   simulate the sequential CI gate over true pass rates (offline; core skipped until written)
 make eval-judge-smoke  judge vs deterministic checks on 24 retail runs, from the committed verdict cache
+make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in four replay
+                       configurations; detection per check type and mode (offline, byte-stable JSON)
 ```
 
 Planned with later milestones (not in the Makefile yet): `make eval`, `make bench`,

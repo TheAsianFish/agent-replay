@@ -2,7 +2,7 @@
 # are added with the code they run.
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
-	bench-sprt flake-demo
+	bench-sprt flake-demo eval-mutations
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -84,3 +84,9 @@ bench-sprt:
 # cache misses with claude-opus-5-5 (needs ANTHROPIC_API_KEY, about $0.015 a run).
 eval-judge-smoke:
 	uv run python eval/judge_smoke.py --offline --out eval/results/judge_smoke.json
+
+# The mutation study: 32 known-bad variants and 5 benign refactors of the retail agent,
+# replayed in full, tools-live, model-live and model-live with fallback; detection rate
+# per check type and per mode (offline, ~20 s). The JSON is byte-stable across runs.
+eval-mutations:
+	uv run python eval/mutation_study.py --out eval/results/mutations.json

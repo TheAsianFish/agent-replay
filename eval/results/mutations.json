@@ -1,0 +1,2096 @@
+{
+  "configurations": [
+    {
+      "id": "full",
+      "mode": "full",
+      "note": "everything served: the stub-everything baseline",
+      "policy": "strict"
+    },
+    {
+      "id": "tools-live",
+      "mode": "tools-live",
+      "note": "tools run, model replies served",
+      "policy": "strict"
+    },
+    {
+      "id": "model-live",
+      "mode": "model-live",
+      "note": "model runs, tools served",
+      "policy": "strict"
+    },
+    {
+      "id": "model-live+fallback",
+      "mode": "model-live",
+      "note": "model runs, tools served; unrecorded tool calls run for real",
+      "policy": "fallback"
+    }
+  ],
+  "definitions": {
+    "caught_alone": "no other check type caught that mutation in that configuration",
+    "caught_by": "check types among the blocking failed checks of at least one scenario; a run that ends in an exception counts as run_error:<ExceptionType>",
+    "check_type": "CheckResult.check up to its first ':'; rules keep their name",
+    "detected": "the suite fails in that configuration (any scenario not passed)",
+    "false_alarm": "a benign refactor fails the suite in that configuration",
+    "full": "every call served from the cassette: the stub-everything baseline"
+  },
+  "mutations": [
+    {
+      "agent": "examples.retail_agent.mutants:skips_order_lookup",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "answers get_order_details with an error instead of running it",
+      "id": "skips_order_lookup",
+      "results": {
+        "full": {
+          "approximate_steps": 12,
+          "caught_by": [
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "budget",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "budget",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 12,
+          "caught_by": [
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "examples.retail_agent.mutants:wrong_write_argument",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "changes one argument of every write before calling it",
+      "id": "wrong_write_argument",
+      "results": {
+        "full": {
+          "approximate_steps": 4,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live": {
+          "approximate_steps": 4,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 4,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 4,
+          "caught_by": [
+            "rule:db_matches_ground_truth",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "examples.retail_agent.mutants:first_tool_only",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "runs only the first tool call of each turn",
+      "id": "first_tool_only",
+      "results": {
+        "full": {
+          "approximate_steps": 11,
+          "caught_by": [
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "budget"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "budget"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 11,
+          "caught_by": [
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "eval.mutations.agents:drops_error_flag",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "reports failed tool calls without is_error",
+      "id": "drops_error_flag",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "eval.mutations.agents:truncates_tool_results",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "cuts every tool result to 120 characters",
+      "id": "truncates_tool_results",
+      "results": {
+        "full": {
+          "approximate_steps": 17,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:JSONDecodeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:JSONDecodeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 17,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "eval.mutations.agents:max_turns_too_low",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "gives up after three model turns",
+      "id": "max_turns_too_low",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:db_matches_ground_truth",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "eval.mutations.agents:returns_empty_answer",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "does the work but returns an empty final answer",
+      "id": "returns_empty_answer",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "eval.mutations.agents:repeats_write_calls",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "calls every write tool a second time after it succeeded",
+      "id": "repeats_write_calls",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "run_error:UnrecordedCallError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "run_error:UnrecordedCallError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "eval.mutations.agents:mismatches_tool_use_ids",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "pairs parallel tool results with the wrong tool_use_id",
+      "id": "mismatches_tool_use_ids",
+      "results": {
+        "full": {
+          "approximate_steps": 11,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:KeyError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "modify_address_suite"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:KeyError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "modify_address_suite"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 11,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "eval.mutations.agents:unregisters_product_tool",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "leaves get_product_details out of the tool table",
+      "id": "unregisters_product_tool",
+      "results": {
+        "full": {
+          "approximate_steps": 29,
+          "caught_by": [
+            "required_tools",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:JSONDecodeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:JSONDecodeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 29,
+          "caught_by": [
+            "required_tools",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "eval.mutations.agents:strips_policy",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "sends the system prompt without the retail policy",
+      "id": "strips_policy",
+      "results": {
+        "full": {
+          "approximate_steps": 29,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 29,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "eval.mutations.agents:truncates_history",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "sends only the last four messages to the model",
+      "id": "truncates_history",
+      "results": {
+        "full": {
+          "approximate_steps": 17,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 17,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "agent"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:skips_authentication",
+      "description": "acts without looking the user up by email or name + zip",
+      "id": "skips_authentication",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:skips_order_check",
+      "description": "writes without fetching the order's details first",
+      "id": "skips_order_check",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:wrong_cancel_reason",
+      "description": "cancels with the other reason than the user gave",
+      "id": "wrong_cancel_reason",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:product_ids_as_item_ids",
+      "description": "passes product ids where item ids are expected",
+      "id": "product_ids_as_item_ids",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 2,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 2,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:refunds_to_first_method",
+      "description": "refunds to the first payment method on file",
+      "id": "refunds_to_first_method",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "return_damaged_bicycle"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "return_damaged_bicycle"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:suite_in_address1",
+      "description": "puts the suite into address line 1 and empties line 2",
+      "id": "suite_in_address1",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "modify_address_suite"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "modify_address_suite"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:wrong_exchange_variant",
+      "description": "exchanges for another available variant than asked",
+      "id": "wrong_exchange_variant",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:transfers_instead_of_acting",
+      "description": "transfers to a human instead of taking the action",
+      "id": "transfers_instead_of_acting",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:UnrecordedCallError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:transfers_after_acting",
+      "description": "takes the action and then also transfers to a human",
+      "id": "transfers_after_acting",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "run_error:UnrecordedCallError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:claims_without_acting",
+      "description": "says the request is done without calling the write tool",
+      "id": "claims_without_acting",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:repeats_lookups",
+      "description": "re-reads the user's profile instead of answering, until cut off",
+      "id": "repeats_lookups",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "budget",
+            "max_tool_calls",
+            "output_schema",
+            "rule:matches_ground_truth",
+            "run_error:UnrecordedCallError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "budget",
+            "max_tool_calls",
+            "output_schema",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "eval.mutations.models:rounds_reported_total",
+      "description": "rounds dollar amounts in the final answer to whole dollars",
+      "id": "rounds_reported_total",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "model"
+    },
+    {
+      "agent": "eval.mutations.tools:cancel_keeps_status",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "cancel_pending_order refunds but never saves the status",
+      "id": "cancel_keeps_status",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop"
+          ],
+          "passed": false
+        }
+      },
+      "target": "tool"
+    },
+    {
+      "agent": "eval.mutations.tools:cancel_skips_gift_card_refund",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "cancel_pending_order never credits the gift card",
+      "id": "cancel_skips_gift_card_refund",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop"
+          ],
+          "passed": false
+        }
+      },
+      "target": "tool"
+    },
+    {
+      "agent": "eval.mutations.tools:address_drops_address2",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "modify_pending_order_address drops address line 2",
+      "id": "address_drops_address2",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "modify_address_suite"
+          ],
+          "passed": false
+        }
+      },
+      "target": "tool"
+    },
+    {
+      "agent": "eval.mutations.tools:return_ignores_item_ids",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "return_delivered_order_items returns the whole order",
+      "id": "return_ignores_item_ids",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "return_damaged_bicycle"
+          ],
+          "passed": false
+        }
+      },
+      "target": "tool"
+    },
+    {
+      "agent": "eval.mutations.tools:exchange_flips_price_difference",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "exchange_delivered_order_items records the price difference with the wrong sign",
+      "id": "exchange_flips_price_difference",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        }
+      },
+      "target": "tool"
+    },
+    {
+      "agent": "eval.mutations.tools:user_lookup_builds_id",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "find_user_id_by_name_zip builds an id instead of looking up",
+      "id": "user_lookup_builds_id",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 19,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "tool"
+    },
+    {
+      "agent": "eval.mutations.tools:product_details_all_unavailable",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "get_product_details marks every variant unavailable",
+      "id": "product_details_all_unavailable",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 2,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "tool"
+    },
+    {
+      "agent": "eval.mutations.tools:order_details_stale_status",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "get_order_details reports every order as pending",
+      "id": "order_details_stale_status",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 9,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      },
+      "target": "tool"
+    }
+  ],
+  "refactors": [
+    {
+      "agent": "eval.mutations.benign:extracted_loop",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "loop body extracted into ask/step methods",
+      "id": "extracted_loop",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "agent": "eval.mutations.benign:parallel_tools",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "one turn's tool calls run in a ContextThreadPoolExecutor, results in order",
+      "id": "parallel_tools",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "agent": "eval.mutations.benign:compact_tool_json",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "tool results serialised with sorted keys and no whitespace",
+      "id": "compact_tool_json",
+      "results": {
+        "full": {
+          "approximate_steps": 17,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 17,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "agent": "eval.mutations.benign:more_turns",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "turn limit raised from 12 to 20",
+      "id": "more_turns",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      }
+    },
+    {
+      "agent": "eval.mutations.benign:async_agent",
+      "client": "eval.mutations.benign:make_async_client",
+      "description": "the loop ported to AsyncAnthropic",
+      "id": "async_agent",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      }
+    }
+  ],
+  "suite": "examples/retail_agent/replay.toml",
+  "summary": {
+    "check_types": {
+      "arg_schema": {
+        "full": {
+          "alone": 0,
+          "caught": 1
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 6
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 6
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 1
+        }
+      },
+      "budget": {
+        "full": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live": {
+          "alone": 1,
+          "caught": 3
+        },
+        "model-live+fallback": {
+          "alone": 1,
+          "caught": 3
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 0
+        }
+      },
+      "max_tool_calls": {
+        "full": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 1
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 1
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 0
+        }
+      },
+      "output_schema": {
+        "full": {
+          "alone": 0,
+          "caught": 2
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 7
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 7
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 2
+        }
+      },
+      "required_tools": {
+        "full": {
+          "alone": 0,
+          "caught": 4
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 9
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 9
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 4
+        }
+      },
+      "rule:checked_before_writing": {
+        "full": {
+          "alone": 0,
+          "caught": 2
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 2
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 2
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 2
+        }
+      },
+      "rule:db_matches_ground_truth": {
+        "full": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live": {
+          "alone": 5,
+          "caught": 7
+        }
+      },
+      "rule:matches_ground_truth": {
+        "full": {
+          "alone": 1,
+          "caught": 4
+        },
+        "model-live": {
+          "alone": 6,
+          "caught": 19
+        },
+        "model-live+fallback": {
+          "alone": 6,
+          "caught": 19
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 4
+        }
+      },
+      "run_error:JSONDecodeError": {
+        "full": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 2
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 2
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 0
+        }
+      },
+      "run_error:KeyError": {
+        "full": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 1
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 1
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 0
+        }
+      },
+      "run_error:RuntimeError": {
+        "full": {
+          "alone": 0,
+          "caught": 1
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 2
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 3
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 1
+        }
+      },
+      "run_error:UnrecordedCallError": {
+        "full": {
+          "alone": 0,
+          "caught": 1
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 4
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 0
+        }
+      },
+      "tool_sequence": {
+        "full": {
+          "alone": 0,
+          "caught": 5
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 13
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 13
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 5
+        }
+      }
+    },
+    "detection": {
+      "full": {
+        "agent": {
+          "detected": 7,
+          "total": 12
+        },
+        "model": {
+          "detected": 0,
+          "total": 12
+        },
+        "overall": {
+          "detected": 7,
+          "total": 32
+        },
+        "tool": {
+          "detected": 0,
+          "total": 8
+        }
+      },
+      "model-live": {
+        "agent": {
+          "detected": 10,
+          "total": 12
+        },
+        "model": {
+          "detected": 12,
+          "total": 12
+        },
+        "overall": {
+          "detected": 22,
+          "total": 32
+        },
+        "tool": {
+          "detected": 0,
+          "total": 8
+        }
+      },
+      "model-live+fallback": {
+        "agent": {
+          "detected": 10,
+          "total": 12
+        },
+        "model": {
+          "detected": 12,
+          "total": 12
+        },
+        "overall": {
+          "detected": 22,
+          "total": 32
+        },
+        "tool": {
+          "detected": 0,
+          "total": 8
+        }
+      },
+      "tools-live": {
+        "agent": {
+          "detected": 7,
+          "total": 12
+        },
+        "model": {
+          "detected": 0,
+          "total": 12
+        },
+        "overall": {
+          "detected": 12,
+          "total": 32
+        },
+        "tool": {
+          "detected": 5,
+          "total": 8
+        }
+      }
+    },
+    "false_alarms": {
+      "full": [],
+      "model-live": [],
+      "model-live+fallback": [],
+      "tools-live": []
+    },
+    "mutations": 32,
+    "refactors": 5,
+    "survived_every_configuration": [
+      "drops_error_flag",
+      "strips_policy",
+      "user_lookup_builds_id",
+      "product_details_all_unavailable",
+      "order_details_stale_status"
+    ]
+  }
+}
