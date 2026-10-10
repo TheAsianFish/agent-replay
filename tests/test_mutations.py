@@ -3,13 +3,16 @@ of mutations and benign refactors, and a fast slice of the study itself."""
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
 from agent_replay import Cassette
-from agent_replay.runner import replay
+from agent_replay.runner import load_agent, make_client, replay
+from eval.mutations import MUTATIONS, REFACTORS, Mutation, Refactor
+from eval.mutations.tools import MUTANT_TOOLS
 from examples.retail_agent import agent as retail
 from examples.retail_agent import rules, tools
 from examples.retail_agent.mutants import wrong_write_argument
@@ -83,3 +86,39 @@ def test_every_run_starts_from_the_vendored_database():
 
     assert result.ok, result.error
     assert rules.db_matches_ground_truth(result, "lookup_latest_order_total")[0]
+
+
+# --- the catalogue ----------------------------------------------------------------
+
+
+def test_catalogue_has_enough_mutations_of_every_kind_and_five_refactors():
+    assert len(MUTATIONS) >= 25
+    assert len(REFACTORS) == 5
+    ids = [m.id for m in MUTATIONS] + [r.id for r in REFACTORS]
+    assert len(ids) == len(set(ids))
+    assert all(re.fullmatch(r"[a-z][a-z0-9_]*", i) for i in ids)
+    assert {m.target for m in MUTATIONS} == {"agent", "model", "tool"}
+    assert all(m.description for m in MUTATIONS)
+    assert {m.id for m in MUTATIONS if m.target == "tool"} == set(MUTANT_TOOLS)
+
+
+@pytest.mark.parametrize("variant", [*MUTATIONS, *REFACTORS], ids=lambda v: v.id)
+def test_every_reference_loads(variant: Mutation | Refactor):
+    assert callable(load_agent(variant.agent))
+    assert make_client(variant.client) is not None
+
+
+@pytest.mark.parametrize("mutation_id", sorted(MUTANT_TOOLS))
+def test_tool_mutants_keep_the_real_tools_name_and_schema(mutation_id: str):
+    mutant = MUTANT_TOOLS[mutation_id]
+    real = retail.TOOLS[mutant.name]
+    assert mutant is not real
+    assert mutant.to_anthropic() == real.to_anthropic()
+
+    agent = getattr(load_agent(f"eval.mutations.tools:{mutation_id}"), "__self__", None)
+    assert isinstance(agent, retail.RetailAgent)
+    assert agent.tools[mutant.name] is mutant
+    # The model is offered exactly what the recordings offered it.
+    assert [t.to_anthropic() for t in agent.tools.values()] == [
+        t.to_anthropic() for t in retail.TOOLS.values()
+    ]
