@@ -14,27 +14,39 @@ on what the agent did:
 - `tools-live`: the tools run for real against recorded model replies. This
   catches tool regressions without paying for the model.
 
-`replay ci` runs a suite of these scenarios with structural, schema, rule and
-budget checks, and fails the build on a regression.
+`replay ci` runs a suite of these scenarios with structural, schema, rule,
+budget and LLM-judge checks, and fails the build on a regression.
 
-Agents are not deterministic, so later milestones re-run a scenario,
-estimate its pass probability with a confidence interval and tell flaky from
-broken. Judges are not oracles either, so judge checks will stay advisory
-until the judge has been calibrated against human labels (Cohen's kappa with
-a bootstrap CI).
+Judges are not oracles, so a judge check is *advisory* until the judge has
+been calibrated against human labels: it reports its verdict but cannot fail
+the build. Agents are not deterministic either, so later milestones re-run a
+scenario, estimate its pass probability with a confidence interval and tell
+flaky from broken.
 
-**Status: milestone 2 of 7.** Working today:
+**Status: milestone 3 of 7.** Working today:
 - recording through the Anthropic SDK (sync, async, streaming,
   `messages.parse`), Ollama, `@tool`, and the clock and random helpers;
 - the three cut-point modes, fingerprint matching and the three
   unrecorded-call policies;
-- eight checks;
+- nine checks, including a rubric-driven `judge` (`claude-opus-5-5` through
+  structured outputs, Ollama fallback, verdict cache, advisory until
+  calibrated);
+- cost and latency baselines (`replay baseline`) and relative budget limits;
 - `replay ci` with JSON and Markdown reports, and a local SQLite run store;
 - a τ-bench retail example agent with fake-model and live `claude-opus-5-5`
-  cassettes.
+  cassettes;
+- the statistics interface (kappa, bootstrap CI, Wilson, SPRT) with a naive
+  baseline implementation and oracle-tested specs.
 
-The judge, flakiness statistics, dashboard and GitHub Action are planned, not
-built. See [PLAN.md](PLAN.md).
+Measured so far ([RESULTS.md](RESULTS.md)): on a live `model-live` run, a
+25% relative cost limit passed the unchanged agent (within 5% of baseline)
+and failed all six tasks of a variant with prompt caching removed (+76% to
++155% cost at unchanged token counts). The uncalibrated judge agreed with the
+deterministic checks on 23 of 24 runs; that is a wiring test, not a
+calibration.
+
+Judge calibration, the flakiness engine, dashboard and GitHub Action are
+planned, not built. See [PLAN.md](PLAN.md).
 
 ## Quickstart
 
@@ -234,7 +246,111 @@ for check in result.check(tool_sequence(cassette.tool_names()), budget(max_cost_
 | `arg_schema(tool, schema, must_call=False)` | Every call to `tool` has arguments valid against a JSON Schema or pydantic model |
 | `output_schema(schema, parse_json=False)` | The final output validates |
 | `rule(fn, **args)` | `fn(run, **args)` returns `True`, `(True, message)` or a passing `CheckResult`; an exception fails the check, never the suite |
-| `budget(max_cost_usd=, max_tokens=, max_model_calls=, max_p95_latency_ms=)` | The run is within every limit given. Served steps carry their recorded cost and latency, so in `full` mode under `strict` this re-measures the recording; it bites in `model-live`, or when `fallback` / `synth` let the agent make calls the recording never saw |
+| `budget(max_cost_usd=, max_tokens=, max_model_calls=, max_p95_latency_ms=)` | The run is within every absolute limit given. Served steps carry their recorded cost and latency, so in `full` mode under `strict` this re-measures the recording; it bites in `model-live`, or when `fallback` / `synth` let the agent make calls the recording never saw |
+| `budget(max_cost_increase_pct=, max_tokens_increase_pct=, max_model_calls_increase_pct=, max_p95_latency_increase_pct=)` | Each metric is at most `baseline × (1 + pct/100)` against the suite's baseline file (equality passes; a zero baseline allows only zero). See [Baselines](#baselines-and-cost-gating) |
+| `judge(rubric, provider=, calibration=, min_kappa=)` | An LLM grades the run against a rubric, criterion by criterion. Advisory until a calibration report lets a criterion gate. See [Judge](#judge) |
+
+## Judge
+
+`judge` grades a run against a rubric. The judge sees the task, the agent's
+tool calls (inputs, then results or errors, in start order), any agent error
+and the final output. It never sees the agent's own model turns, which are
+bound to the model that produced them. Each value is clipped to 2000
+characters (`max_chars`) with a visible `…[truncated N chars]` marker.
+
+```yaml
+# examples/retail_agent/rubric.yaml (abridged)
+name: retail-resolution
+version: 1
+instructions: |-
+  The store policy the agent works under, in short: ...
+criteria:                      # 1 to 10, unique ids
+  - id: policy_followed
+    question: Did the agent follow the store policy in the way it acted?
+    pass_when: The user was authenticated ... before any consequential action ...
+    fail_when: A consequential action came before authentication ...
+```
+
+```toml
+checks = [{ type = "judge", rubric = "rubric.yaml", cache_dir = "judge-cache" }]
+```
+
+- **Providers.** `anthropic` (default): `claude-opus-5-5` at effort `low`,
+  with the verdict constrained by a JSON schema
+  (`output_config.format`). Instructions and rubric go first, in a cached
+  system block; thinking, `budget_tokens` and forced tool choice are never
+  sent. A refusal, a truncated answer or a verdict that misses or repeats a
+  criterion is a judge error, not a verdict. `ollama` (`pip install
+  'agent-replay[ollama]'`, default `qwen3:8b`) is the local fallback.
+  `fake`, `FakeJudge(decide)` and `module:factory` cover tests.
+- **Cache.** Every verdict is stored under a hash of the judge id (provider,
+  model, effort), the rubric's fingerprint, the transcript's fingerprint and
+  the prompt version. A `full` replay produces the same transcript, so it is
+  judged once and then for free and identically. Commit the cache directory
+  and set `REPLAY_JUDGE_OFFLINE=1` to judge in CI without a key. A miss then
+  never calls the model: the scenario is reported as unable to run (exit 2),
+  so a cache made stale by a rubric, judge or output change cannot pass
+  unnoticed. Offline judging suits `full` replays; `model-live` output varies,
+  so judge it live. The retail live
+  suite does exactly that (`examples/retail_agent/judge-cache/`).
+- **Advisory until calibrated.** A criterion can fail the build only if a
+  calibration report exists for this exact rubric fingerprint, judge id and
+  judge prompt version,
+  and that criterion's kappa lower bound is at least
+  `REPLAY_JUDGE_MIN_KAPPA` (0.6). Otherwise its failure is reported as
+  advisory (`ADVISORY FAIL` in the CLI, an "Advisory" list in the Markdown
+  summary). If the judge cannot answer, an uncalibrated judge stays advisory
+  and a calibrated one fails closed. The report format and the gate exist;
+  the command that produces reports from human labels comes with the
+  calibration milestone.
+
+## Baselines and cost gating
+
+An absolute budget (`max_cost_usd = 0.10`) is a number someone picked. A
+relative budget compares each scenario with what it cost before:
+
+```console
+$ uv run replay baseline examples/retail_agent/replay-live.toml -o examples/retail_agent/baseline-live.json
+```
+
+`replay baseline` replays every scenario `--runs N` times (default 1)
+*without running checks*, and stores per scenario the median cost, tokens,
+model calls and p95 model latency, with the git SHA, mode and policy. Point
+the suite at the file with `baseline = "baseline-live.json"` in `[defaults]`
+(or `replay ci --baseline PATH`) and add relative limits:
+
+```toml
+{ type = "budget", max_cost_increase_pct = 25, max_tokens_increase_pct = 25, max_p95_latency_increase_pct = 50 }
+```
+
+A relative latency limit is skipped, and the report says so, when there are
+no latency samples. Relative limits without a baseline file, or for a scenario
+missing from it, make a broken suite (exit 2). The Markdown summary shows
+each cost with its delta, such as `$0.0461 (+3.2%)`. In `full` replays,
+served steps carry their recorded cost, so the gate bites when a scenario
+runs `model-live` or a cassette is re-recorded. Prices come from
+`agent_replay/pricing.py` (captured 2026-10-08); `REPLAY_PRICES_FILE` adds
+or overrides models.
+
+## Statistics
+
+Every headline number of the later milestones rests on `agent_replay.stats`
+(stdlib only):
+- Cohen's kappa (unweighted, linear, quadratic) for judge-human agreement,
+  with a paired percentile bootstrap interval;
+- Wilson score intervals on pass rates;
+- a Wald SPRT (`SequentialGate`) that stops re-running a scenario as soon as
+  the evidence decides it, truncated at `max_runs`.
+
+Its docstrings are the specification. The bodies are not written yet and
+raise `NotImplementedError`. `agent_replay.stats_baseline` is the naive
+reference behind the same interface: raw agreement, a normal-approximation
+bootstrap, the Wald interval and a fixed-k majority gate. `REPLAY_STATS_IMPL`
+selects one; the default stays `baseline` until `core` exists.
+`tests/test_stats.py` checks both against scikit-learn and statsmodels with
+Hypothesis, and marks the unimplemented module's tests as expected failures
+(a wrong implementation fails them for real). `make bench-sprt` simulates the
+gate over true pass rates 0.05 to 1.00.
 
 ## `replay ci`
 
@@ -288,7 +404,8 @@ leave it off when the drift is in free text, such as a summary argument.
 |---|---|
 | `replay record AGENT -t TASK -o FILE [--client anthropic\|module:factory] [--force]` | Run the agent for real and write a cassette |
 | `replay run CASSETTE [--mode full\|model-live\|tools-live] [--policy strict\|fallback\|synth] [--client REF] [--agent REF] [--expect a,b] [--strict] [--save FILE] [--json]` | Replay one cassette and run `tool_sequence`; `--strict` also fails on `approximate` steps |
-| `replay ci SUITE [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR] [--json FILE] [--markdown FILE] [--no-store] [--db URL]` | Replay a suite and gate on it |
+| `replay ci SUITE [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR] [--baseline FILE] [--json FILE] [--markdown FILE] [--no-store] [--db URL]` | Replay a suite and gate on it |
+| `replay baseline SUITE -o FILE [--runs N] [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR]` | Measure every scenario (no checks) and write median cost, tokens, model calls and p95 latency; exit 2 if a scenario cannot run, 1 if the agent errors (nothing written) |
 | `replay runs [RUN_ID] [--limit N] [--scenario NAME] [--db URL]` | List stored runs, or show one |
 | `replay show CASSETTE` | Print a cassette's header, envelopes and outcome |
 
@@ -304,6 +421,14 @@ credentials).
 | `REPLAY_DB_URL` | `sqlite:///.replay/replay.db` | Run store (SQLAlchemy URL). The SQLite file is a local cache until migrations land with PostgreSQL in M5 |
 | `REPLAY_LOG_LEVEL` | `WARNING` | structlog level for the CLI (`DEBUG` shows every recorded or replayed step) |
 | `REPLAY_LOG_FORMAT` | `console` | `console` or `json` (one JSON object per line on stderr) |
+| `REPLAY_JUDGE_PROVIDER` | `anthropic` | Judge provider: `anthropic`, `ollama`, `fake` or `module:factory` |
+| `REPLAY_JUDGE_MODEL` | `claude-opus-5-5` (`qwen3:8b` for Ollama) | Judge model |
+| `REPLAY_JUDGE_EFFORT` | `low` | Anthropic effort for the judge: `low`, `medium`, `high`, `xhigh`, `max` |
+| `REPLAY_JUDGE_MIN_KAPPA` | `0.6` | Kappa lower bound (0 to 1) a calibrated criterion needs before it may gate |
+| `REPLAY_JUDGE_CACHE` | `.replay/judge-cache` | Verdict cache directory when a judge check sets no `cache_dir` |
+| `REPLAY_JUDGE_OFFLINE` | off | `1` / `true`: judge from the cache only; a miss breaks the scenario (exit 2) |
+| `REPLAY_PRICES_FILE` | — | JSON `{"model": {"input", "output", "cache_read", "cache_write"}}` in USD per MTok, extending or overriding the built-in price table |
+| `REPLAY_STATS_IMPL` | `baseline` | Statistics implementation: `baseline` (naive reference) or `core` (`agent_replay/stats.py`) |
 
 ## Architecture
 
@@ -323,7 +448,12 @@ flowchart LR
   C[(cassette.jsonl)] --> M
   L --> TR[trajectory + output cassette]
   M --> TR
-  TR --> K[checks] --> CI[replay ci: exit code,<br/>JSON / Markdown reports]
+  TR --> K[checks]
+  B[(baseline.json)] -.relative budgets.-> K
+  K -->|transcript| J{judge cache}
+  J -->|miss| JM[claude-opus-5-5 / Ollama<br/>structured verdict]
+  CR[(calibration report)] -.gating criteria.-> K
+  K --> CI[replay ci: exit code,<br/>JSON / Markdown reports]
   CI --> DB[(SQLite run store)]
 ```
 
@@ -336,7 +466,15 @@ deal with that, so a replay can follow a run that has drifted:
 - the reachability rule for nested calls.
 
 Every drift stays visible in the trajectory, and the checks decide whether it
-matters. The harder parts are later milestones: a judge measured against
+matters.
+
+M3's hard part is making a judge safe to put in CI before anyone has measured
+it. Its verdicts are reproducible because they are cached by content: same
+rubric, same judge, same transcript gives the same verdict, offline. Every
+criterion is advisory until a calibration report for that exact rubric and
+judge shows a kappa lower bound above the threshold. Cost is gated relative to
+a measured baseline, because cost regressions often leave tokens unchanged.
+The harder parts are later milestones: a judge measured against
 humans before it may fail a build, and failures told apart from flakes with
 statistics rather than retries. PLAN.md has the full component map.
 
@@ -366,6 +504,29 @@ statistics rather than retries. PLAN.md has the full component map.
 - **The fake model returns real SDK objects** and reports itself as
   `fake:<model>`, so its synthetic token counts are never priced as real
   spend.
+- **The judge reports before it gates.** A judge nobody has compared with
+  humans would make CI fail on a number nobody validated, so failures are
+  advisory until calibrated, per criterion, and a report only counts for the
+  rubric fingerprint, judge id and judge prompt version it measured (editing
+  the rubric, the judge prompt, the model or the effort voids it). The alternative, trusting the judge, is what
+  this project exists to avoid.
+- **Structured outputs through `messages.create`.** The judge sends the
+  same JSON-schema `output_config` that `messages.parse` would, but reads
+  `stop_reason` itself. In SDK 1.12, `parse` raises a validation error on a
+  refused or truncated answer, which hides why. Forced tool choice is
+  rejected by Opus 5.5 and prefill is gone, so a schema is the robust path.
+- **A content-addressed judge cache.** Keyed on what decides the verdict
+  (judge id, rubric, transcript, prompt version), not on the run, so `full`
+  replays are judged once and a committed cache makes CI judging free and
+  deterministic. The alternative, recording judge calls into the agent's
+  cassette, would tie verdicts to one recording.
+- **Baselines are medians of replays without checks.** Running no checks
+  avoids the chicken-and-egg of relative budgets needing a baseline; the
+  median keeps one slow run from setting the bar.
+- **The statistics ship as a spec plus a naive baseline.** The interface,
+  oracle tests and a deliberately simple implementation land first, so every
+  later number can be compared against "what the naive method would have
+  said".
 - **Committed cassettes are regenerated, not hand-edited.** Drift tests
   re-record the toy and retail cassettes and fail if they changed (`make
   cassettes`, `make retail-cassettes`).
@@ -379,6 +540,8 @@ make ci-demo           # retail suite in all three modes; every seeded regressio
 make test-live         # live tests against claude-opus-5-5 (needs a key; a few cents)
 make cassettes         # re-record the toy agent's cassettes (Anthropic and Ollama fakes)
 make retail-cassettes  # re-record the retail agent's cassettes with the fake model
+make bench-sprt        # simulate the sequential gate over true pass rates (offline)
+make eval-judge-smoke  # judge vs deterministic checks on 24 retail runs (offline, from the cache)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and [RESULTS.md](RESULTS.md)
@@ -389,8 +552,9 @@ for every measured number.
 1. ~~Scaffolding, cassette v1, recorder, `full` replay, `tool_sequence`~~
 2. ~~Cut-point modes, fingerprint matching, unrecorded-call policies, clock and
    random capture, async and streaming, Ollama, the checks library, SQLite
-   store, `replay ci`, the τ-bench retail example~~ (this milestone)
-3. LLM judge (structured outputs), cost and latency baselines, statistics interface
+   store, `replay ci`, the τ-bench retail example~~
+3. ~~LLM judge (structured outputs), cost and latency baselines, statistics
+   interface~~ (this milestone)
 4. Flakiness engine (Wilson interval, SPRT early stop) and a mutation study
 5. FastAPI + React dashboard with aligned trace diffs
 6. Judge calibration against human labels (kappa, bootstrap CI, bias probes, LLMBar)

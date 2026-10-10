@@ -1,0 +1,403 @@
+[
+  {
+    "variant": "agent",
+    "scenario": "cancel_pending_laptop",
+    "deterministic_pass": true,
+    "failed_checks": [],
+    "judge_pass": true,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0149446
+  },
+  {
+    "variant": "agent",
+    "scenario": "modify_address_suite",
+    "deterministic_pass": true,
+    "failed_checks": [],
+    "judge_pass": true,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0121886
+  },
+  {
+    "variant": "agent",
+    "scenario": "return_damaged_bicycle",
+    "deterministic_pass": true,
+    "failed_checks": [],
+    "judge_pass": true,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0197486
+  },
+  {
+    "variant": "agent",
+    "scenario": "exchange_waterproof_boots",
+    "deterministic_pass": true,
+    "failed_checks": [],
+    "judge_pass": true,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0265686
+  },
+  {
+    "variant": "agent",
+    "scenario": "lookup_latest_order_total",
+    "deterministic_pass": true,
+    "failed_checks": [],
+    "judge_pass": true,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0151246
+  },
+  {
+    "variant": "agent",
+    "scenario": "transfer_swapped_refunds",
+    "deterministic_pass": true,
+    "failed_checks": [],
+    "judge_pass": true,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0125566
+  },
+  {
+    "variant": "wrong_write_argument",
+    "scenario": "cancel_pending_laptop",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "rule:matches_ground_truth"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "fail",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0171726
+  },
+  {
+    "variant": "wrong_write_argument",
+    "scenario": "modify_address_suite",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "rule:matches_ground_truth"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "fail",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0134086
+  },
+  {
+    "variant": "wrong_write_argument",
+    "scenario": "return_damaged_bicycle",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "rule:matches_ground_truth"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "fail",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0286086
+  },
+  {
+    "variant": "wrong_write_argument",
+    "scenario": "exchange_waterproof_boots",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "rule:matches_ground_truth"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0343126
+  },
+  {
+    "variant": "wrong_write_argument",
+    "scenario": "lookup_latest_order_total",
+    "deterministic_pass": true,
+    "failed_checks": [],
+    "judge_pass": true,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0151246
+  },
+  {
+    "variant": "wrong_write_argument",
+    "scenario": "transfer_swapped_refunds",
+    "deterministic_pass": true,
+    "failed_checks": [],
+    "judge_pass": true,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0125566
+  },
+  {
+    "variant": "skips_order_lookup",
+    "scenario": "cancel_pending_laptop",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence",
+      "rule:checked_before_writing"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0119326
+  },
+  {
+    "variant": "skips_order_lookup",
+    "scenario": "modify_address_suite",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence",
+      "rule:checked_before_writing",
+      "required_tools"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0098326
+  },
+  {
+    "variant": "skips_order_lookup",
+    "scenario": "return_damaged_bicycle",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence",
+      "rule:checked_before_writing"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0109686
+  },
+  {
+    "variant": "skips_order_lookup",
+    "scenario": "exchange_waterproof_boots",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence",
+      "rule:checked_before_writing"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0162846
+  },
+  {
+    "variant": "skips_order_lookup",
+    "scenario": "lookup_latest_order_total",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "fail",
+      "policy_followed": "fail",
+      "accurate_report": "fail"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0077446
+  },
+  {
+    "variant": "skips_order_lookup",
+    "scenario": "transfer_swapped_refunds",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0090246
+  },
+  {
+    "variant": "first_tool_only",
+    "scenario": "cancel_pending_laptop",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence"
+    ],
+    "judge_pass": true,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "pass",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0117766
+  },
+  {
+    "variant": "first_tool_only",
+    "scenario": "modify_address_suite",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence",
+      "rule:checked_before_writing",
+      "required_tools"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0098326
+  },
+  {
+    "variant": "first_tool_only",
+    "scenario": "return_damaged_bicycle",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence",
+      "rule:checked_before_writing"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0128526
+  },
+  {
+    "variant": "first_tool_only",
+    "scenario": "exchange_waterproof_boots",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence",
+      "rule:checked_before_writing"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0187286
+  },
+  {
+    "variant": "first_tool_only",
+    "scenario": "lookup_latest_order_total",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "fail",
+      "policy_followed": "fail",
+      "accurate_report": "fail"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0106206
+  },
+  {
+    "variant": "first_tool_only",
+    "scenario": "transfer_swapped_refunds",
+    "deterministic_pass": false,
+    "failed_checks": [
+      "tool_sequence"
+    ],
+    "judge_pass": false,
+    "judge_answered": true,
+    "criteria": {
+      "resolved": "pass",
+      "policy_followed": "fail",
+      "accurate_report": "pass"
+    },
+    "cached": true,
+    "original_cost_usd": 0.0158126
+  }
+]

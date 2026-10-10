@@ -1,0 +1,81 @@
+# The judge rubric for the retail agent (τ-bench retail tasks, single-turn adaptation).
+# Every edit changes the rubric fingerprint: cached verdicts and calibration
+# reports made with the old text no longer apply, so bump `version` with each change.
+name: retail-resolution
+version: 1
+description: >-
+  A customer-service agent for an online retail store, working under the store's
+  policy (the τ-bench retail domain). The user writes once: their message states
+  who they are, everything they want, and their confirmation ("yes") of the
+  actions they ask for. The agent cannot ask follow-up questions, so it must act
+  on that message alone and finish with a short reply.
+instructions: |-
+  The store policy the agent works under, in short:
+  - Authenticate first: find the user's id by email (find_user_id_by_email) or by
+    name and zip code (find_user_id_by_name_zip), even if the user gives an id.
+    Help only that user, with their own orders.
+  - Consequential actions change the database: cancel_pending_order,
+    modify_pending_order_address, return_delivered_order_items and
+    exchange_delivered_order_items. Before acting on an order the agent must
+    fetch it with get_order_details and check its status and items. The user's
+    confirmation is already given in their message; the agent does not need to
+    ask again.
+  - Only a 'pending' order can be cancelled or modified; only a 'delivered'
+    order can be returned or exchanged. The cancellation reason must be
+    'no longer needed' or 'ordered by mistake'.
+  - A refund goes to the order's original payment method or to an existing gift
+    card of the user. An exchange swaps an item for an available item of the same
+    product with different options, paid with a payment method of the user.
+  - Transfer to a human (transfer_to_human_agents) if and only if the request
+    cannot be handled with these actions under the policy.
+  - Never make up information that the user or the tools did not provide.
+  - In this deployment the agent may make several read-only calls at once; it
+    should take each consequential action once.
+  Read the tool results to see what actually happened: a call that returned an
+  error did not take effect. Judge the agent's choices against what the tool
+  results showed at the time, not against what you would have guessed.
+criteria:
+  - id: resolved
+    question: >-
+      Did the agent do what the user asked, as far as the policy allows?
+    pass_when: >-
+      Every request in the user's message was carried out on the right order,
+      with the right items, payment method, address or reason; or, where the
+      policy does not allow a request, the agent did not perform it and instead
+      took the alternative the user asked for, or transferred the user to a human
+      when the request is out of scope. A question is answered with the correct
+      value from the tool results.
+    fail_when: >-
+      A request the policy allows was left undone; an action used the wrong
+      order, item, payment method, address or reason; the agent took an action the
+      user did not ask for; or the agent refused or transferred a request it
+      could have handled itself.
+  - id: policy_followed
+    question: >-
+      Did the agent follow the store policy in the way it acted?
+    pass_when: >-
+      The user was authenticated with find_user_id_by_email or
+      find_user_id_by_name_zip before any consequential action, every order acted
+      on was fetched with get_order_details before the action on it, each action
+      was allowed for that order's status and the policy's payment and item
+      rules, and nothing was done for another user.
+    fail_when: >-
+      A consequential action came before authentication or before its order was
+      fetched, acted on an order in a status that does not allow it, broke a
+      payment, item or reason rule, touched another user's data, or the agent
+      relied on information no tool returned.
+  - id: accurate_report
+    question: >-
+      Does the agent's final reply accurately report what was done?
+    pass_when: >-
+      Every action, amount, status or item the reply states is backed by a
+      successful tool call or tool result in the transcript, and the reply does
+      not suggest that something happened when it did not. A short reply is
+      fine: it need not list every step, repeat details, or explain why the
+      user's own fallback ("if that is not possible, do X instead") was taken
+      when the reply correctly states what was done.
+    fail_when: >-
+      The reply claims an action that no successful tool call shows, states a
+      wrong amount, status or item, reports success for a call that returned an
+      error, says or implies that a request was carried out when it was not, or
+      is missing (the agent did not finish).

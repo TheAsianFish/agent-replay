@@ -10,6 +10,7 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from agent_replay._loading import load_object
+from agent_replay.baseline import ScenarioBaseline
 from agent_replay.checks.base import Check
 from agent_replay.checks.budget import budget
 from agent_replay.checks.rule import rule
@@ -69,12 +70,32 @@ class _RuleSpec(_Spec):
     args: dict[str, Any] = Field(default_factory=dict)
 
 
+class _JudgeSpec(_Spec):
+    type: Literal["judge"]
+    rubric: str
+    """Rubric YAML file, relative to the suite file."""
+    provider: str | None = None
+    model: str | None = None
+    effort: str | None = None
+    calibration: str | None = None
+    """Calibration report JSON file, relative to the suite file."""
+    min_kappa: float | None = None
+    cache_dir: str | None = None
+    """Verdict cache directory, relative to the suite file (default: REPLAY_JUDGE_CACHE)."""
+    offline: bool | None = None
+    max_chars: int = Field(default=2000, ge=1)
+
+
 class _BudgetSpec(_Spec):
     type: Literal["budget"]
     max_cost_usd: float | None = None
     max_tokens: int | None = None
     max_model_calls: int | None = None
     max_p95_latency_ms: float | None = None
+    max_cost_increase_pct: float | None = None
+    max_tokens_increase_pct: float | None = None
+    max_model_calls_increase_pct: float | None = None
+    max_p95_latency_increase_pct: float | None = None
 
 
 _Anything = Annotated[
@@ -85,7 +106,8 @@ _Anything = Annotated[
     | _ArgSchemaSpec
     | _OutputSchemaSpec
     | _RuleSpec
-    | _BudgetSpec,
+    | _BudgetSpec
+    | _JudgeSpec,
     Field(discriminator="type"),
 ]
 _ADAPTER: TypeAdapter[_Anything] = TypeAdapter(_Anything)
@@ -99,6 +121,7 @@ CHECK_TYPES = (
     "output_schema",
     "rule",
     "budget",
+    "judge",
 )
 
 
@@ -173,11 +196,13 @@ def build_check(
     *,
     base_dir: Path,
     expected_tools: Sequence[str] | None = None,
+    baseline: ScenarioBaseline | None = None,
 ) -> Check:
     """Turn one config table into a check, keyed on ``spec["type"]``.
 
     ``base_dir`` anchors ``schema_file`` paths; ``expected_tools`` (the cassette's
-    recorded tools) is the default ``expected`` of ``tool_sequence``. Raises
+    recorded tools) is the default ``expected`` of ``tool_sequence``; ``baseline``
+    is what a ``budget`` check's relative limits compare against. Raises
     :class:`ConfigError` naming the offending field.
     """
     try:
@@ -187,14 +212,19 @@ def build_check(
             f"invalid {_describe(spec)}: {_validation_message(exc)}. Fix the config table."
         ) from exc
     try:
-        return _build(parsed, base_dir, expected_tools)
+        return _build(parsed, base_dir, expected_tools, baseline)
     except ConfigError as exc:
         raise ConfigError(f"invalid {_describe(spec)}: {exc}") from exc
     except (ValueError, TypeError) as exc:
         raise ConfigError(f"invalid {_describe(spec)}: {exc}") from exc
 
 
-def _build(parsed: _Anything, base_dir: Path, expected_tools: Sequence[str] | None) -> Check:  # noqa: PLR0911
+def _build(  # noqa: PLR0911
+    parsed: _Anything,
+    base_dir: Path,
+    expected_tools: Sequence[str] | None,
+    baseline: ScenarioBaseline | None = None,
+) -> Check:
     if isinstance(parsed, _ToolSequenceSpec):
         expected = parsed.expected if parsed.expected is not None else expected_tools
         if expected is None:
@@ -218,9 +248,37 @@ def _build(parsed: _Anything, base_dir: Path, expected_tools: Sequence[str] | No
         if not callable(fn):
             raise ConfigError(f"ref {parsed.ref!r} is not callable")
         return rule(fn, name=parsed.name, **parsed.args)
+    if isinstance(parsed, _JudgeSpec):
+        return _judge(parsed, base_dir)
     return budget(
         max_cost_usd=parsed.max_cost_usd,
         max_tokens=parsed.max_tokens,
         max_model_calls=parsed.max_model_calls,
         max_p95_latency_ms=parsed.max_p95_latency_ms,
+        max_cost_increase_pct=parsed.max_cost_increase_pct,
+        max_tokens_increase_pct=parsed.max_tokens_increase_pct,
+        max_model_calls_increase_pct=parsed.max_model_calls_increase_pct,
+        max_p95_latency_increase_pct=parsed.max_p95_latency_increase_pct,
+        baseline=baseline,
+    )
+
+
+def _judge(spec: _JudgeSpec, base_dir: Path) -> Check:
+    # Imported here: agent_replay.judge imports this package's base module.
+    from agent_replay.judge import JudgeCache, judge, make_provider  # noqa: PLC0415
+
+    provider = make_provider(spec.provider, model=spec.model, effort=spec.effort)
+    cache: JudgeCache | Literal["default"] = (
+        JudgeCache(base_dir / spec.cache_dir, offline=spec.offline)
+        if spec.cache_dir is not None
+        else "default"
+    )
+    return judge(
+        base_dir / spec.rubric,
+        provider=provider,
+        cache=cache,
+        calibration=base_dir / spec.calibration if spec.calibration is not None else None,
+        min_kappa=spec.min_kappa,
+        offline=spec.offline,
+        max_chars=spec.max_chars,
     )

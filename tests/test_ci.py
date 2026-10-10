@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import subprocess
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
-from agent_replay.ci import Overrides, load_suite, run_suite, to_json, to_markdown
+from agent_replay.checks import CheckResult
+from agent_replay.ci import Overrides, git_sha, load_suite, run_suite, to_json, to_markdown
 from agent_replay.cli import app
 from agent_replay.errors import ConfigError
 from agent_replay.store import Store
@@ -491,3 +494,85 @@ def test_the_store_counts_approximate_steps(tmp_path: Path) -> None:
         [run] = store.list_runs()
     assert run.approximate_count == 2
     assert run.unconsumed_count == 1
+
+
+ADVISORY_SUITE = f"""
+[defaults]
+checks = [
+  {{ type = "tool_sequence" }},
+  {{ type = "rule", ref = "tests.test_ci:advisory_failure" }},
+]
+
+[[scenario]]
+name = "eligible"
+cassette = "{ROOT / "examples/toy_agent/cassettes/refund_eligible.jsonl"}"
+"""
+
+
+def advisory_failure(_run: object) -> CheckResult:
+    return CheckResult(check="judge", passed=False, message="judge said fail", advisory=True)
+
+
+def test_an_advisory_failure_is_reported_but_does_not_fail_the_scenario(tmp_path: Path) -> None:
+    report = run_suite(write_suite(tmp_path, ADVISORY_SUITE))
+
+    assert report.passed
+    (scenario,) = report.scenarios
+    assert scenario.failed_checks == []
+    assert [c.check for c in scenario.advisory_failures] == ["judge"]
+    data = json.loads(to_json(report))
+    assert data["scenarios"][0]["advisory_failures"] == ["judge"]
+    assert data["scenarios"][0]["failed_checks"] == []
+    markdown = to_markdown(report)
+    assert "Advisory (reported, not gating)" in markdown
+    assert "| 1/2 (+1 advisory) |" in markdown
+    result = invoke("ci", str(write_suite(tmp_path, ADVISORY_SUITE)), "--no-store")
+    assert result.exit_code == 0, result.output
+    assert "judge (advisory)" in result.output
+
+
+# --- git_sha ------------------------------------------------------------------------------
+
+
+def _git(cwd: Path, *args: str) -> str:
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+    return subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
+    ).stdout.strip()
+
+
+def test_git_sha_takes_github_sha_only_when_it_is_a_commit_here(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    (repo / "f").write_text("x", encoding="utf-8")
+    _git(repo, "add", "f")
+    _git(repo, "commit", "-q", "-m", "one")
+    head = _git(repo, "rev-parse", "HEAD")
+
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+    assert git_sha(repo) == head
+    monkeypatch.setenv("GITHUB_SHA", head)
+    assert git_sha(repo) == head
+    # Another repository's workflow exported its own commit: not this checkout's.
+    monkeypatch.setenv("GITHUB_SHA", "c795715b" + "0" * 32)
+    assert git_sha(repo) == head
+    # Outside any repository the variable is all there is.
+    outside = tmp_path / "plain"
+    outside.mkdir()
+    assert git_sha(outside) == "c795715b" + "0" * 32
+    monkeypatch.delenv("GITHUB_SHA")
+    assert git_sha(outside) is None

@@ -16,8 +16,9 @@ policy and a list of checks::
 
 Paths are relative to the suite file. A scenario's checks are the defaults'
 checks followed by its own. A scenario passes when the agent finished without
-error, every check passed and (with ``fail_on_approximate``) no step was served
-approximately. The suite passes when every scenario does.
+error, every check passed (advisory checks are reported but never fail it) and
+(with ``fail_on_approximate``) no step was served approximately. The suite
+passes when every scenario does.
 """
 
 from __future__ import annotations
@@ -36,10 +37,12 @@ from typing import Any
 import structlog
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
+from agent_replay.baseline import BaselineFile, RunMetrics, ScenarioBaseline, aggregate, measure
 from agent_replay.cassette import Cassette, ErrorInfo
 from agent_replay.checks.base import Check, CheckResult
+from agent_replay.checks.budget import RELATIVE_LIMITS
 from agent_replay.checks.spec import build_check
-from agent_replay.errors import ConfigError, ReplayError
+from agent_replay.errors import ConfigError, JudgeCacheMiss, MeasurementError, ReplayError
 from agent_replay.runner import RunResult, load_agent, make_client, replay
 from agent_replay.session import Policy, ReplayMode
 from agent_replay.trajectory import StepStatus
@@ -59,6 +62,9 @@ class Defaults(_Config):
     client: str | None = None
     """``module:factory`` returning a live model client (needed by ``model-live``)."""
     fail_on_approximate: bool = False
+    baseline: str | None = None
+    """Baseline file (``replay baseline``) that budget checks' relative limits compare
+    against, relative to the suite file."""
     checks: tuple[dict[str, Any], ...] = ()
 
 
@@ -88,6 +94,8 @@ class Overrides(_Config):
     client: str | None = None
     cassette_dir: Path | None = None
     """Read every scenario's cassette (by file name) from this directory instead."""
+    baseline: Path | None = None
+    """Use this baseline file (relative to the working directory) instead of the suite's."""
 
 
 def load_suite(path: Path) -> Suite:
@@ -147,10 +155,18 @@ class ScenarioReport(BaseModel):
     duration_ms: float = 0.0
     run_id: str | None = None
     """Where the run was stored (``replay runs ID``), when a store was used."""
+    baseline: ScenarioBaseline | None = None
+    """The scenario's entry in the suite's baseline file, when it has one."""
 
     @property
     def failed_checks(self) -> list[CheckResult]:
-        return [c for c in self.checks if not c.passed]
+        """Checks that failed the scenario (advisory failures are not among them)."""
+        return [c for c in self.checks if c.blocking]
+
+    @property
+    def advisory_failures(self) -> list[CheckResult]:
+        """Checks that failed but are advisory, so the scenario still passed them."""
+        return [c for c in self.checks if not c.passed and c.advisory]
 
 
 class SuiteReport(BaseModel):
@@ -199,7 +215,9 @@ def run_suite(
 ) -> SuiteReport:
     """Replay every scenario of the suite at ``path`` and check it.
 
-    Raises :class:`ConfigError` for a broken suite file. A scenario that cannot
+    Raises :class:`ConfigError` for a broken suite file, or a missing or broken
+    baseline file (``baseline`` in ``[defaults]``, or ``overrides.baseline``),
+    which is read once for the whole suite. A scenario that cannot
     run (missing cassette, unimportable agent, bad check) is reported with
     ``ran=False`` and the reason; the other scenarios still run, and the suite
     counts as broken rather than regressed.
@@ -208,6 +226,7 @@ def run_suite(
     overrides = overrides or Overrides()
     sink = sink or RunSink()
     base_dir = path.parent
+    baselines = _load_baselines(suite, overrides, base_dir)
     started_at = clock()
     started = timer()
     sha = git_sha(base_dir)
@@ -216,7 +235,9 @@ def run_suite(
     reports: list[ScenarioReport] = []
     for scenario in suite.scenario:
         scenario_started = clock()
-        outcome, result = _run_scenario(scenario, suite.defaults, overrides, base_dir, timer)
+        outcome, result = _run_scenario(
+            scenario, suite.defaults, overrides, base_dir, timer, baselines=baselines
+        )
         run_id = sink.save(outcome, result, scenario_started)
         reports.append(outcome.model_copy(update={"run_id": run_id}))
         log.info("ci.scenario", name=scenario.name, passed=outcome.passed)
@@ -234,13 +255,37 @@ def run_suite(
     return report
 
 
+@dataclass(frozen=True)
+class _Baselines:
+    path: Path
+    file: BaselineFile
+
+
+def _load_baselines(suite: Suite, overrides: Overrides, base_dir: Path) -> _Baselines | None:
+    if overrides.baseline is not None:
+        path = overrides.baseline
+    elif suite.defaults.baseline is not None:
+        path = base_dir / suite.defaults.baseline
+    else:
+        return None
+    return _Baselines(path, BaselineFile.load(path))
+
+
 def _run_scenario(
     scenario: Scenario,
     defaults: Defaults,
     overrides: Overrides,
     base_dir: Path,
     timer: Callable[[], float],
+    *,
+    baselines: _Baselines | None = None,
+    with_checks: bool = True,
 ) -> tuple[ScenarioReport, RunResult | None]:
+    """Resolve, replay and (``with_checks``) check one scenario.
+
+    Returns ``(report, None)`` when the scenario could not run at all.
+    """
+    baseline = baselines.file.scenarios.get(scenario.name) if baselines is not None else None
     mode = overrides.mode or scenario.mode or defaults.mode
     policy = overrides.policy or scenario.policy or defaults.policy
     cassette_path = (
@@ -263,6 +308,7 @@ def _run_scenario(
             ran=False,
             error=ErrorInfo.from_exception(exc),
             duration_ms=round((timer() - started) * 1000, 3),
+            baseline=baseline,
         ), None
 
     try:
@@ -274,7 +320,7 @@ def _run_scenario(
                 "set agent = 'module:function' in the scenario or [defaults]"
             )
         agent = load_agent(agent_ref)
-        checks = _checks(scenario, defaults, base_dir, cassette)
+        checks = _checks(scenario, defaults, base_dir, cassette, baselines) if with_checks else []
         client_ref = overrides.client or scenario.client or defaults.client
         client = make_client(client_ref) if client_ref is not None else None
         result = replay(
@@ -283,8 +329,11 @@ def _run_scenario(
     except ReplayError as exc:
         return failed(exc, agent_ref or "?")
 
-    check_results = tuple(result.check(*checks))
-    strict = (
+    try:
+        check_results = tuple(result.check(*checks))
+    except JudgeCacheMiss as exc:
+        return failed(exc, agent_ref)
+    strict = with_checks and (
         scenario.fail_on_approximate
         if scenario.fail_on_approximate is not None
         else defaults.fail_on_approximate
@@ -308,7 +357,7 @@ def _run_scenario(
         agent=agent_ref,
         mode=mode,
         policy=policy,
-        passed=result.ok and all(c.passed for c in check_results),
+        passed=result.ok and not any(c.blocking for c in check_results),
         error=result.error,
         checks=check_results,
         steps=StepCounts(total=len(result.trajectory.steps), by_status=by_status),
@@ -317,30 +366,123 @@ def _run_scenario(
         cost_usd=result.cost_usd,
         tokens=result.tokens,
         duration_ms=round((timer() - started) * 1000, 3),
+        baseline=baseline,
     )
     return report, result
 
 
 def _checks(
-    scenario: Scenario, defaults: Defaults, base_dir: Path, cassette: Cassette
+    scenario: Scenario,
+    defaults: Defaults,
+    base_dir: Path,
+    cassette: Cassette,
+    baselines: _Baselines | None,
 ) -> list[Check]:
     checks: list[Check] = []
     expected = cassette.tool_names()
+    baseline = baselines.file.scenarios.get(scenario.name) if baselines is not None else None
     for i, spec in enumerate((*defaults.checks, *scenario.checks)):
+        where = f"scenario {scenario.name!r}, check #{i + 1}"
+        relative = [k for k in RELATIVE_LIMITS if spec.get(k) is not None]
+        if spec.get("type") == "budget" and relative and baseline is None:
+            if baselines is None:
+                raise ConfigError(
+                    f"{where}: budget limits {', '.join(relative)} compare against a "
+                    "baseline, and the suite has none; record one with `replay baseline "
+                    'SUITE -o FILE` and set baseline = "FILE" in [defaults] (or pass '
+                    "--baseline FILE)"
+                )
+            raise ConfigError(
+                f"{where}: budget limits {', '.join(relative)} compare against a baseline, "
+                f"and {baselines.path} has no entry for this scenario; re-record it with "
+                f"`replay baseline SUITE -o {baselines.path}`"
+            )
         try:
-            checks.append(build_check(spec, base_dir=base_dir, expected_tools=expected))
+            checks.append(
+                build_check(spec, base_dir=base_dir, expected_tools=expected, baseline=baseline)
+            )
         except ReplayError as exc:
-            raise ConfigError(f"scenario {scenario.name!r}, check #{i + 1}: {exc}") from exc
+            raise ConfigError(f"{where}: {exc}") from exc
     return checks
 
 
+def measure_suite(
+    path: Path,
+    *,
+    overrides: Overrides | None = None,
+    runs: int = 1,
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    timer: Callable[[], float] = time.perf_counter,
+) -> BaselineFile:
+    """Replay every scenario ``runs`` times, without checks, and aggregate a baseline.
+
+    A baseline is a measurement, so no check runs (this also lets a suite whose
+    budget checks need a baseline record its first one). Scenarios resolve
+    exactly as in :func:`run_suite`; the suite's own baseline file is not read.
+    Raises :class:`ConfigError` for a broken suite or a scenario that cannot
+    run, and :class:`MeasurementError` when the agent ends any run in an error:
+    nothing is measured from a failing run.
+    """
+    if runs < 1:
+        raise ConfigError(f"runs must be at least 1, got {runs}")
+    suite = load_suite(path)
+    overrides = overrides or Overrides()
+    base_dir = path.parent
+    created_at = clock()
+    log.info("baseline.start", suite=str(path), scenarios=len(suite.scenario), runs=runs)
+    measured: dict[str, list[RunMetrics]] = {}
+    broken: list[str] = []
+    errored: list[str] = []
+    for scenario in suite.scenario:
+        for _ in range(runs):
+            report, result = _run_scenario(
+                scenario, suite.defaults, overrides, base_dir, timer, with_checks=False
+            )
+            if result is None or result.error is not None:
+                assert report.error is not None
+                problem = f"{scenario.name} ({report.error.type}: {report.error.message})"
+                (broken if result is None else errored).append(problem)
+                break
+            measured.setdefault(scenario.name, []).append(measure(result))
+    if broken:
+        raise ConfigError(
+            "cannot measure a baseline: scenario(s) could not run: " + "; ".join(broken)
+        )
+    if errored:
+        raise MeasurementError(
+            "cannot measure a baseline: the agent failed in " + "; ".join(errored) + ". A "
+            "baseline is measured from runs that finish; fix the agent or the scenario first"
+        )
+    log.info("baseline.done", scenarios=len(measured))
+    return BaselineFile(
+        suite=str(path),
+        created_at=created_at,
+        git_sha=git_sha(base_dir),
+        mode=overrides.mode or suite.defaults.mode,
+        policy=overrides.policy or suite.defaults.policy,
+        scenarios={name: aggregate(m) for name, m in measured.items()},
+    )
+
+
 def git_sha(cwd: Path) -> str | None:
-    """The commit being tested: ``$GITHUB_SHA`` in Actions, else ``git rev-parse HEAD``."""
-    if sha := os.environ.get("GITHUB_SHA"):
-        return sha
+    """The commit being tested: ``$GITHUB_SHA`` when it is a commit of the checkout at
+    ``cwd`` (in Actions it is), else ``git rev-parse HEAD`` there, else ``$GITHUB_SHA``
+    as given, else ``None``.
+
+    A workflow that runs this tool on another repository's checkout exports a
+    ``GITHUB_SHA`` that means nothing here; the check keeps it out of reports.
+    """
+    actions = os.environ.get("GITHUB_SHA") or None
+    if actions is not None and _git(cwd, "cat-file", "-e", f"{actions}^{{commit}}") is not None:
+        return actions
+    return _git(cwd, "rev-parse", "HEAD") or actions
+
+
+def _git(cwd: Path, *args: str) -> str | None:
+    """stdout of ``git ARGS`` in ``cwd``, or ``None`` when git is missing or fails."""
     try:
-        out = subprocess.run(
-            ["git", "rev-parse", "HEAD"],  # noqa: S607 - git from PATH, fixed arguments
+        out = subprocess.run(  # noqa: S603 - arguments are literals from this module
+            ["git", *args],  # noqa: S607 - git from PATH
             cwd=cwd,
             capture_output=True,
             text=True,
@@ -349,7 +491,7 @@ def git_sha(cwd: Path) -> str | None:
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    return out.stdout.strip() or None if out.returncode == 0 else None
+    return out.stdout.strip() if out.returncode == 0 else None
 
 
 # --- reports ----------------------------------------------------------------------
@@ -359,6 +501,7 @@ def to_json(report: SuiteReport) -> str:
     data = report.model_dump(mode="json")
     for scenario, model in zip(data["scenarios"], report.scenarios, strict=True):
         scenario["failed_checks"] = [c.check for c in model.failed_checks]
+        scenario["advisory_failures"] = [c.check for c in model.advisory_failures]
     data["failed"] = [s.name for s in report.failed]
     data["broken"] = [s.name for s in report.broken]
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
@@ -366,6 +509,16 @@ def to_json(report: SuiteReport) -> str:
 
 def _cell(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
+
+
+def _cost(s: ScenarioReport) -> str:
+    """The cost cell: ``$0.0461``, with the change against the baseline when there is one."""
+    cost = f"${s.cost_usd:.4f}"
+    if s.baseline is None or not s.ran:
+        return cost
+    if s.baseline.cost_usd == 0:
+        return f"{cost} (baseline $0)"
+    return f"{cost} ({(s.cost_usd - s.baseline.cost_usd) / s.baseline.cost_usd * 100:+.1f}%)"
 
 
 def to_markdown(report: SuiteReport) -> str:
@@ -386,12 +539,20 @@ def to_markdown(report: SuiteReport) -> str:
     ]
     for s in report.scenarios:
         passed_checks = sum(1 for c in s.checks if c.passed)
+        advisory_note = f" (+{len(s.advisory_failures)} advisory)" if s.advisory_failures else ""
         steps = ", ".join(f"{n} {status}" for status, n in sorted(s.steps.by_status.items()))
         result = "✅ pass" if s.passed else ("❌ fail" if s.ran else "⚠️ did not run")
         lines.append(
             f"| `{_cell(s.name)}` | {s.mode} | {result} "
-            f"| {passed_checks}/{len(s.checks)} | {_cell(steps) or '—'} | ${s.cost_usd:.4f} |"
+            f"| {passed_checks}/{len(s.checks)}{advisory_note} | {_cell(steps) or '—'} "
+            f"| {_cost(s)} |"
         )
+    advisory = [s for s in report.scenarios if s.advisory_failures]
+    if advisory:
+        lines += ["", "Advisory (reported, not gating):", ""]
+        for s in advisory:
+            for c in s.advisory_failures:
+                lines.append(f"- `{_cell(s.name)}` **{c.check}**: {_cell(c.message)}")
     for s in failed:
         lines += ["", f"### {'❌' if s.ran else '⚠️'} `{s.name}`", ""]
         lines.append(f"Cassette `{s.cassette}`, agent `{s.agent}`, {s.mode} / {s.policy}.")

@@ -30,7 +30,7 @@ jobs:
           uv run ruff check --output-format=github .
           uv run ruff format --check .
       - name: Type-check
-        run: uv run mypy agent_replay examples
+        run: uv run mypy agent_replay examples eval
       - name: Test
         run: uv run pytest -q
       - name: Quickstart (replay passes, mutant fails)

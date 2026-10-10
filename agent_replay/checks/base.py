@@ -17,6 +17,14 @@ class CheckResult(BaseModel):
     passed: bool
     message: str
     details: dict[str, JsonValue] = Field(default_factory=dict)
+    advisory: bool = False
+    """Reported but never gating: a failed advisory check does not fail the run.
+    An uncalibrated ``judge`` check is advisory (PLAN.md decision 5)."""
+
+    @property
+    def blocking(self) -> bool:
+        """True when this result fails the run: it failed and is not advisory."""
+        return not self.passed and not self.advisory
 
 
 class Check(Protocol):

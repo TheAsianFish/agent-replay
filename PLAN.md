@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-09 (M2).
+definition of done is met and CI is green. Last updated: 2026-10-09 (M3).
 
 ## Goal
 
@@ -335,7 +335,69 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     around a stream inside a recording drains it on entry. `@tool` on methods
     is still unsupported.
 
-- [ ] M3: Judge, cost and the stats interface — `judge` check with rubric YAML, `claude-opus-5-5` through structured outputs, Ollama fallback, fingerprint cache, "advisory until calibrated" semantics; pricing table and cost/latency baselines (`replay baseline`); `stats.py` interface with `NotImplementedError` bodies, `stats_baseline.py`, `tests/test_stats.py` (hand cases, edge cases, oracle property tests), `eval/sprt_sim.py`. Done when judge checks run offline against a fake judge in tests, cost deltas gate correctly, and the stats tests pass against the baseline where applicable and are marked expected-fail for the unimplemented module.
+- [x] M3: Judge, cost and the stats interface — `judge` check with rubric YAML, `claude-opus-5-5` through structured outputs, Ollama fallback, fingerprint cache, "advisory until calibrated" semantics; pricing table and cost/latency baselines (`replay baseline`); `stats.py` interface with `NotImplementedError` bodies, `stats_baseline.py`, `tests/test_stats.py` (hand cases, edge cases, oracle property tests), `eval/sprt_sim.py`. Done when judge checks run offline against a fake judge in tests, cost deltas gate correctly, and the stats tests pass against the baseline where applicable and are marked expected-fail for the unimplemented module.
+  - *M3 notes (2026-10-09).* Built as planned, with these refinements:
+    (a) **Advisory results.** `CheckResult` gained `advisory`; a failed
+    advisory check is reported (CLI `ADVISORY FAIL`, a Markdown "Advisory"
+    list, the store's new column, added in place to older local databases)
+    but never fails a scenario.
+    (b) **Judge.** `agent_replay/judge/`: a YAML rubric (1 to 10 criteria,
+    content fingerprint), a transcript built from the run's top-level tool
+    calls and output (never the agent's model turns; values clipped at 2000
+    characters), and providers behind one protocol: Anthropic, Ollama, a fake
+    and `module:factory`. The Anthropic judge uses `messages.create` with the
+    JSON-schema `output_config` that `messages.parse` would send, because in
+    SDK 1.12 `parse` raises on a refused or truncated answer and hides
+    `stop_reason`. Default effort is `low`; the judge id carries provider,
+    model and effort.
+    (c) **Gating.** Per criterion: a criterion gates only when a calibration
+    report matches the rubric fingerprint, the judge id and the judge prompt
+    version, and its kappa lower bound is at least `REPLAY_JUDGE_MIN_KAPPA`.
+    A judge error is advisory when nothing gates and fails closed otherwise.
+    M3 defines the report format; M6 produces reports.
+    (d) **Cache.** Content-addressed on judge id, rubric, transcript and
+    prompt version. With `REPLAY_JUDGE_OFFLINE=1` a miss raises
+    `JudgeCacheMiss` and `replay ci` exits 2, so a stale committed cache
+    cannot pass unnoticed (the review found the first version made a miss
+    advisory). The live retail suite commits its verdicts.
+    (e) **Baselines.** `replay baseline` replays a suite without checks
+    (no chicken-and-egg for relative limits) and stores per-scenario medians
+    of cost, tokens, model calls and p95 latency. `budget` gained four
+    `*_increase_pct` limits; a zero baseline allows only zero; a limit
+    without latency samples is skipped and named. `REPLAY_PRICES_FILE`
+    extends the price table.
+    (f) **Statistics.** `stats.py` is the specification with
+    `NotImplementedError` bodies; `stats_baseline.py` (raw agreement,
+    normal-approximation bootstrap, Wald, fixed-k majority) runs behind the
+    same `StatsImpl` protocol, selected by `REPLAY_STATS_IMPL` (default
+    `baseline` until core exists). Tests compare against scikit-learn and
+    statsmodels; core tests are `xfail(raises=NotImplementedError)`, so a
+    wrong implementation fails for real. `make bench-sprt` simulates the
+    gate (baseline only for now).
+    (g) **Measured.** On a live `model-live` run, the 25% cost limit passed
+    the agent and failed all six tasks of a `no_prompt_cache` mutant (+76%
+    to +155% cost, tokens unchanged). The uncalibrated judge agreed with the
+    deterministic checks on 23/24 runs (wiring test, not calibration).
+    M3 API spend $1.41.
+    (h) **Review fixes.** An independent review found six defects, all fixed
+    with tests: offline cache misses passing as advisory, calibration
+    ignoring the prompt version, spend figures that did not reconcile with
+    the artefacts, a baseline file naming the wrong suite, an absolute
+    latency limit passing silently without samples, and the Markdown checks
+    column counting advisory failures as passed.
+    (i) **Known limitations.** A baseline records its mode and policy but
+    `replay ci` does not compare them with the scenario's (a `model-live`
+    baseline used by a `full` run compares live cost with recorded cost).
+    `PROMPT_VERSION` is bumped by hand when the judge prompt changes. With
+    one run per scenario, p95 latency moved by up to 36% between runs, too
+    noisy to gate tightly before M4's repeats.
+    (j) **Independent review.** Fixed on the branch: older stores opened by
+    two processes at once could fail on the duplicate column; a cached
+    verdict copied under another key was served on its file name alone; the
+    stats error tests matched on wording the spec never promised (the spec
+    now names the argument); the gate simulation's shared outcome stream did
+    not hold for an early-stopping gate; reports took a `$GITHUB_SHA` that
+    was not a commit of the checkout; two figures were rounded twice.
 - [ ] M4: Flakiness engine and mutation study — `replay flake` running repeated `model-live` replays with bounded concurrency and rate limiting; Wilson gate and SPRT early stop through the stats interface; flaky vs failing classification; `eval/mutations/` with 25+ mutations and 5 benign refactors; `make eval-mutations` and `make bench-sprt` (simulation) run offline in CI and write RESULTS.md. Done when RESULTS.md holds measured mutation detection rates per check type and per mode, and simulated SPRT savings, with commands and raw output.
 - [ ] M5: Dashboard — PostgreSQL + Alembic migrations sharing the SQLite models; FastAPI API with structured logging; React 19 + TypeScript strict dashboard (runs, run detail, trace viewer, aligned trace diff from `diff.py`, flakiness trend, calibration report page reading stored reports); Vitest and Playwright smoke test; Docker Compose; `replay serve`. Done when `docker compose up` shows the example data, API tests and UI tests pass in CI, and screenshots are in `docs/`.
 - [ ] M6: Judge calibration — `replay label` TUI, golden-set format, `replay calibrate` (kappa per criterion with bootstrap CI, agreement, confusion matrix, majority baseline, self-consistency across 3 judge runs, position / verbosity / self-preference probes), LLMBar harness (`make eval-llmbar`), calibration gating wired into `judge` checks, calibration page populated. Done when the full pipeline runs end to end on a fake judge offline with tests, and RESULTS.md lists the exact key-requiring commands under "To measure" with cost estimates; if D1 has been recorded and labelled, the measured kappa is in RESULTS.md.

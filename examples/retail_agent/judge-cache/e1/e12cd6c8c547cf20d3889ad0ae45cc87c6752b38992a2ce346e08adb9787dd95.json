@@ -1,0 +1,34 @@
+{
+  "key": "e12cd6c8c547cf20d3889ad0ae45cc87c6752b38992a2ce346e08adb9787dd95",
+  "judge_id": "anthropic:claude-opus-5-5:effort=low",
+  "rubric": "retail-resolution",
+  "rubric_fingerprint": "sha256:cd25d82a9bc4d0eac38920f8bd39fda73029b08cb70c1970b01b901b0eb19fc9",
+  "input_fingerprint": "sha256:cb118e9b0cbe42689b38d1668faf0f79850e2461a80c37223760af9289988b9c",
+  "prompt_version": "1",
+  "verdicts": [
+    {
+      "id": "resolved",
+      "reasoning": "Bicycle item 7758198585 in delivered order #W3916020 was returned (call 7), with the refund to credit_card_8105988, the original payment method.",
+      "verdict": "pass"
+    },
+    {
+      "id": "policy_followed",
+      "reasoning": "The user was authenticated via name and zip (call 1), and the order was fetched (call 5) before the return. The order was delivered and the refund went to the original payment method.",
+      "verdict": "pass"
+    },
+    {
+      "id": "accurate_report",
+      "reasoning": "The reply's amount of $1,917.21, the Mastercard ending 8484, and the 'return requested' status all match the tool results. The email mention is standard policy wording.",
+      "verdict": "pass"
+    }
+  ],
+  "usage": {
+    "input_tokens": 3595,
+    "output_tokens": 246,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2243
+  },
+  "cost_usd": 0.0197486,
+  "latency_ms": 3667.375,
+  "created_at": "2026-10-09T15:05:39.507319Z"
+}

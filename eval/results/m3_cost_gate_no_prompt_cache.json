@@ -1,0 +1,1217 @@
+{
+  "suite": "examples/retail_agent/replay-live.toml",
+  "passed": false,
+  "started_at": "2026-10-09T15:11:29.320082Z",
+  "duration_ms": 52516.288,
+  "git_sha": "c795715b1d2d3dead75fdc7e3fa9b8922c658d11",
+  "suite_id": null,
+  "scenarios": [
+    {
+      "name": "cancel_pending_laptop",
+      "cassette": "examples/retail_agent/cassettes/live/cancel_pending_laptop.jsonl",
+      "agent": "examples.retail_agent.mutants:no_prompt_cache",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "6 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "cancel_pending_order"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "cancel_pending_order"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "6 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 6,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.115528,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.0461406,
+            "max_cost_increase_pct": null,
+            "cost_usd_delta": 0.0693874,
+            "cost_usd_delta_pct": 150.3825,
+            "tokens": 26898,
+            "max_tokens": null,
+            "baseline_tokens": 26889,
+            "max_tokens_increase_pct": null,
+            "tokens_delta": 9,
+            "tokens_delta_pct": 0.0335,
+            "model_calls": 5,
+            "max_model_calls": 8,
+            "baseline_model_calls": 5,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2108.117,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 1974.423,
+            "max_p95_latency_increase_pct": null,
+            "p95_latency_ms_delta": 133.694,
+            "p95_latency_ms_delta_pct": 6.7713,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": false,
+          "message": "over budget: cost_usd 0.1155 is +150.4% over baseline 0.0461 (limit +25%)",
+          "details": {
+            "cost_usd": 0.115528,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.0461406,
+            "max_cost_increase_pct": 25.0,
+            "cost_usd_delta": 0.0693874,
+            "cost_usd_delta_pct": 150.3825,
+            "tokens": 26898,
+            "max_tokens": null,
+            "baseline_tokens": 26889,
+            "max_tokens_increase_pct": 25.0,
+            "tokens_delta": 9,
+            "tokens_delta_pct": 0.0335,
+            "model_calls": 5,
+            "max_model_calls": null,
+            "baseline_model_calls": 5,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2108.117,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 1974.423,
+            "max_p95_latency_increase_pct": 50.0,
+            "p95_latency_ms_delta": 133.694,
+            "p95_latency_ms_delta_pct": 6.7713,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "judge:retail-resolution",
+          "passed": false,
+          "message": "judge verdict unknown (advisory: uncalibrated, so this does not fail the run): this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+          "details": {
+            "judge_id": "anthropic:claude-opus-5-5:effort=low",
+            "rubric": "retail-resolution",
+            "rubric_fingerprint": "sha256:cd25d82a9bc4d0eac38920f8bd39fda73029b08cb70c1970b01b901b0eb19fc9",
+            "calibrated": false,
+            "error": "this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+            "criteria": {
+              "resolved": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "policy_followed": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "accurate_report": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              }
+            }
+          },
+          "advisory": true
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "arg_schema:cancel_pending_order",
+          "passed": true,
+          "message": "1 call(s) to cancel_pending_order match the JSON schema",
+          "details": {
+            "tool": "cancel_pending_order",
+            "calls": 1,
+            "failures": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 11,
+        "by_status": {
+          "live": 5,
+          "exact": 6
+        }
+      },
+      "unconsumed": [],
+      "output": "I couldn't return your laptop order (#W2417020) because it hadn't been delivered yet, so I cancelled it as you asked and the full $2,674.40 is back on your gift card now.",
+      "cost_usd": 0.115528,
+      "tokens": 26898,
+      "duration_ms": 9422.935,
+      "run_id": null,
+      "baseline": {
+        "cost_usd": 0.0461406,
+        "tokens": 26889,
+        "model_calls": 5,
+        "p95_latency_ms": 1974.423,
+        "runs": 1
+      },
+      "failed_checks": [
+        "budget"
+      ],
+      "advisory_failures": [
+        "judge:retail-resolution"
+      ]
+    },
+    {
+      "name": "modify_address_suite",
+      "cassette": "examples/retail_agent/cassettes/live/modify_address_suite.jsonl",
+      "agent": "examples.retail_agent.mutants:no_prompt_cache",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "3 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_order_details",
+              "modify_pending_order_address"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_order_details",
+              "modify_pending_order_address"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "3 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 3,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.070956,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.040258,
+            "max_cost_increase_pct": null,
+            "cost_usd_delta": 0.030698,
+            "cost_usd_delta_pct": 76.2532,
+            "tokens": 16087,
+            "max_tokens": null,
+            "baseline_tokens": 16092,
+            "max_tokens_increase_pct": null,
+            "tokens_delta": -5,
+            "tokens_delta_pct": -0.0311,
+            "model_calls": 3,
+            "max_model_calls": 8,
+            "baseline_model_calls": 3,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2036.831,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2589.299,
+            "max_p95_latency_increase_pct": null,
+            "p95_latency_ms_delta": -552.468,
+            "p95_latency_ms_delta_pct": -21.3366,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": false,
+          "message": "over budget: cost_usd 0.0710 is +76.3% over baseline 0.0403 (limit +25%)",
+          "details": {
+            "cost_usd": 0.070956,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.040258,
+            "max_cost_increase_pct": 25.0,
+            "cost_usd_delta": 0.030698,
+            "cost_usd_delta_pct": 76.2532,
+            "tokens": 16087,
+            "max_tokens": null,
+            "baseline_tokens": 16092,
+            "max_tokens_increase_pct": 25.0,
+            "tokens_delta": -5,
+            "tokens_delta_pct": -0.0311,
+            "model_calls": 3,
+            "max_model_calls": null,
+            "baseline_model_calls": 3,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2036.831,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2589.299,
+            "max_p95_latency_increase_pct": 50.0,
+            "p95_latency_ms_delta": -552.468,
+            "p95_latency_ms_delta_pct": -21.3366,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "judge:retail-resolution",
+          "passed": false,
+          "message": "judge verdict unknown (advisory: uncalibrated, so this does not fail the run): this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+          "details": {
+            "judge_id": "anthropic:claude-opus-5-5:effort=low",
+            "rubric": "retail-resolution",
+            "rubric_fingerprint": "sha256:cd25d82a9bc4d0eac38920f8bd39fda73029b08cb70c1970b01b901b0eb19fc9",
+            "calibrated": false,
+            "error": "this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+            "criteria": {
+              "resolved": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "policy_followed": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "accurate_report": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              }
+            }
+          },
+          "advisory": true
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "required_tools",
+          "passed": true,
+          "message": "all 2 required tool(s) were called",
+          "details": {
+            "required": [
+              "get_order_details",
+              "modify_pending_order_address"
+            ],
+            "missing": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 6,
+        "by_status": {
+          "live": 3,
+          "exact": 3
+        }
+      },
+      "unconsumed": [],
+      "output": "I've changed the delivery address for order #W8665881 to 123 Elm Street, Suite 641, Austin, TX 78712, USA.",
+      "cost_usd": 0.070956,
+      "tokens": 16087,
+      "duration_ms": 4933.927,
+      "run_id": null,
+      "baseline": {
+        "cost_usd": 0.040258,
+        "tokens": 16092,
+        "model_calls": 3,
+        "p95_latency_ms": 2589.299,
+        "runs": 1
+      },
+      "failed_checks": [
+        "budget"
+      ],
+      "advisory_failures": [
+        "judge:retail-resolution"
+      ]
+    },
+    {
+      "name": "return_damaged_bicycle",
+      "cassette": "examples/retail_agent/cassettes/live/return_damaged_bicycle.jsonl",
+      "agent": "examples.retail_agent.mutants:no_prompt_cache",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "7 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "return_delivered_order_items"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "return_delivered_order_items"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "7 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 7,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.124492,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.0527062,
+            "max_cost_increase_pct": null,
+            "cost_usd_delta": 0.0717858,
+            "cost_usd_delta_pct": 136.1999,
+            "tokens": 28851,
+            "max_tokens": null,
+            "baseline_tokens": 28850,
+            "max_tokens_increase_pct": null,
+            "tokens_delta": 1,
+            "tokens_delta_pct": 0.0035,
+            "model_calls": 5,
+            "max_model_calls": 8,
+            "baseline_model_calls": 5,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2425.204,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2320.018,
+            "max_p95_latency_increase_pct": null,
+            "p95_latency_ms_delta": 105.186,
+            "p95_latency_ms_delta_pct": 4.5338,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": false,
+          "message": "over budget: cost_usd 0.1245 is +136.2% over baseline 0.0527 (limit +25%)",
+          "details": {
+            "cost_usd": 0.124492,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.0527062,
+            "max_cost_increase_pct": 25.0,
+            "cost_usd_delta": 0.0717858,
+            "cost_usd_delta_pct": 136.1999,
+            "tokens": 28851,
+            "max_tokens": null,
+            "baseline_tokens": 28850,
+            "max_tokens_increase_pct": 25.0,
+            "tokens_delta": 1,
+            "tokens_delta_pct": 0.0035,
+            "model_calls": 5,
+            "max_model_calls": null,
+            "baseline_model_calls": 5,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2425.204,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2320.018,
+            "max_p95_latency_increase_pct": 50.0,
+            "p95_latency_ms_delta": 105.186,
+            "p95_latency_ms_delta_pct": 4.5338,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "judge:retail-resolution",
+          "passed": false,
+          "message": "judge verdict unknown (advisory: uncalibrated, so this does not fail the run): this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+          "details": {
+            "judge_id": "anthropic:claude-opus-5-5:effort=low",
+            "rubric": "retail-resolution",
+            "rubric_fingerprint": "sha256:cd25d82a9bc4d0eac38920f8bd39fda73029b08cb70c1970b01b901b0eb19fc9",
+            "calibrated": false,
+            "error": "this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+            "criteria": {
+              "resolved": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "policy_followed": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "accurate_report": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              }
+            }
+          },
+          "advisory": true
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "arg_schema:return_delivered_order_items",
+          "passed": true,
+          "message": "1 call(s) to return_delivered_order_items match the JSON schema",
+          "details": {
+            "tool": "return_delivered_order_items",
+            "calls": 1,
+            "failures": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 12,
+        "by_status": {
+          "live": 5,
+          "exact": 7
+        }
+      },
+      "unconsumed": [],
+      "output": "I've started the return for your bicycle from order #W3916020, and the $1,917.21 refund will go to your original Mastercard ending in 8484 — you'll get an email explaining how to send the bicycle back.",
+      "cost_usd": 0.124492,
+      "tokens": 28851,
+      "duration_ms": 9311.015,
+      "run_id": null,
+      "baseline": {
+        "cost_usd": 0.0527062,
+        "tokens": 28850,
+        "model_calls": 5,
+        "p95_latency_ms": 2320.018,
+        "runs": 1
+      },
+      "failed_checks": [
+        "budget"
+      ],
+      "advisory_failures": [
+        "judge:retail-resolution"
+      ]
+    },
+    {
+      "name": "exchange_waterproof_boots",
+      "cassette": "examples/retail_agent/cassettes/live/exchange_waterproof_boots.jsonl",
+      "agent": "examples.retail_agent.mutants:no_prompt_cache",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "8 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_product_details",
+              "exchange_delivered_order_items"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_product_details",
+              "exchange_delivered_order_items"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "8 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 8,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.167148,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.0654254,
+            "max_cost_increase_pct": null,
+            "cost_usd_delta": 0.1017226,
+            "cost_usd_delta_pct": 155.4788,
+            "tokens": 38963,
+            "max_tokens": null,
+            "baseline_tokens": 38960,
+            "max_tokens_increase_pct": null,
+            "tokens_delta": 3,
+            "tokens_delta_pct": 0.0077,
+            "model_calls": 6,
+            "max_model_calls": 8,
+            "baseline_model_calls": 6,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2491.471,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2338.822,
+            "max_p95_latency_increase_pct": null,
+            "p95_latency_ms_delta": 152.649,
+            "p95_latency_ms_delta_pct": 6.5267,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": false,
+          "message": "over budget: cost_usd 0.1671 is +155.5% over baseline 0.0654 (limit +25%)",
+          "details": {
+            "cost_usd": 0.167148,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.0654254,
+            "max_cost_increase_pct": 25.0,
+            "cost_usd_delta": 0.1017226,
+            "cost_usd_delta_pct": 155.4788,
+            "tokens": 38963,
+            "max_tokens": null,
+            "baseline_tokens": 38960,
+            "max_tokens_increase_pct": 25.0,
+            "tokens_delta": 3,
+            "tokens_delta_pct": 0.0077,
+            "model_calls": 6,
+            "max_model_calls": null,
+            "baseline_model_calls": 6,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2491.471,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2338.822,
+            "max_p95_latency_increase_pct": 50.0,
+            "p95_latency_ms_delta": 152.649,
+            "p95_latency_ms_delta_pct": 6.5267,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "judge:retail-resolution",
+          "passed": false,
+          "message": "judge verdict unknown (advisory: uncalibrated, so this does not fail the run): this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+          "details": {
+            "judge_id": "anthropic:claude-opus-5-5:effort=low",
+            "rubric": "retail-resolution",
+            "rubric_fingerprint": "sha256:cd25d82a9bc4d0eac38920f8bd39fda73029b08cb70c1970b01b901b0eb19fc9",
+            "calibrated": false,
+            "error": "this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+            "criteria": {
+              "resolved": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "policy_followed": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "accurate_report": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              }
+            }
+          },
+          "advisory": true
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "required_tools",
+          "passed": true,
+          "message": "all 2 required tool(s) were called",
+          "details": {
+            "required": [
+              "get_product_details",
+              "exchange_delivered_order_items"
+            ],
+            "missing": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 14,
+        "by_status": {
+          "live": 6,
+          "exact": 8
+        }
+      },
+      "unconsumed": [],
+      "output": "I've requested the exchange for order #W7181492: your size 12 leather hiking boots will be swapped for the waterproof version in the same size and material, and since the new pair costs $23.99 less, that amount will be refunded to your PayPal account. You'll get an email explaining how to return the original boots.",
+      "cost_usd": 0.167148,
+      "tokens": 38963,
+      "duration_ms": 11851.122,
+      "run_id": null,
+      "baseline": {
+        "cost_usd": 0.0654254,
+        "tokens": 38960,
+        "model_calls": 6,
+        "p95_latency_ms": 2338.822,
+        "runs": 1
+      },
+      "failed_checks": [
+        "budget"
+      ],
+      "advisory_failures": [
+        "judge:retail-resolution"
+      ]
+    },
+    {
+      "name": "lookup_latest_order_total",
+      "cassette": "examples/retail_agent/cassettes/live/lookup_latest_order_total.jsonl",
+      "agent": "examples.retail_agent.mutants:no_prompt_cache",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "5 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "5 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 5,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.090128,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.0451702,
+            "max_cost_increase_pct": null,
+            "cost_usd_delta": 0.0449578,
+            "cost_usd_delta_pct": 99.5298,
+            "tokens": 20440,
+            "max_tokens": null,
+            "baseline_tokens": 20497,
+            "max_tokens_increase_pct": null,
+            "tokens_delta": -57,
+            "tokens_delta_pct": -0.2781,
+            "model_calls": 4,
+            "max_model_calls": 8,
+            "baseline_model_calls": 4,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2559.195,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2758.022,
+            "max_p95_latency_increase_pct": null,
+            "p95_latency_ms_delta": -198.827,
+            "p95_latency_ms_delta_pct": -7.209,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": false,
+          "message": "over budget: cost_usd 0.0901 is +99.5% over baseline 0.0452 (limit +25%)",
+          "details": {
+            "cost_usd": 0.090128,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.0451702,
+            "max_cost_increase_pct": 25.0,
+            "cost_usd_delta": 0.0449578,
+            "cost_usd_delta_pct": 99.5298,
+            "tokens": 20440,
+            "max_tokens": null,
+            "baseline_tokens": 20497,
+            "max_tokens_increase_pct": 25.0,
+            "tokens_delta": -57,
+            "tokens_delta_pct": -0.2781,
+            "model_calls": 4,
+            "max_model_calls": null,
+            "baseline_model_calls": 4,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2559.195,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2758.022,
+            "max_p95_latency_increase_pct": 50.0,
+            "p95_latency_ms_delta": -198.827,
+            "p95_latency_ms_delta_pct": -7.209,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "judge:retail-resolution",
+          "passed": false,
+          "message": "judge verdict unknown (advisory: uncalibrated, so this does not fail the run): this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+          "details": {
+            "judge_id": "anthropic:claude-opus-5-5:effort=low",
+            "rubric": "retail-resolution",
+            "rubric_fingerprint": "sha256:cd25d82a9bc4d0eac38920f8bd39fda73029b08cb70c1970b01b901b0eb19fc9",
+            "calibrated": false,
+            "error": "this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+            "criteria": {
+              "resolved": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "policy_followed": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "accurate_report": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              }
+            }
+          },
+          "advisory": true
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "forbidden_tools",
+          "passed": true,
+          "message": "no forbidden tool was called",
+          "details": {
+            "forbidden": [
+              "cancel_pending_order",
+              "modify_pending_order_address",
+              "return_delivered_order_items",
+              "exchange_delivered_order_items"
+            ],
+            "calls": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "output_schema",
+          "passed": true,
+          "message": "output matches the JSON schema",
+          "details": {},
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 9,
+        "by_status": {
+          "live": 4,
+          "exact": 5
+        }
+      },
+      "unconsumed": [],
+      "output": "Your order details don't show when each order was placed, so I can't tell which one is the most recent. Here's what you paid for each order on your Mastercard ending in 1065: #W4219264 (pending) cost $3,916.77, #W6729841 (pending) cost $829.43, and #W3445693 (already delivered, so probably older) cost $919.67.",
+      "cost_usd": 0.090128,
+      "tokens": 20440,
+      "duration_ms": 6734.801,
+      "run_id": null,
+      "baseline": {
+        "cost_usd": 0.0451702,
+        "tokens": 20497,
+        "model_calls": 4,
+        "p95_latency_ms": 2758.022,
+        "runs": 1
+      },
+      "failed_checks": [
+        "budget"
+      ],
+      "advisory_failures": [
+        "judge:retail-resolution"
+      ]
+    },
+    {
+      "name": "transfer_swapped_refunds",
+      "cassette": "examples/retail_agent/cassettes/live/transfer_swapped_refunds.jsonl",
+      "agent": "examples.retail_agent.mutants:no_prompt_cache",
+      "mode": "model-live",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "5 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_email",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "transfer_to_human_agents"
+            ],
+            "actual": [
+              "find_user_id_by_email",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "transfer_to_human_agents"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "5 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 5,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.113316,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.045254,
+            "max_cost_increase_pct": null,
+            "cost_usd_delta": 0.068062,
+            "cost_usd_delta_pct": 150.4,
+            "tokens": 26197,
+            "max_tokens": null,
+            "baseline_tokens": 26239,
+            "max_tokens_increase_pct": null,
+            "tokens_delta": -42,
+            "tokens_delta_pct": -0.1601,
+            "model_calls": 5,
+            "max_model_calls": 8,
+            "baseline_model_calls": 5,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2734.377,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2722.717,
+            "max_p95_latency_increase_pct": null,
+            "p95_latency_ms_delta": 11.66,
+            "p95_latency_ms_delta_pct": 0.4282,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": false,
+          "message": "over budget: cost_usd 0.1133 is +150.4% over baseline 0.0453 (limit +25%)",
+          "details": {
+            "cost_usd": 0.113316,
+            "max_cost_usd": null,
+            "baseline_cost_usd": 0.045254,
+            "max_cost_increase_pct": 25.0,
+            "cost_usd_delta": 0.068062,
+            "cost_usd_delta_pct": 150.4,
+            "tokens": 26197,
+            "max_tokens": null,
+            "baseline_tokens": 26239,
+            "max_tokens_increase_pct": 25.0,
+            "tokens_delta": -42,
+            "tokens_delta_pct": -0.1601,
+            "model_calls": 5,
+            "max_model_calls": null,
+            "baseline_model_calls": 5,
+            "max_model_calls_increase_pct": null,
+            "model_calls_delta": 0,
+            "model_calls_delta_pct": 0.0,
+            "p95_latency_ms": 2734.377,
+            "max_p95_latency_ms": null,
+            "baseline_p95_latency_ms": 2722.717,
+            "max_p95_latency_increase_pct": 50.0,
+            "p95_latency_ms_delta": 11.66,
+            "p95_latency_ms_delta_pct": 0.4282,
+            "skipped": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "judge:retail-resolution",
+          "passed": false,
+          "message": "judge verdict unknown (advisory: uncalibrated, so this does not fail the run): this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+          "details": {
+            "judge_id": "anthropic:claude-opus-5-5:effort=low",
+            "rubric": "retail-resolution",
+            "rubric_fingerprint": "sha256:cd25d82a9bc4d0eac38920f8bd39fda73029b08cb70c1970b01b901b0eb19fc9",
+            "calibrated": false,
+            "error": "this run's verdict is not in the judge cache 'examples/retail_agent/judge-cache' (judge anthropic:claude-opus-5-5:effort=low, rubric 'retail-resolution') and offline mode is on; run once with the provider available, or commit the cache directory",
+            "criteria": {
+              "resolved": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "policy_followed": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              },
+              "accurate_report": {
+                "verdict": null,
+                "gating": false,
+                "gate_reason": "uncalibrated: calibrate the judge against human labels first"
+              }
+            }
+          },
+          "advisory": true
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "required_tools",
+          "passed": true,
+          "message": "all 1 required tool(s) were called",
+          "details": {
+            "required": [
+              "transfer_to_human_agents"
+            ],
+            "missing": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "forbidden_tools",
+          "passed": true,
+          "message": "no forbidden tool was called",
+          "details": {
+            "forbidden": [
+              "cancel_pending_order",
+              "modify_pending_order_address",
+              "return_delivered_order_items",
+              "exchange_delivered_order_items"
+            ],
+            "calls": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 10,
+        "by_status": {
+          "live": 5,
+          "exact": 4,
+          "approximate": 1
+        }
+      },
+      "unconsumed": [],
+      "output": "I can only refund returns to the original payment method or an existing gift card, so I couldn't swap refunds between your two orders, and I've transferred you to a human agent as you asked.",
+      "cost_usd": 0.113316,
+      "tokens": 26197,
+      "duration_ms": 10260.614,
+      "run_id": null,
+      "baseline": {
+        "cost_usd": 0.045254,
+        "tokens": 26239,
+        "model_calls": 5,
+        "p95_latency_ms": 2722.717,
+        "runs": 1
+      },
+      "failed_checks": [
+        "budget"
+      ],
+      "advisory_failures": [
+        "judge:retail-resolution"
+      ]
+    }
+  ],
+  "failed": [
+    "cancel_pending_laptop",
+    "modify_address_suite",
+    "return_damaged_bicycle",
+    "exchange_waterproof_boots",
+    "lookup_latest_order_total",
+    "transfer_swapped_refunds"
+  ],
+  "broken": []
+}

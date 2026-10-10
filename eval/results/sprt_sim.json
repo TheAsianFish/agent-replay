@@ -1,0 +1,123 @@
+{
+  "parameters": {
+    "p_fail": 0.6,
+    "p_pass": 0.9,
+    "alpha": 0.05,
+    "beta": 0.05,
+    "max_runs": 20,
+    "trials": 2000,
+    "seed": 0
+  },
+  "results": {
+    "baseline": {
+      "summary": {
+        "expected_runs_at_p_fail": 20.0,
+        "expected_runs_at_p_pass": 20.0,
+        "false_pass_rate_at_p_fail": 0.134,
+        "false_fail_rate_at_p_pass": 0.0075
+      },
+      "points": [
+        {
+          "p": 0.05,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.0
+        },
+        {
+          "p": 0.1,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.0
+        },
+        {
+          "p": 0.15,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.0
+        },
+        {
+          "p": 0.2,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.0
+        },
+        {
+          "p": 0.25,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.0
+        },
+        {
+          "p": 0.3,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.0
+        },
+        {
+          "p": 0.35,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.0
+        },
+        {
+          "p": 0.4,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.001
+        },
+        {
+          "p": 0.45,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.007
+        },
+        {
+          "p": 0.5,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.0195
+        },
+        {
+          "p": 0.55,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.06
+        },
+        {
+          "p": 0.6,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.134
+        },
+        {
+          "p": 0.65,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.2415
+        },
+        {
+          "p": 0.7,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.421
+        },
+        {
+          "p": 0.75,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.6175
+        },
+        {
+          "p": 0.8,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.8055
+        },
+        {
+          "p": 0.85,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.935
+        },
+        {
+          "p": 0.9,
+          "mean_runs": 20.0,
+          "p_says_pass": 0.9925
+        },
+        {
+          "p": 0.95,
+          "mean_runs": 20.0,
+          "p_says_pass": 1.0
+        },
+        {
+          "p": 1.0,
+          "mean_runs": 20.0,
+          "p_says_pass": 1.0
+        }
+      ]
+    }
+  }
+}

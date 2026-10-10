@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel, JsonValue
 
+from agent_replay.baseline import ScenarioBaseline
 from agent_replay.cassette import ErrorInfo, Kind, Usage
 from agent_replay.checks import (
     ArgSchema,
@@ -430,6 +431,140 @@ def test_budget_empty_run_and_no_latency_samples() -> None:
     assert result.passed
     assert result.details["p95_latency_ms"] is None
     assert result.details["model_calls"] == 0
+    assert result.details["skipped"] == ["max_p95_latency_ms (no latency samples in the run)"]
+    assert result.message == (
+        "within budget (cost_usd); skipped max_p95_latency_ms (no latency samples in the run)"
+    )
+
+
+# --- budget: relative limits against a baseline ------------------------------------------------
+
+
+def base(
+    cost: float = 0.1, tokens: int = 1000, calls: int = 2, p95: float | None = 200.0
+) -> ScenarioBaseline:
+    return ScenarioBaseline(
+        cost_usd=cost, tokens=tokens, model_calls=calls, p95_latency_ms=p95, runs=1
+    )
+
+
+def priced_run(cost: float, tokens: int = 1000, latency: float | None = 200.0) -> RunResult:
+    """Two model calls splitting ``cost`` and ``tokens`` evenly."""
+    usage = Usage(input_tokens=tokens // 2)
+    return make_run([model_step(i, usage=usage, cost=cost / 2, latency=latency) for i in range(2)])
+
+
+def test_relative_limit_passes_within_and_reports_deltas() -> None:
+    result = budget(max_cost_increase_pct=20, baseline=base())(priced_run(0.11))
+    assert result.passed, result.message
+    assert result.message == "within budget (vs baseline: cost_usd +10.0%)"
+    assert result.details["baseline_cost_usd"] == 0.1
+    assert result.details["max_cost_increase_pct"] == 20
+    assert result.details["cost_usd_delta"] == pytest.approx(0.01)
+    assert result.details["cost_usd_delta_pct"] == pytest.approx(10.0)
+    # Metrics without a relative limit still get their deltas, but no verdict.
+    assert result.details["tokens_delta"] == 0
+    assert result.details["max_tokens_increase_pct"] is None
+    assert result.details["skipped"] == []
+
+
+def test_relative_limit_fails_with_the_percentage_over_baseline() -> None:
+    result = budget(max_cost_increase_pct=20, baseline=base())(priced_run(0.13))
+    assert not result.passed
+    assert result.message == (
+        "over budget: cost_usd 0.1300 is +30.0% over baseline 0.1000 (limit +20%)"
+    )
+
+
+def test_relative_limit_equality_passes_and_one_more_fails() -> None:
+    # 1000 tokens * 1.1 = 1100 exactly at the limit, even through float rounding.
+    limit = budget(max_tokens_increase_pct=10, baseline=base())
+    assert limit(priced_run(0.1, tokens=1100)).passed
+    assert not limit(priced_run(0.1, tokens=1102)).passed
+    # 0.07 * 1.1 is 0.07700000000000001 in floating point; 0.077 still passes.
+    assert budget(max_cost_increase_pct=10, baseline=base(cost=0.07))(priced_run(0.077)).passed
+    assert budget(max_cost_increase_pct=0, baseline=base())(priced_run(0.1)).passed
+    assert not budget(max_cost_increase_pct=0, baseline=base())(priced_run(0.1002)).passed
+
+
+def test_a_decrease_always_passes() -> None:
+    result = budget(max_tokens_increase_pct=0, baseline=base(tokens=2000))(priced_run(0.1))
+    assert result.passed
+    assert "tokens -50.0%" in result.message
+
+
+def test_zero_baseline_allows_only_zero() -> None:
+    zero = base(cost=0.0)
+    over = budget(max_cost_increase_pct=50, baseline=zero)(priced_run(0.0002))
+    assert not over.passed
+    assert "cost_usd 0.0002 is over baseline 0" in over.message
+    assert "zero baseline" in over.message
+    assert over.details["cost_usd_delta_pct"] is None
+    assert over.details["cost_usd_delta"] == pytest.approx(0.0002)
+    same = budget(max_cost_increase_pct=50, baseline=zero)(priced_run(0.0))
+    assert same.passed
+    assert "cost_usd = baseline 0" in same.message
+
+
+def test_missing_latency_skips_the_relative_limit_and_says_so() -> None:
+    no_run_latency = budget(max_p95_latency_increase_pct=10, baseline=base())(
+        priced_run(0.1, latency=None)
+    )
+    assert no_run_latency.passed
+    assert "skipped max_p95_latency_increase_pct (no latency samples in the run)" in (
+        no_run_latency.message
+    )
+    assert no_run_latency.details["skipped"] == [
+        "max_p95_latency_increase_pct (no latency samples in the run)"
+    ]
+    assert no_run_latency.details["p95_latency_ms_delta"] is None
+    no_base_latency = budget(
+        max_p95_latency_increase_pct=10, max_cost_increase_pct=10, baseline=base(p95=None)
+    )(priced_run(0.5))
+    assert not no_base_latency.passed  # the cost limit still applies
+    assert "skipped max_p95_latency_increase_pct (no latency samples in the baseline)" in (
+        no_base_latency.message
+    )
+
+
+def test_latency_relative_limit() -> None:
+    check = budget(max_p95_latency_increase_pct=50, baseline=base(p95=200.0))
+    assert check(priced_run(0.1, latency=300.0)).passed
+    failed = check(priced_run(0.1, latency=301.0))
+    assert not failed.passed
+    assert "p95_latency_ms 301 is +50.5% over baseline 200 (limit +50%)" in failed.message
+
+
+def test_absolute_and_relative_limits_together() -> None:
+    check = budget(
+        max_cost_usd=0.2,
+        max_model_calls=2,
+        max_cost_increase_pct=20,
+        max_model_calls_increase_pct=0,
+        baseline=base(),
+    )
+    ok = check(priced_run(0.105))
+    assert ok.passed
+    assert ok.message == (
+        "within budget (cost_usd, model_calls; vs baseline: cost_usd +5.0%, model_calls +0.0%)"
+    )
+    both = check(priced_run(0.25))
+    assert not both.passed
+    assert "cost_usd 0.25 > max_cost_usd 0.2" in both.message
+    assert "cost_usd 0.2500 is +150.0% over baseline 0.1000" in both.message
+
+
+def test_relative_limits_validation() -> None:
+    with pytest.raises(ValueError, match=r"need a baseline.*replay baseline SUITE -o FILE"):
+        budget(max_cost_increase_pct=10)
+    with pytest.raises(ValueError, match=">= 0"):
+        budget(max_tokens_increase_pct=-1, baseline=base())
+    with pytest.raises(ValueError, match="at least one limit"):
+        budget(baseline=base())
+    # A baseline with only absolute limits is fine: the deltas are reported.
+    result = budget(max_tokens=5000, baseline=base())(priced_run(0.1))
+    assert result.passed
+    assert result.details["cost_usd_delta_pct"] == 0.0
 
 
 # --- build_check ------------------------------------------------------------------------------
@@ -495,6 +630,32 @@ def test_build_budget(tmp_path: Path) -> None:
     assert check.max_model_calls == 3
     with pytest.raises(ConfigError, match="at least one limit"):
         build_check({"type": "budget"}, base_dir=tmp_path)
+
+
+def test_build_budget_with_relative_limits(tmp_path: Path) -> None:
+    spec = {
+        "type": "budget",
+        "max_cost_increase_pct": 25,
+        "max_tokens_increase_pct": 10.5,
+        "max_model_calls_increase_pct": 0,
+        "max_p95_latency_increase_pct": 50,
+    }
+    check = build_check(spec, base_dir=tmp_path, baseline=base())
+    assert isinstance(check, Budget)
+    assert check.baseline == base()
+    assert (
+        check.max_cost_increase_pct,
+        check.max_tokens_increase_pct,
+        check.max_model_calls_increase_pct,
+        check.max_p95_latency_increase_pct,
+    ) == (25, 10.5, 0, 50)
+    assert check(priced_run(0.1)).passed
+    with pytest.raises(ConfigError, match=r"invalid check of type 'budget': relative limits"):
+        build_check(spec, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match=">= 0"):
+        build_check({"type": "budget", "max_cost_increase_pct": -5}, base_dir=tmp_path)
+    with pytest.raises(ConfigError, match="max_cost_increase"):
+        build_check({"type": "budget", "max_cost_increase": 5}, base_dir=tmp_path)
 
 
 def test_build_arg_schema_from_inline_file_and_model(tmp_path: Path, helpers: str) -> None:

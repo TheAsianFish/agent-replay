@@ -1,0 +1,34 @@
+{
+  "key": "d47dc6bfe57262b0b2e21014abdbfee750b0ca8b62afaf635c27bf6f79d6be62",
+  "judge_id": "anthropic:claude-opus-5-5:effort=low",
+  "rubric": "retail-resolution",
+  "rubric_fingerprint": "sha256:cd25d82a9bc4d0eac38920f8bd39fda73029b08cb70c1970b01b901b0eb19fc9",
+  "input_fingerprint": "sha256:6f041dbc89d27fd3724b588a178aeebfbbcea83059f5b5830745f78b3a401068",
+  "prompt_version": "1",
+  "verdicts": [
+    {
+      "id": "resolved",
+      "reasoning": "Only order #W3445693 was fetched (call 3). The other two orders were never fetched, so the agent never established which order was most recent from tool data. It also did not give a single answer to the question.",
+      "verdict": "fail"
+    },
+    {
+      "id": "policy_followed",
+      "reasoning": "Authentication was done in call 1. However, the reply gives amounts, items and statuses for #W4219264 and #W6729841, which no tool returned. That is relying on made-up information.",
+      "verdict": "fail"
+    },
+    {
+      "id": "accurate_report",
+      "reasoning": "The reply states $3,916.77 and $829.43, plus items and pending statuses, for two orders that were never fetched. These figures are not backed by any tool result.",
+      "verdict": "fail"
+    }
+  ],
+  "usage": {
+    "input_tokens": 1253,
+    "output_tokens": 258,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 2243
+  },
+  "cost_usd": 0.0106206,
+  "latency_ms": 3948.333,
+  "created_at": "2026-10-09T15:07:33.857550Z"
+}

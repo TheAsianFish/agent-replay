@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from anthropic import Anthropic
+from anthropic import Anthropic, omit
 from anthropic.types import ContentBlock, MessageParam, ToolResultBlockParam, ToolUseBlock
 
 from agent_replay import Tool
@@ -39,6 +39,7 @@ TOOLS: dict[str, Tool[..., Any]] = {t.name: t for t in ALL_TOOLS}
 
 class RetailAgent:
     max_turns = 12
+    prompt_cache = True
 
     def run(self, client: Anthropic, task: str) -> str:
         messages: list[MessageParam] = [{"role": "user", "content": task}]
@@ -51,7 +52,7 @@ class RetailAgent:
                 messages=messages,
                 output_config={"effort": "low"},
                 # Caches the growing prefix (tools, policy, earlier turns) for the next turn.
-                cache_control={"type": "ephemeral"},
+                cache_control={"type": "ephemeral"} if self.prompt_cache else omit,
             )
             messages.append({"role": "assistant", "content": response.content})
             tool_uses = [b for b in response.content if isinstance(b, ToolUseBlock)]

@@ -33,14 +33,17 @@ Python is managed with `uv` (Python 3.12). Node 22 for the dashboard.
 make setup        uv sync --all-extras
 make lint         ruff check . && ruff format --check .
 make format       ruff check --fix . && ruff format .
-make type         mypy --strict agent_replay examples
+make type         mypy --strict agent_replay examples eval
 make test         pytest -q (offline; sockets blocked; fake model + committed cassettes)
 make test-live    pytest -m live (needs ANTHROPIC_API_KEY; records with claude-opus-5-5)
 make check        lint + type + test (what CI runs)
 make cassettes    re-record the toy agent's committed cassettes (Anthropic and Ollama fakes)
 make retail-cassettes  re-record the retail example's cassettes with its fake model
 make demo         the toy quickstart: replay passes, the mutant fails
-make ci-demo      replay ci on the retail suite in every mode; each seeded regression must exit 1
+make ci-demo      replay ci on the retail suite in every mode; each seeded regression must exit 1;
+                  the live suite against its cost baseline, judged offline from the committed cache
+make bench-sprt   simulate the sequential CI gate over true pass rates (offline; core skipped until written)
+make eval-judge-smoke  judge vs deterministic checks on 24 retail runs, from the committed verdict cache
 ```
 
 Planned with later milestones (not in the Makefile yet): `make eval`, `make bench`,

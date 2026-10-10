@@ -3,8 +3,9 @@
 Exit codes: 0 = everything passed, 1 = a check failed or the agent errored
 (a regression), 2 = bad input to the command itself (missing cassette or
 suite, unimportable agent, invalid config, missing credentials). In ``replay
-ci`` a scenario that cannot run fails that scenario, so the suite exits 1; a
-broken suite file exits 2.
+ci`` a scenario that cannot run (or, offline, has no cached judge verdict) is
+reported and the others still run, and the command exits 2: a broken suite,
+not a regression.
 """
 
 from __future__ import annotations
@@ -28,10 +29,18 @@ from agent_replay._logging import configure_logging
 from agent_replay.cassette import Cassette, Kind
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
-from agent_replay.ci import Overrides, RunSink, ScenarioReport, SuiteReport, run_suite
+from agent_replay.ci import (
+    Overrides,
+    RunSink,
+    ScenarioReport,
+    SuiteReport,
+    measure_suite,
+    run_suite,
+)
 from agent_replay.ci import to_json as report_json
 from agent_replay.ci import to_markdown as report_markdown
-from agent_replay.errors import ReplayError
+from agent_replay.errors import MeasurementError, ReplayError
+from agent_replay.pricing import prices
 from agent_replay.record import wrap
 from agent_replay.runner import RunResult, load_agent, make_client, record, replay
 from agent_replay.session import Policy as PolicyName
@@ -96,6 +105,10 @@ def _main(
     ] = False,
 ) -> None:
     configure_logging()
+    try:
+        prices()  # a bad REPLAY_PRICES_FILE fails here, not midway through a recording
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
 
 
 def _preview(value: JsonValue, limit: int = 60) -> str:
@@ -198,7 +211,12 @@ def _report(
 
 
 def _print_check(check: CheckResult) -> None:
-    mark = "[bold green]PASS[/]" if check.passed else "[bold red]FAIL[/]"
+    if check.passed:
+        mark = "[bold green]PASS[/]"
+    elif check.advisory:
+        mark = "[bold yellow]ADVISORY FAIL[/]"
+    else:
+        mark = "[bold red]FAIL[/]"
     console.print(f"{mark} {check.check}: {escape(check.message)}")
     diff = check.details.get("diff")
     if not check.passed and isinstance(diff, list):
@@ -285,7 +303,7 @@ def run_cmd(
     seq_mode: SequenceMode = sequence_mode.value
     checks = result.check(tool_sequence(expected, mode=seq_mode))
     approx = result.trajectory.count(StepStatus.APPROXIMATE)
-    passed = result.ok and all(c.passed for c in checks) and not (strict and approx)
+    passed = result.ok and not any(c.blocking for c in checks) and not (strict and approx)
 
     if json_output:
         print(json.dumps(_report(cassette_path, agent_ref, result, checks, passed), indent=2))
@@ -334,6 +352,8 @@ def _print_scenario(scenario: ScenarioReport) -> None:
         )
     for check in scenario.failed_checks:
         console.print(f"    [red]{escape(check.check)}:[/] {escape(check.message)}")
+    for check in scenario.advisory_failures:
+        console.print(f"    [yellow]{escape(check.check)} (advisory):[/] {escape(check.message)}")
 
 
 def _store_sink(store: Store, suite_path: Path) -> RunSink:
@@ -398,6 +418,13 @@ def ci_cmd(
         Path | None,
         typer.Option(help="Read each scenario's cassette (by file name) from this directory."),
     ] = None,
+    baseline: Annotated[
+        Path | None,
+        typer.Option(
+            help="Baseline file (from `replay baseline`) for budget checks' relative limits; "
+            "replaces the suite's baseline setting."
+        ),
+    ] = None,
     json_path: Annotated[
         Path | None, typer.Option("--json", help="Write the JSON report here.")
     ] = None,
@@ -426,6 +453,7 @@ def ci_cmd(
         policy=policy.value if policy else None,
         client=client,
         cassette_dir=cassette_dir,
+        baseline=baseline,
     )
     try:
         store = Store.open(db) if use_store else None
@@ -462,6 +490,73 @@ def ci_cmd(
         )
         raise typer.Exit(EXIT_USAGE)
     raise typer.Exit(EXIT_OK if report.passed else EXIT_FAILED)
+
+
+@app.command("baseline")
+def baseline_cmd(
+    suite_path: Annotated[
+        Path, typer.Argument(metavar="SUITE", help="Suite file (replay.toml) listing scenarios.")
+    ],
+    output: Annotated[Path, typer.Option("--output", "-o", help="Baseline file to write.")],
+    runs: Annotated[
+        int, typer.Option(min=1, help="Replays per scenario; the baseline is their median.")
+    ] = 1,
+    agent: Annotated[
+        str | None,
+        typer.Option(help="Replay every scenario against this agent (module:function)."),
+    ] = None,
+    mode: Annotated[Mode | None, typer.Option(help="Override every scenario's mode.")] = None,
+    policy: Annotated[Policy | None, typer.Option(help="Override every scenario's policy.")] = None,
+    client: Annotated[
+        str | None,
+        typer.Option(help="Live model client for model-live: 'anthropic' or module:factory."),
+    ] = None,
+    cassette_dir: Annotated[
+        Path | None,
+        typer.Option(help="Read each scenario's cassette (by file name) from this directory."),
+    ] = None,
+) -> None:
+    """Measure every scenario in SUITE and write a cost and latency baseline.
+
+    Replays each scenario --runs times without running checks and records the
+    median cost, tokens, model calls and p95 model latency per scenario, for
+    budget checks' relative limits (max_cost_increase_pct and friends). Exit 2
+    when a scenario cannot run, 1 when the agent fails a run (nothing is
+    written).
+    """
+    overrides = Overrides(
+        agent=agent,
+        mode=mode.value if mode else None,
+        policy=policy.value if policy else None,
+        client=client,
+        cassette_dir=cassette_dir,
+    )
+    try:
+        baseline = measure_suite(suite_path, overrides=overrides, runs=runs)
+    except MeasurementError as exc:
+        console.print(f"[bold red]failed:[/] {escape(str(exc))}")
+        raise typer.Exit(EXIT_FAILED) from exc
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+    try:
+        baseline.dump(output)
+    except OSError as exc:
+        raise _fail(
+            f"cannot write the baseline to {output}: {exc}; pick a writable -o path"
+        ) from exc
+    table = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+    for column in ("scenario", "runs", "cost", "tokens", "model calls", "p95 latency"):
+        table.add_column(column)
+    for name, b in sorted(baseline.scenarios.items()):
+        p95 = f"{b.p95_latency_ms:.0f} ms" if b.p95_latency_ms is not None else "—"
+        table.add_row(
+            escape(name), str(b.runs), f"${b.cost_usd:.4f}", str(b.tokens), str(b.model_calls), p95
+        )
+    console.print(table)
+    console.print(
+        f"Wrote the baseline of {len(baseline.scenarios)} scenario(s) to "
+        f"[bold]{escape(str(output))}[/]"
+    )
 
 
 @app.command("runs")
@@ -522,7 +617,11 @@ def runs_cmd(
     for check in run.checks:
         _print_check(
             CheckResult(
-                check=check.check, passed=check.passed, message=check.message, details=check.details
+                check=check.check,
+                passed=check.passed,
+                message=check.message,
+                details=check.details,
+                advisory=check.advisory,
             )
         )
 
