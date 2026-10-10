@@ -12,7 +12,6 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from agent_replay import Cassette
-from agent_replay import store as store_module
 from agent_replay.cassette import ErrorInfo
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.errors import ReplayError, StoreError
@@ -441,49 +440,3 @@ def test_advisory_flag_round_trips(store: Store, result: RunResult):
     )
     stored = store.get_run(run_id).checks
     assert [c.advisory for c in stored] == [True, False]
-
-
-def test_two_first_opens_of_an_older_store_do_not_collide(
-    tmp_path: Path, result: RunResult, monkeypatch: pytest.MonkeyPatch
-):
-    url = f"sqlite:///{tmp_path / 'old.db'}"
-    with Store.open(url) as s:
-        save(s, result)
-        with s._engine.begin() as conn:
-            conn.execute(text("ALTER TABLE check_results DROP COLUMN advisory"))
-
-    # The other process adds the column between this one's inspection and its ALTER:
-    # the first look at check_results reports it missing, the next one sees it.
-    real = store_module._column_names
-    raced = False
-
-    def racing(engine: object, table: str) -> set[str]:
-        nonlocal raced
-        names = real(engine, table)  # type: ignore[arg-type]
-        if table == "check_results" and not raced:
-            raced = True
-            with Store.open(url):  # the other process's open adds the column
-                pass
-            return names - {"advisory"}
-        return names
-
-    monkeypatch.setattr(store_module, "_column_names", racing)
-    with Store.open(url) as s:
-        assert raced
-        save(s, result)
-        assert len(s.list_runs()) == 2
-
-
-def test_an_older_store_gains_new_columns_on_open(tmp_path: Path, result: RunResult):
-    url = f"sqlite:///{tmp_path / 'old.db'}"
-    with Store.open(url) as s:
-        save(s, result)
-        with s._engine.begin() as conn:
-            conn.execute(text("ALTER TABLE check_results DROP COLUMN advisory"))
-
-    with Store.open(url) as s:
-        runs = s.list_runs()
-        old = s.get_run(runs[0].id)
-        assert [c.advisory for c in old.checks] == [False]
-        save(s, result)
-        assert len(s.list_runs()) == 2

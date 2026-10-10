@@ -833,5 +833,26 @@ def show_cmd(
     console.print(f"status: {f.status}\noutput: {escape(str(f.output))}")
 
 
+db_app = typer.Typer(help="Manage the run store.", no_args_is_help=True)
+app.add_typer(db_app, name="db")
+
+_DB_OPTION = typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db.")
+
+
+@db_app.command("upgrade")
+def db_upgrade_cmd(db: Annotated[str | None, _DB_OPTION] = None) -> None:
+    """Create the run store, or migrate it to the newest schema revision.
+
+    Every command that opens the store does this too; run it on its own to
+    prepare a shared PostgreSQL store before the dashboard starts.
+    """
+    try:
+        with Store.open(db) as store:
+            revision = store.revision()
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+    console.print(f"run store at schema revision {revision}")
+
+
 def main() -> None:
     app()
