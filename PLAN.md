@@ -509,5 +509,24 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     `REPLAY_STATS_IMPL=core` exists. The new CI jobs (PostgreSQL, dashboard,
     Playwright, Compose) were run locally step for step; their first GitHub run
     is on the PR.
+    (h) **Review fixes,** each with a test that fails on the old code: an
+    in-memory store shared one SQLite connection between the server's worker
+    threads (concurrent requests corrupted rows or crashed the process; its
+    sessions now take turns); timestamps with a non-UTC offset were stored
+    shifted on SQLite (normalised to UTC on write); store errors echoed the
+    database password (redacted); a half-made pre-migration store got a
+    misleading error; the flake trend reversed scenario order within a report;
+    `replay flake` lost its verdict when storing the report failed; server
+    errors now answer with a JSON 500 carrying the request id, a malformed
+    `X-Request-ID` is replaced, and odd paths no longer 500 the dashboard
+    fallback; the diff told a `null` value from an absent key, named the first
+    earlier message that differs instead of equal message counts, and
+    survived backticks in Markdown; the dashboard kept both sides of a long
+    changed value readable, recovered from an offset past the end, dropped
+    empty filter params, rounded durations and costs before choosing a unit,
+    thinned trend labels and showed cycles in a trace; Compose binds to
+    loopback by default (`REPLAY_BIND`); the demo seed returns usage errors
+    instead of raising. The dashboard's tests grew from 57 to 84, the Python
+    suite from 873 to 888.
 - [ ] M6: Judge calibration — `replay label` TUI, golden-set format, `replay calibrate` (kappa per criterion with bootstrap CI, agreement, confusion matrix, majority baseline, self-consistency across 3 judge runs, position / verbosity / self-preference probes), LLMBar harness (`make eval-llmbar`), calibration gating wired into `judge` checks, calibration page populated. Done when the full pipeline runs end to end on a fake judge offline with tests, and RESULTS.md lists the exact key-requiring commands under "To measure" with cost estimates; if D1 has been recorded and labelled, the measured kappa is in RESULTS.md.
 - [ ] M7: GitHub Action and release readiness — `action.yml` composite action with PR comment and artifact upload, example consumer workflow, `v1` tag procedure; PyPI build and guarded trusted-publishing workflow; Dockerfile and Compose finalised; RELEASE.md with every step and secret the maintainer must add; README complete (what/why, demo GIF placeholder with capture instructions, quickstart, Mermaid architecture, design decisions, results table from RESULTS.md, roadmap); CHANGELOG. Done when `uv build` produces a wheel that installs in a clean venv, the Action runs against the example repo workflow in CI (dry mode), and RESULTS.md is complete with every measured and to-measure number.
