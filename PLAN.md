@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-09 (M3).
+definition of done is met and CI is green. Last updated: 2026-10-10 (M4).
 
 ## Goal
 
@@ -398,7 +398,61 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     now names the argument); the gate simulation's shared outcome stream did
     not hold for an early-stopping gate; reports took a `$GITHUB_SHA` that
     was not a commit of the checkout; two figures were rounded twice.
-- [ ] M4: Flakiness engine and mutation study — `replay flake` running repeated `model-live` replays with bounded concurrency and rate limiting; Wilson gate and SPRT early stop through the stats interface; flaky vs failing classification; `eval/mutations/` with 25+ mutations and 5 benign refactors; `make eval-mutations` and `make bench-sprt` (simulation) run offline in CI and write RESULTS.md. Done when RESULTS.md holds measured mutation detection rates per check type and per mode, and simulated SPRT savings, with commands and raw output.
+- [x] M4: Flakiness engine and mutation study — `replay flake` running repeated `model-live` replays with bounded concurrency and rate limiting; Wilson gate and SPRT early stop through the stats interface; flaky vs failing classification; `eval/mutations/` with 25+ mutations and 5 benign refactors; `make eval-mutations` and `make bench-sprt` (simulation) run offline in CI and write RESULTS.md. Done when RESULTS.md holds measured mutation detection rates per check type and per mode, and simulated SPRT savings, with commands and raw output.
+  - *M4 notes (2026-10-10).* Built as planned, with one plan change and
+    these refinements:
+    (a) **Plan change: SPRT savings wait for `stats.py`.** The definition of
+    done asks for simulated SPRT savings, but the SPRT is the statistics core
+    (`agent_replay/stats.py`), which is deliberately still a specification.
+    M4 ships everything around it: `make bench-sprt` now computes the
+    yardstick the savings are measured against (the smallest fixed-sample
+    test meeting α = β = 0.05 for 0.6 vs 0.9 needs 24 runs, exact binomial,
+    checked against scipy) and prints the SPRT's expected runs as a fraction
+    of it as soon as `core` runs. Until then the number is under "To measure",
+    and everything else in the definition of done is met.
+    (b) **`replay flake`** (`agent_replay/flake.py`). Scenarios run one
+    after another; the runs of a scenario run on threads, at most
+    `--concurrency` places ahead of the last outcome fed to the gate, and
+    outcomes are fed in run order (completion order would let fast failures
+    bias the test). Runs in flight at the decision finish and are reported
+    `counted=False`. `--gate sprt` uses `SequentialGate`; `--gate wilson`
+    runs a fixed number and checks the interval's lower bound. Both go
+    through `stats_impl`, and the report names the method that actually ran
+    (with `baseline`, a fixed-k majority and Wald intervals).
+    `--runs-per-minute` spaces run starts; the SDK retries 429s itself.
+    Classification is `passing` / `flaky` / `failing` / `broken`, separate
+    from the gate's decision. Per-run seeds reach client factories that take
+    a `seed`, so simulated flakiness is reproducible at any concurrency.
+    Runs go to the run store; a flake-level table is left to M5.
+    (c) **Mutation study** (`eval/mutations/`, `eval/mutation_study.py`): 32
+    mutations (12 agent, 12 model, 8 tool) and 5 benign refactors, four
+    configurations (`full`, `tools-live`, `model-live`, `model-live` with
+    `fallback`), byte-stable JSON checked in CI. Model regressions are
+    simulated by wrapping the fake model's policy, tool bugs by swapping a
+    tool behind the same name and schema (`RetailAgent.tools`).
+    (d) **State check.** `rule:db_matches_ground_truth` (τ-bench's reward)
+    joined the retail suites. It applies only when every tool call ran for
+    real. `RetailAgent.run` now resets the database first, as τ-bench does
+    per task.
+    (e) **Measured.** Stub-everything (`full`) caught 7/32 mutations and
+    none of the model or tool ones; `model-live` caught 12/12 model
+    regressions, `tools-live` 5/8 tool bugs; 0/5 benign refactors failed.
+    Live `replay flake`: Haiku 5.5 passed 119/120 runs (one policy breach on
+    the refund-swap task), Opus 5.5 30/30. M4 API spend $1.175.
+    (f) **Review fix.** The first scheduler bounded only the runs still
+    executing, so a slow first run let every later run start even when the
+    gate would decide after one; the window now counts finished-but-unfed
+    runs too (regression test in `tests/test_flake.py`).
+    (g) **Known limitations.** Five mutations survive every mode: three
+    tool bugs that change only a tool's output (no check compares live tool
+    results with recorded ones; a drift check is on the roadmap),
+    `drops_error_flag` (no recording has a failing tool) and `strips_policy`
+    (the fake model ignores the prompt). Four `model-live` catches are the
+    fake model crashing on a corrupted conversation. Tools with
+    process-global state need `--concurrency 1` in `tools-live`. The
+    `parallel_tools` benign refactor orders its trajectory by thread start,
+    which Python does not guarantee; it was stable over 160 runs. `make
+    bench-flake` (D3) waits for the larger golden set in M6.
 - [ ] M5: Dashboard — PostgreSQL + Alembic migrations sharing the SQLite models; FastAPI API with structured logging; React 19 + TypeScript strict dashboard (runs, run detail, trace viewer, aligned trace diff from `diff.py`, flakiness trend, calibration report page reading stored reports); Vitest and Playwright smoke test; Docker Compose; `replay serve`. Done when `docker compose up` shows the example data, API tests and UI tests pass in CI, and screenshots are in `docs/`.
 - [ ] M6: Judge calibration — `replay label` TUI, golden-set format, `replay calibrate` (kappa per criterion with bootstrap CI, agreement, confusion matrix, majority baseline, self-consistency across 3 judge runs, position / verbosity / self-preference probes), LLMBar harness (`make eval-llmbar`), calibration gating wired into `judge` checks, calibration page populated. Done when the full pipeline runs end to end on a fake judge offline with tests, and RESULTS.md lists the exact key-requiring commands under "To measure" with cost estimates; if D1 has been recorded and labelled, the measured kappa is in RESULTS.md.
 - [ ] M7: GitHub Action and release readiness — `action.yml` composite action with PR comment and artifact upload, example consumer workflow, `v1` tag procedure; PyPI build and guarded trusted-publishing workflow; Dockerfile and Compose finalised; RELEASE.md with every step and secret the maintainer must add; README complete (what/why, demo GIF placeholder with capture instructions, quickstart, Mermaid architecture, design decisions, results table from RESULTS.md, roadmap); CHANGELOG. Done when `uv build` produces a wheel that installs in a clean venv, the Action runs against the example repo workflow in CI (dry mode), and RESULTS.md is complete with every measured and to-measure number.
