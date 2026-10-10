@@ -8,6 +8,7 @@ with a request id that is also returned in ``X-Request-ID``.
 from __future__ import annotations
 
 import os
+import re
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -41,6 +42,8 @@ log = structlog.get_logger("agent_replay.server")
 
 PACKAGED_DASHBOARD = Path(__file__).parent / "static"
 MAX_PAGE = 500
+REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,128}")
+"""What a client-supplied ``X-Request-ID`` may look like; anything else gets a fresh id."""
 
 
 class _Model(BaseModel):
@@ -128,14 +131,18 @@ def create_app(
     async def log_requests(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
+        supplied = request.headers.get("x-request-id", "")
+        request_id = supplied if REQUEST_ID.fullmatch(supplied) else uuid.uuid4().hex[:16]
         started = time.perf_counter()
         with structlog.contextvars.bound_contextvars(request_id=request_id):
             try:
                 response = await call_next(request)
             except Exception:
                 log.exception("http.error", method=request.method, path=request.url.path)
-                raise
+                response = JSONResponse(
+                    status_code=500,
+                    content={"detail": f"internal error; see the server log for {request_id}"},
+                )
             log.info(
                 "http.request",
                 method=request.method,
@@ -258,7 +265,9 @@ def _mount_dashboard(app: FastAPI, static_dir: Path) -> None:
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str) -> FileResponse:
-        candidate = (static_dir / path).resolve()
-        if path and candidate.is_file() and candidate.is_relative_to(static_dir.resolve()):
-            return FileResponse(candidate)
-        return FileResponse(index)
+        try:
+            candidate = (static_dir / path).resolve()
+            served = path and candidate.is_file() and candidate.is_relative_to(static_dir.resolve())
+        except (ValueError, OSError):  # a NUL byte or an over-long name: not a file of ours
+            served = False
+        return FileResponse(candidate) if served else FileResponse(index)

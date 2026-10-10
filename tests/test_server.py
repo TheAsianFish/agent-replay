@@ -289,6 +289,41 @@ def test_dashboard_mount_serves_assets_and_falls_back_to_index(tmp_path: Path):
     store.close()
 
 
+def test_odd_paths_fall_back_to_the_dashboard(tmp_path: Path):
+    (tmp_path / "index.html").write_text("<div id=root></div>", encoding="utf-8")
+    store = Store.open("sqlite://")
+    with TestClient(create_app(store, static_dir=tmp_path)) as client:
+        for path in ("/a%00b", "/" + "a" * 5000, "/runs/%00"):
+            response = client.get(path)
+            assert response.status_code == 200, path
+            assert response.text == "<div id=root></div>"
+    store.close()
+
+
+def test_a_server_error_is_a_json_500_that_carries_the_request_id(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    def boom(self: Store, run_id: str) -> None:
+        raise RuntimeError("disk on fire")
+
+    monkeypatch.setattr(Store, "get_run", boom)
+    with capture_logs() as logs:
+        response = client.get("/api/runs/abcdef12", headers={"X-Request-ID": "req-7"})
+    assert response.status_code == 500
+    assert response.headers["X-Request-ID"] == "req-7"
+    assert response.json() == {"detail": "internal error; see the server log for req-7"}
+    assert "disk on fire" not in response.text
+    (error,) = [e for e in logs if e["event"] == "http.error"]
+    assert error["path"] == "/api/runs/abcdef12"
+
+
+def test_a_malformed_request_id_is_replaced(client: TestClient):
+    for bad in ("x" * 129, "a b", "bad\x01id", ""):
+        echoed = client.get("/api/health", headers={"X-Request-ID": bad}).headers["X-Request-ID"]
+        assert len(echoed) == 16
+        assert echoed != bad
+
+
 def test_replay_serve_opens_the_store_and_runs_uvicorn(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
