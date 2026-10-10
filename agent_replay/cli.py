@@ -22,6 +22,7 @@ from pydantic import JsonValue, ValidationError
 from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
+from sqlalchemy.exc import SQLAlchemyError
 
 from agent_replay import __version__
 from agent_replay._json import canonical_json, to_jsonable
@@ -51,6 +52,7 @@ from agent_replay.diff import to_json as diff_json
 from agent_replay.diff import to_markdown as diff_markdown
 from agent_replay.errors import MeasurementError, ReplayError, StoreError
 from agent_replay.flake import (
+    FlakeReport,
     FlakeSettings,
     describe,
     flake_suite,
@@ -704,17 +706,9 @@ def flake_cmd(
         baseline=baseline,
     )
     try:
-        store = Store.open(db) if use_store else None
-        sink = _store_sink(store, suite_path) if store is not None else RunSink()
-        try:
-            report = flake_suite(
-                suite_path, settings=settings, overrides=overrides, scenarios=scenario, sink=sink
-            )
-            if store is not None:
-                store.save_flake(report)
-        finally:
-            if store is not None:
-                store.close()
+        report, store_failure = _flake_and_store(
+            suite_path, settings, overrides, scenario, db=db, use_store=use_store
+        )
     except ReplayError as exc:
         raise _fail(str(exc)) from exc
 
@@ -742,12 +736,43 @@ def flake_cmd(
     )
     if report.suite_id is not None:
         console.print(f"[dim]stored as suite {report.suite_id[:12]}; see `replay runs`[/]")
+    if store_failure is not None:
+        raise _fail(store_failure)
     if report.broken:
         console.print(
             f"[bold yellow]{len(report.broken)} scenario(s) could not run; fix the suite[/]"
         )
         raise typer.Exit(EXIT_USAGE)
     raise typer.Exit(EXIT_OK if report.passed else EXIT_FAILED)
+
+
+def _flake_and_store(
+    suite_path: Path,
+    settings: FlakeSettings,
+    overrides: Overrides,
+    scenarios: list[str] | None,
+    *,
+    db: str | None,
+    use_store: bool,
+) -> tuple[FlakeReport, str | None]:
+    """Run the flake suite and store its report; a store failure is returned, not raised,
+    because the runs are done (and paid for) and the verdict should still be printed."""
+    store = Store.open(db) if use_store else None
+    sink = _store_sink(store, suite_path) if store is not None else RunSink()
+    try:
+        report = flake_suite(
+            suite_path, settings=settings, overrides=overrides, scenarios=scenarios, sink=sink
+        )
+        if store is None:
+            return report, None
+        try:
+            store.save_flake(report)
+        except (SQLAlchemyError, StoreError) as exc:
+            return report, f"could not store the flake report: {exc}"
+        return report, None
+    finally:
+        if store is not None:
+            store.close()
 
 
 @app.command("runs")

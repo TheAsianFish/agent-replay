@@ -23,6 +23,7 @@ from typing import Any
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy.exc import OperationalError
 from structlog.testing import capture_logs
 from typer.testing import CliRunner
 
@@ -1067,3 +1068,34 @@ def test_a_run_that_crashes_is_broken_and_the_others_are_kept(
     assert s.executed == 3
     assert len(saved) == 3
     assert finished == [(False, 1, 1)]
+
+
+def test_replay_flake_reports_the_verdict_when_storing_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    def failing(self: Store, report: FlakeReport) -> str:
+        raise OperationalError("INSERT", {}, Exception("database is locked"))
+
+    monkeypatch.setattr(Store, "save_flake", failing)
+    db = f"sqlite:///{tmp_path / 'r.db'}"
+    result = runner.invoke(
+        app,
+        [
+            "flake",
+            SUITE_ARG,
+            "-s",
+            "cancel_pending_laptop",
+            "--max-runs",
+            "2",
+            "--client",
+            FLAKY,
+            "--db",
+            db,
+        ],
+        env=ENV,
+    )
+    assert result.exit_code == 2, result.output
+    assert "cancel_pending_laptop (" in result.output
+    assert "scenario(s) passed the gate" in result.output
+    assert "could not store the flake report" in result.output
+    assert "database is locked" in result.output
