@@ -658,8 +658,12 @@ def factories(monkeypatch: pytest.MonkeyPatch) -> str:
     def unseeded() -> object:
         return ("unseeded",)
 
+    def positional(seed: int = -1, /) -> object:
+        return ("positional", seed)
+
     module.seeded = seeded  # type: ignore[attr-defined]
     module.unseeded = unseeded  # type: ignore[attr-defined]
+    module.positional = positional  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "flake_factories_fixture", module)
     return "flake_factories_fixture"
 
@@ -668,6 +672,8 @@ def test_make_client_passes_seed_only_to_factories_that_take_it(factories: str) 
     assert make_client(f"{factories}:seeded", seed=42) == ("seeded", 42)
     assert make_client(f"{factories}:seeded") == ("seeded", -1)
     assert make_client(f"{factories}:unseeded", seed=42) == ("unseeded",)
+    # a positional-only ``seed`` cannot be passed by keyword, so it is not passed at all
+    assert make_client(f"{factories}:positional", seed=42) == ("positional", -1)
 
 
 # --- 9. the sink ------------------------------------------------------------------------

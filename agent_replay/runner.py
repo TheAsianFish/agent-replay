@@ -109,10 +109,12 @@ def make_client(ref: str, *, seed: int | None = None) -> object:
 
 
 def _takes_seed(factory: Callable[..., object]) -> bool:
+    """Whether ``factory`` accepts ``seed=`` by keyword."""
     try:
-        return "seed" in inspect.signature(factory).parameters
+        parameter = inspect.signature(factory).parameters.get("seed")
     except (TypeError, ValueError):  # builtins and C callables may have no signature
         return False
+    return parameter is not None and parameter.kind is not inspect.Parameter.POSITIONAL_ONLY
 
 
 def load_agent(ref: str) -> Agent:
