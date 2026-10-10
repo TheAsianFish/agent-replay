@@ -45,6 +45,112 @@ jobs:
           make bench-sprt
           git diff --exit-code eval/results/mutations.json eval/results/sprt_sim.json
 
+  postgres:
+    name: Store and API on PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: replay
+          POSTGRES_PASSWORD: replay
+          POSTGRES_DB: replay_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U replay -d replay_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      REPLAY_TEST_PG_URL: postgresql+psycopg://replay:replay@localhost:5432/replay_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install
+        run: uv sync --locked --all-extras
+      - name: Migration, store and API tests on PostgreSQL 16
+        run: uv run pytest -q -m postgres
+
+  dashboard:
+    name: Dashboard (types, lint, unit tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Generated API types match openapi.json
+        run: npm run check:types
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: Dashboard smoke test (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install
+        run: |
+          uv sync --locked --all-extras
+          npm ci --prefix dashboard --no-audit --no-fund
+          (cd dashboard && npx playwright install --with-deps chromium)
+      - name: Build the dashboard and seed the demo store
+        run: |
+          npm run build --prefix dashboard
+          make demo-data
+      - name: Serve it and run the smoke test
+        run: |
+          uv run replay serve --db sqlite:///.replay/demo.db --port 8000 &
+          timeout 60 bash -c 'until curl -sf http://127.0.0.1:8000/api/health; do sleep 1; done'
+          npm run e2e --prefix dashboard
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: dashboard/playwright-report
+          retention-days: 7
+
+  compose:
+    name: docker compose up serves the demo data
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start the stack
+        run: docker compose up --build --detach --wait app
+      - name: The API serves the seeded runs and the dashboard
+        run: |
+          total=$(curl -sf 'http://localhost:8000/api/runs?limit=1' | jq .total)
+          echo "runs served: $total"
+          test "$total" -gt 0
+          curl -sf http://localhost:8000/api/health | jq -e '.backend == "postgresql"'
+          curl -sf http://localhost:8000/ | grep -q '<div id="root">'
+      - name: Logs
+        if: always()
+        run: docker compose logs --no-color | tail -n 200
+      - name: Stop
+        if: always()
+        run: docker compose down --volumes
+
   live:
     name: Live API tests
     runs-on: ubuntu-latest
