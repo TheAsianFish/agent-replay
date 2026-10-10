@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
-from pydantic import JsonValue
+from pydantic import JsonValue, ValidationError
 from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
@@ -39,6 +39,15 @@ from agent_replay.ci import (
 from agent_replay.ci import to_json as report_json
 from agent_replay.ci import to_markdown as report_markdown
 from agent_replay.errors import MeasurementError, ReplayError
+from agent_replay.flake import (
+    FlakeSettings,
+    describe,
+    flake_suite,
+    gate_summary,
+    interval_name,
+)
+from agent_replay.flake import to_json as flake_json
+from agent_replay.flake import to_markdown as flake_markdown
 from agent_replay.pricing import prices
 from agent_replay.record import wrap
 from agent_replay.runner import RunResult, load_agent, make_client, record, replay
@@ -395,6 +404,16 @@ def _write(path: Path, text: str, what: str) -> None:
         raise _fail(f"cannot write the {what} report to {path}: {exc}") from exc
 
 
+def _append_step_summary(markdown: str) -> None:
+    """Append ``markdown`` to ``$GITHUB_STEP_SUMMARY`` when it is set (GitHub Actions)."""
+    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+        try:
+            with Path(summary).open("a", encoding="utf-8") as fh:
+                fh.write(markdown)
+        except OSError as exc:  # the verdict matters more than the summary
+            console.print(f"[yellow]warning:[/] cannot append to GITHUB_STEP_SUMMARY: {exc}")
+
+
 @app.command("ci")
 def ci_cmd(
     suite_path: Annotated[
@@ -469,12 +488,7 @@ def ci_cmd(
         _write(json_path, report_json(report), "JSON")
     if markdown_path is not None:
         _write(markdown_path, markdown, "Markdown")
-    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
-        try:
-            with Path(summary).open("a", encoding="utf-8") as fh:
-                fh.write(markdown)
-        except OSError as exc:  # the verdict matters more than the summary
-            console.print(f"[yellow]warning:[/] cannot append to GITHUB_STEP_SUMMARY: {exc}")
+    _append_step_summary(markdown)
     total, failed = len(report.scenarios), len(report.failed)
     verdict = "[bold green]passed[/]" if report.passed else "[bold red]failed[/]"
     console.print(f"{total - failed}/{total} scenario(s) passed: {verdict}")
@@ -553,6 +567,168 @@ def baseline_cmd(
         f"Wrote the baseline of {len(baseline.scenarios)} scenario(s) to "
         f"[bold]{escape(str(output))}[/]"
     )
+
+
+class GateChoice(StrEnum):
+    sprt = "sprt"
+    wilson = "wilson"
+
+
+_FLAKE_STYLE = {"passing": "green", "flaky": "yellow", "failing": "red", "broken": "yellow"}
+
+
+@app.command("flake")
+def flake_cmd(
+    suite_path: Annotated[
+        Path, typer.Argument(metavar="SUITE", help="Suite file (replay.toml) listing scenarios.")
+    ],
+    scenario: Annotated[
+        list[str] | None,
+        typer.Option("--scenario", "-s", help="Only this scenario (repeatable)."),
+    ] = None,
+    gate: Annotated[
+        GateChoice,
+        typer.Option(help="sprt: stop as soon as the verdict is clear; wilson: fixed runs."),
+    ] = GateChoice.sprt,
+    max_runs: Annotated[
+        int, typer.Option(min=1, help="Most runs per scenario (wilson: exactly this many).")
+    ] = 20,
+    p_fail: Annotated[
+        float, typer.Option(help="sprt: pass rate of a scenario that should fail the gate.")
+    ] = 0.6,
+    p_pass: Annotated[
+        float, typer.Option(help="sprt: pass rate of a scenario that should pass the gate.")
+    ] = 0.9,
+    alpha: Annotated[
+        float, typer.Option(help="sprt: chance of passing a scenario at p_fail.")
+    ] = 0.05,
+    beta: Annotated[float, typer.Option(help="sprt: chance of failing a scenario at p_pass.")] = (
+        0.05
+    ),
+    min_pass_rate: Annotated[
+        float, typer.Option(help="wilson: the interval's lower bound must reach this.")
+    ] = 0.8,
+    confidence: Annotated[float, typer.Option(help="Confidence of the reported interval.")] = 0.95,
+    concurrency: Annotated[
+        int, typer.Option(min=1, help="Runs of one scenario in flight at once.")
+    ] = 4,
+    runs_per_minute: Annotated[
+        float | None, typer.Option(help="Start at most this many runs a minute.")
+    ] = None,
+    seed: Annotated[int, typer.Option(help="Base seed for client factories that take a seed.")] = 0,
+    agent: Annotated[
+        str | None,
+        typer.Option(help="Replay every scenario against this agent (module:function)."),
+    ] = None,
+    mode: Annotated[
+        Mode, typer.Option(help="Cut point; model-live is where sampling makes runs differ.")
+    ] = Mode.model_live,
+    policy: Annotated[Policy | None, typer.Option(help="Override every scenario's policy.")] = None,
+    client: Annotated[
+        str | None,
+        typer.Option(help="Live model client for model-live: 'anthropic' or module:factory."),
+    ] = None,
+    cassette_dir: Annotated[
+        Path | None,
+        typer.Option(help="Read each scenario's cassette (by file name) from this directory."),
+    ] = None,
+    baseline: Annotated[
+        Path | None,
+        typer.Option(help="Baseline file for budget checks' relative limits."),
+    ] = None,
+    json_path: Annotated[
+        Path | None, typer.Option("--json", help="Write the JSON report here.")
+    ] = None,
+    markdown_path: Annotated[
+        Path | None, typer.Option("--markdown", help="Write the Markdown summary here.")
+    ] = None,
+    use_store: Annotated[
+        bool, typer.Option("--store/--no-store", help="Save every run in the run store.")
+    ] = True,
+    db: Annotated[
+        str | None,
+        typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db."),
+    ] = None,
+) -> None:
+    """Replay every scenario in SUITE repeatedly and gate on its estimated pass rate.
+
+    Each scenario is classified passing, flaky or failing from its runs and
+    passes when the gate says so. The statistics come from REPLAY_STATS_IMPL
+    (baseline: fixed-k majority and Wald intervals; core: SPRT and Wilson).
+    Exit 0 when every scenario passed the gate, 1 when any failed, 2 when the
+    suite is broken or a scenario could not run.
+    """
+    try:
+        settings = FlakeSettings(
+            gate=gate.value,
+            p_fail=p_fail,
+            p_pass=p_pass,
+            alpha=alpha,
+            beta=beta,
+            max_runs=max_runs,
+            min_pass_rate=min_pass_rate,
+            confidence=confidence,
+            concurrency=concurrency,
+            runs_per_minute=runs_per_minute,
+            seed=seed,
+        )
+    except ValidationError as exc:
+        problems = "; ".join(
+            f"--{str(e['loc'][0]).replace('_', '-')}: {e['msg']}" if e["loc"] else e["msg"]
+            for e in exc.errors()
+        )
+        raise _fail(problems) from exc
+    overrides = Overrides(
+        agent=agent,
+        mode=mode.value,
+        policy=policy.value if policy else None,
+        client=client,
+        cassette_dir=cassette_dir,
+        baseline=baseline,
+    )
+    try:
+        store = Store.open(db) if use_store else None
+        sink = _store_sink(store, suite_path) if store is not None else RunSink()
+        try:
+            report = flake_suite(
+                suite_path, settings=settings, overrides=overrides, scenarios=scenario, sink=sink
+            )
+        finally:
+            if store is not None:
+                store.close()
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+
+    for s in report.scenarios:
+        mark = {"pass": "[bold green]PASS[/]", "fail": "[bold red]FAIL[/]"}.get(
+            s.decision, "[bold yellow]ERROR[/]"
+        )
+        style = _FLAKE_STYLE[s.classification]
+        console.print(f"{mark} {escape(s.name)} ([{style}]{escape(describe(s))}[/])")
+        for name, count in s.failures.items():
+            console.print(f"    [red]{escape(name)}:[/] failed {count}/{s.runs} runs")
+    markdown = flake_markdown(report)
+    if json_path is not None:
+        _write(json_path, flake_json(report), "JSON")
+    if markdown_path is not None:
+        _write(markdown_path, markdown, "Markdown")
+    _append_step_summary(markdown)
+    total, failed = len(report.scenarios), len(report.failed)
+    verdict = "[bold green]passed[/]" if report.passed else "[bold red]failed[/]"
+    console.print(
+        f"{total - failed}/{total} scenario(s) passed the gate ({len(report.flaky)} flaky; "
+        f"{report.runs} runs, ${report.cost_usd:.4f}; gate: "
+        f"{escape(gate_summary(settings, report.stats_impl))}; "
+        f"{interval_name(report.stats_impl)} intervals): {verdict}"
+    )
+    if report.suite_id is not None:
+        console.print(f"[dim]stored as suite {report.suite_id[:12]}; see `replay runs`[/]")
+    if report.broken:
+        console.print(
+            f"[bold yellow]{len(report.broken)} scenario(s) could not run; fix the suite[/]"
+        )
+        raise typer.Exit(EXIT_USAGE)
+    raise typer.Exit(EXIT_OK if report.passed else EXIT_FAILED)
 
 
 @app.command("runs")
