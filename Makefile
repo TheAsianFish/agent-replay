@@ -2,7 +2,7 @@
 # are added with the code they run.
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
-	bench-sprt flake-demo eval-mutations openapi serve
+	bench-sprt flake-demo eval-mutations openapi serve demo-data
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -99,3 +99,9 @@ openapi:
 # The dashboard and its API over the local run store (or $REPLAY_DB_URL) on :8000.
 serve:
 	uv run replay serve
+
+# The dashboard's demo data: real replay ci / replay flake runs of the retail example
+# (~25 s, ~40 MB) into $(DEMO_DB). `make serve REPLAY_DB_URL=$(DEMO_DB)` to browse it.
+DEMO_DB ?= sqlite:///.replay/demo.db
+demo-data:
+	uv run python -m examples.demo_data --db $(DEMO_DB)
