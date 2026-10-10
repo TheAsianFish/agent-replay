@@ -39,7 +39,9 @@ export function TrendChart({ points, scenario }: { points: readonly FlakePoint[]
   const upper = rated.map((p): [number, number] => [p.cx, geo.y(p.point.ci_high)]);
   const lower = rated.map((p): [number, number] => [p.cx, geo.y(p.point.ci_low)]);
   const line = rated.map((p): [number, number] => [p.cx, p.cy ?? 0]);
-  const xTicks = geo.points.length <= 6 ? geo.points : [geo.points[0], geo.points[geo.points.length - 1]];
+  const xTicks = xLabels(geo.points);
+  const span = Math.max(...geo.points.map((p) => p.t)) - Math.min(...geo.points.map((p) => p.t));
+  const label = (iso: string) => formatTimestamp(iso).slice(5, span < 3_600_000 ? 19 : 16);
   const active = hover === null ? null : geo.points[hover];
 
   return (
@@ -62,19 +64,17 @@ export function TrendChart({ points, scenario }: { points: readonly FlakePoint[]
         <text x={12} y={(HEIGHT - M.bottom + M.top) / 2} transform={`rotate(-90 12 ${(HEIGHT - M.bottom + M.top) / 2})`} textAnchor="middle" className="fill-slate-600 text-[11px]">
           pass rate
         </text>
-        {xTicks.map((p, i) =>
-          p ? (
-            <text
-              key={p.point.report_id}
-              x={p.cx}
-              y={HEIGHT - M.bottom + 18}
-              textAnchor={xTicks.length > 1 && i === 0 ? "start" : xTicks.length > 1 && i === xTicks.length - 1 ? "end" : "middle"}
-              className="fill-slate-600 text-[11px]"
-            >
-              {formatTimestamp(p.point.started_at).slice(5, 16)}
-            </text>
-          ) : null,
-        )}
+        {xTicks.map((p, i) => (
+          <text
+            key={p.point.report_id}
+            x={p.cx}
+            y={HEIGHT - M.bottom + 18}
+            textAnchor={xTicks.length > 1 && i === 0 ? "start" : xTicks.length > 1 && i === xTicks.length - 1 ? "end" : "middle"}
+            className="fill-slate-600 text-[11px]"
+          >
+            {label(p.point.started_at)}
+          </text>
+        ))}
         <text x={(M.left + WIDTH - M.right) / 2} y={HEIGHT - 4} textAnchor="middle" className="fill-slate-500 text-[11px]">
           report time (UTC)
         </text>
@@ -131,6 +131,18 @@ export function TrendChart({ points, scenario }: { points: readonly FlakePoint[]
       ) : null}
     </div>
   );
+}
+
+const LABEL_GAP = 120;
+
+/** The points that get a time label: the first, then any at least ``LABEL_GAP`` px right of the last labelled one. */
+export function xLabels<P extends { cx: number }>(points: readonly P[]): P[] {
+  const chosen: P[] = [];
+  for (const p of points) {
+    const last = chosen[chosen.length - 1];
+    if (last === undefined || p.cx - last.cx >= LABEL_GAP) chosen.push(p);
+  }
+  return chosen;
 }
 
 function tooltip(p: FlakePoint): string {

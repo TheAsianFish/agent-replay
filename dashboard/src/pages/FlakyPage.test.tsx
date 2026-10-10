@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import type { FlakeReportSummary } from "../api/types";
 import { flakeReport, flakeSummaries, trend } from "../test/fixtures";
 import { mockApi, renderAt } from "../test/render";
 import { intervalMethod } from "./FlakyPage";
@@ -50,6 +51,30 @@ describe("FlakyPage", () => {
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Scenario" }), "modify_address_suite");
     expect(await screen.findByText("No flake history for modify_address_suite.")).toBeInTheDocument();
     expect(calls.some((u) => u.searchParams.get("scenario") === "modify_address_suite")).toBe(true);
+  });
+
+  it("forgets the chosen scenario when another report is picked", async () => {
+    const older: FlakeReportSummary = { ...(flakeSummaries[0] as FlakeReportSummary), id: "flake0olderreport", started_at: "2026-10-09T08:00:00Z" };
+    const { calls } = mockApi({
+      "/api/flake": { body: [...flakeSummaries, older] },
+      "/api/flake/trend": (url) => ({ body: trend.filter((p) => p.name === url.searchParams.get("scenario")) }),
+      "/api/flake/*": { body: flakeReport },
+    });
+    const { router } = renderAt("/flaky?scenario=modify_address_suite");
+    expect(await screen.findByText("No flake history for modify_address_suite.")).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Report" }), "flake0olderreport");
+    expect(router.state.location.search).toBe("?report=flake0olderreport");
+    expect(await screen.findByRole("img", { name: /Pass rate of cancel_pending_laptop/ })).toBeInTheDocument();
+    expect(calls.some((u) => u.pathname === "/api/flake/flake0olderreport")).toBe(true);
+  });
+
+  it("falls back to the latest report when the report param is empty", async () => {
+    const { calls } = api();
+    renderAt("/flaky?report=&scenario=");
+    expect(await screen.findByText("Wald interval")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Report" })).toHaveValue("flake1aaaabbbbcccc");
+    expect(calls.some((u) => u.pathname === "/api/flake/flake1aaaabbbbcccc")).toBe(true);
+    expect(await screen.findByRole("img", { name: /Pass rate of cancel_pending_laptop/ })).toBeInTheDocument();
   });
 
   it("shows an empty state", async () => {

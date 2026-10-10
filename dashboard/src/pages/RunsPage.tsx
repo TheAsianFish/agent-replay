@@ -5,6 +5,7 @@ import { PageHeader } from "../components/Layout";
 import { Code, Empty, ErrorState, Loading } from "../components/States";
 import { button, card, link, rowLink, select, table, td, tdNum, th, thNum, thead } from "../components/table";
 import { formatCost, formatInt, formatMs, formatTimestamp, shortId } from "../lib/format";
+import { param } from "../lib/params";
 
 export const PAGE_SIZE = 25;
 export const MODES = ["full", "model-live", "tools-live", "record"] as const;
@@ -18,10 +19,10 @@ function parsePassed(value: string | null): boolean | undefined {
 export function RunsPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const scenario = params.get("scenario") ?? undefined;
-  const mode = params.get("mode") ?? undefined;
-  const result = params.get("result") ?? "";
-  const suiteId = params.get("suite_id") ?? undefined;
+  const scenario = param(params, "scenario");
+  const mode = param(params, "mode");
+  const result = param(params, "result") ?? "";
+  const suiteId = param(params, "suite_id");
   const offset = Math.max(0, Number(params.get("offset") ?? "0") || 0);
 
   const scenarios = useScenarios();
@@ -46,6 +47,7 @@ export function RunsPage() {
   const total = runs.data?.total ?? 0;
   const items = runs.data?.items ?? [];
   const filtered = Boolean(scenario ?? mode ?? suiteId) || result !== "";
+  const pastTheEnd = items.length === 0 && offset > 0;
 
   return (
     <>
@@ -107,6 +109,12 @@ export function RunsPage() {
         <Loading label="Loading runs…" />
       ) : runs.isError ? (
         <ErrorState error={runs.error} title="Could not load runs" />
+      ) : pastTheEnd ? (
+        <Empty title={`No runs at offset ${formatInt(offset)}; the store has ${formatInt(total)}.`}>
+          <button type="button" className={button} onClick={() => { update("offset", ""); }}>
+            ← Back to the first page
+          </button>
+        </Empty>
       ) : items.length === 0 ? (
         <Empty title={filtered ? "No runs match these filters." : "No runs stored yet."}>
           {filtered ? (
@@ -118,7 +126,7 @@ export function RunsPage() {
           )}
         </Empty>
       ) : (
-        <div className={`${card} overflow-x-auto`}>
+        <div className={`${card} overflow-x-auto ${runs.isPlaceholderData ? "opacity-60" : ""}`} aria-busy={runs.isPlaceholderData}>
           <table className={table}>
             <thead className={thead}>
               <tr>
@@ -163,24 +171,30 @@ export function RunsPage() {
               ))}
             </tbody>
           </table>
-          <Pagination offset={offset} total={total} count={items.length} onOffset={(o) => { update("offset", o === 0 ? "" : String(o)); }} />
+          <Pagination
+            offset={offset}
+            total={total}
+            count={items.length}
+            busy={runs.isPlaceholderData}
+            onOffset={(o) => { update("offset", o === 0 ? "" : String(o)); }}
+          />
         </div>
       )}
     </>
   );
 }
 
-function Pagination({ offset, total, count, onOffset }: { offset: number; total: number; count: number; onOffset: (offset: number) => void }) {
+function Pagination({ offset, total, count, busy, onOffset }: { offset: number; total: number; count: number; busy: boolean; onOffset: (offset: number) => void }) {
   return (
     <nav aria-label="Pagination" className="flex items-center justify-between gap-3 px-3 py-2 text-sm text-slate-700">
       <span className="num">
         {formatInt(offset + 1)}–{formatInt(offset + count)} of {formatInt(total)}
       </span>
       <span className="flex gap-2">
-        <button type="button" className={button} disabled={offset === 0} onClick={() => { onOffset(Math.max(0, offset - PAGE_SIZE)); }}>
+        <button type="button" className={button} disabled={busy || offset === 0} onClick={() => { onOffset(Math.max(0, offset - PAGE_SIZE)); }}>
           ← Newer
         </button>
-        <button type="button" className={button} disabled={offset + count >= total} onClick={() => { onOffset(offset + PAGE_SIZE); }}>
+        <button type="button" className={button} disabled={busy || offset + count >= total} onClick={() => { onOffset(offset + PAGE_SIZE); }}>
           Older →
         </button>
       </span>

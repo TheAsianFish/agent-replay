@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { kappaDomain } from "../components/KappaChart";
+import type { CalibrationView } from "../api/types";
 import { calibrationView, calibrations } from "../test/fixtures";
 import { mockApi, renderAt } from "../test/render";
 
@@ -29,6 +30,31 @@ describe("Calibration pages", () => {
     expect(within(row("tone")).getByText("[0.12, 0.50]")).toBeInTheDocument();
     const whisker = within(row("tone")).getByRole("img", { name: /tone: kappa 0.31/ });
     expect(whisker.querySelector("[data-testid=min-kappa-line]")).not.toBeNull();
+  });
+
+  it("takes each gate from the server rather than recomputing it from the interval", async () => {
+    const criteria = calibrationView.record.report.criteria;
+    const view: CalibrationView = {
+      ...calibrationView,
+      // The server says the reverse of what ci_low >= min_kappa would give for every criterion.
+      gates: { resolves_request: { gating: false }, tone: { gating: true }, extra: { gating: false } },
+      record: {
+        ...calibrationView.record,
+        report: {
+          ...calibrationView.record.report,
+          criteria: { ...criteria, extra: { kappa: 0.95, ci_low: 0.9, ci_high: 0.99, agreement: 0.97, n: 120 } },
+        },
+      },
+    };
+    mockApi({ "/api/calibration/*": { body: view } });
+    renderAt("/calibration/cal1aaaabbbbcccc");
+    await screen.findByTestId("method");
+    const row = (name: string) => screen.getByText(name, { selector: "td" }).closest("tr") as HTMLElement;
+    expect(within(row("extra")).getByText("[0.90, 0.99]")).toBeInTheDocument();
+    expect(within(row("extra")).getByText("advisory")).toBeInTheDocument();
+    expect(within(row("resolves_request")).getByText("advisory")).toBeInTheDocument();
+    expect(within(row("tone")).getByText("gating")).toBeInTheDocument();
+    expect(screen.getByText("(1 of 3 gating)")).toBeInTheDocument();
   });
 
   it("explains how to add a report when there are none", async () => {

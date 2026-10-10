@@ -11,12 +11,13 @@ export interface Canned {
   body: unknown;
 }
 
-export type Routes = Record<string, Canned | ((url: URL) => Canned)>;
+export type Routes = Record<string, Canned | ((url: URL) => Canned | Promise<Canned>)>;
 
 /**
  * Stub ``fetch``: the first route whose key matches the request path (exact
  * ``/api/runs``, or a prefix ending in ``*``) answers. ``/api/health`` answers
- * by default. Unknown paths get a 404 with a detail, like the server.
+ * by default. Unknown paths get a 404 with a detail, like the server. A route
+ * function may return a promise to hold its response back.
  */
 export function mockApi(table: Routes) {
   const calls: URL[] = [];
@@ -27,17 +28,18 @@ export function mockApi(table: Routes) {
     calls.push(url);
     const key = Object.keys(all).find((k) => (k.endsWith("*") ? url.pathname.startsWith(k.slice(0, -1)) : url.pathname === k));
     const entry = key === undefined ? undefined : all[key];
-    const canned: Canned =
+    const canned: Canned | Promise<Canned> =
       entry === undefined
         ? { status: 404, body: { detail: `no API endpoint ${url.pathname}` } }
         : typeof entry === "function"
           ? entry(url)
           : entry;
-    return Promise.resolve(
-      new Response(JSON.stringify(canned.body), {
-        status: canned.status ?? 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    return Promise.resolve(canned).then(
+      (c) =>
+        new Response(JSON.stringify(c.body), {
+          status: c.status ?? 200,
+          headers: { "Content-Type": "application/json" },
+        }),
     );
   });
   vi.stubGlobal("fetch", fetchMock);

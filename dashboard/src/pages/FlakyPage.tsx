@@ -7,6 +7,7 @@ import { Code, Empty, ErrorState, Loading } from "../components/States";
 import { TrendChart } from "../components/TrendChart";
 import { card, select, table, td, tdNum, th, thNum, thead } from "../components/table";
 import { formatCost, formatFixed, formatInt, formatMs, formatPercent, formatTimestamp, shortId } from "../lib/format";
+import { param } from "../lib/params";
 
 /** The interval method each stats implementation uses. */
 export function intervalMethod(statsImpl: string): string {
@@ -18,7 +19,7 @@ export function intervalMethod(statsImpl: string): string {
 export function FlakyPage() {
   const [params, setParams] = useSearchParams();
   const reports = useFlakeReports();
-  const chosen = params.get("report") ?? reports.data?.[0]?.id;
+  const chosen = param(params, "report") ?? reports.data?.[0]?.id;
   const report = useFlakeReport(chosen);
 
   if (reports.isPending) return <Loading label="Loading flake reports…" />;
@@ -36,6 +37,8 @@ export function FlakyPage() {
   const set = (key: string, value: string) => {
     const next = new URLSearchParams(params);
     next.set(key, value);
+    // A scenario chosen under one report may not exist in another.
+    if (key === "report") next.delete("scenario");
     setParams(next);
   };
   return (
@@ -58,7 +61,7 @@ export function FlakyPage() {
       ) : report.isError ? (
         <ErrorState error={report.error} title="Could not load flake report" />
       ) : (
-        <Report report={report.data} scenario={params.get("scenario")} onScenario={(s) => { set("scenario", s); }} />
+        <Report report={report.data} scenario={param(params, "scenario") ?? null} onScenario={(s) => { set("scenario", s); }} />
       )}
     </>
   );

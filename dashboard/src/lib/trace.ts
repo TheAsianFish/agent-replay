@@ -36,6 +36,8 @@ export function traceRows(steps: readonly StepRecord[]): TraceRow[] {
     if (kids) for (const kid of [...kids].sort(byIndex)) visit(kid, depth + 1);
   };
   for (const root of [...roots].sort(byIndex)) visit(root, 0);
+  // Steps whose parents form a cycle reach no root; show them rather than lose them.
+  for (const step of [...steps].sort(byIndex)) if (!seen.has(step)) visit(step, 0);
   return out;
 }
 
