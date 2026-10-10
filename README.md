@@ -438,7 +438,10 @@ makes runs differ) and treats the outcomes as Bernoulli trials:
   `passing` (all passed), `failing` (none did) or `flaky` (some did), with how
   often each check failed. A scenario can pass the gate and still be flaky;
   the report shows both.
-- **Concurrency without bias.** Up to `--concurrency` runs are in flight, but
+- **Concurrency without bias.** Up to `--concurrency` runs are in flight
+  (default 4, or 1 when tools run for real: `tools-live` or `--policy
+  fallback`, since tools may share state such as the retail example's
+  database; a larger value there is honoured with a warning), but
   outcomes reach the gate in run order: failing runs often finish first, and
   feeding them as they finish would bias the test towards failing. No run
   starts more than `--concurrency` places ahead of the gate, so at most
@@ -451,10 +454,13 @@ makes runs differ) and treats the outcomes as Bernoulli trials:
 
 Exit codes match `replay ci`: `0` every scenario passed the gate, `1` one
 failed, `2` a scenario could not run. `--json`, `--markdown`, the run store
-and `$GITHUB_STEP_SUMMARY` work as in `replay ci`. Runs execute on threads, so
-tools with process-global state (the retail example's database) need
-`--concurrency 1` in `tools-live`; in `model-live` tools are served from the
-cassette.
+and `$GITHUB_STEP_SUMMARY` work as in `replay ci`. Runs execute on threads, one
+replay session each. An agent that hands tool calls to a plain
+`ThreadPoolExecutor` makes calls no session can claim while several runs are
+active; such a scenario is reported `broken` (exit 2) with the fix
+(`agent_replay.ContextThreadPoolExecutor`, or `--concurrency 1`), never as a
+flake. A run that crashes the harness is also `broken`, and the other runs are
+kept.
 
 ## CLI
 

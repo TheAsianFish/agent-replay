@@ -327,6 +327,8 @@ meets the same error targets, computed exactly from the binomial distribution
 
 ```
 core: agent_replay/stats.py is not implemented yet; skipped
+SPRT gate simulation: p_fail=0.6, p_pass=0.9, alpha=0.05, beta=0.05, max_runs=20, trials=2000, seed=0
+
 | true p | baseline mean runs | baseline P(pass) |
 |---:|---:|---:|
 | 0.05 | 20.00 | 0.000 |
@@ -535,9 +537,10 @@ What this shows:
   invisible because no recorded run has a failing tool. Stripping the policy
   from the system prompt only matters to a real model; the fake model
   ignores the prompt.
-- **Caveat on `model-live`.** The fake model stands in for a live one. Four
-  `run_error` catches (`JSONDecodeError`, `KeyError`) are the fake model
-  crashing on a conversation the mutant corrupted; a real model would
+- **Caveat on `model-live`.** The fake model stands in for a live one. Three
+  `run_error` catches (`JSONDecodeError` for `truncates_tool_results` and
+  `unregisters_product_tool`, `KeyError` for `mismatches_tool_use_ids`) are
+  the fake model crashing on a conversation the mutant corrupted; a real model would
   misbehave differently. With `fallback`, unrecorded calls run for real
   instead of ending the run, and the checks still catch the same 22.
 
@@ -564,7 +567,7 @@ first repeated live runs in the project.
   to [1.00, 1.00] at k/k. Read the pass counts; Wilson intervals come with
   the core implementation (see "To measure").
 - **Date:** 2026-10-10. Spend: $0.1045 (Haiku, 120 runs), $1.0696 (Opus, 30
-  runs), $0.0014 (one Haiku smoke run before them).
+  runs), $0.00137 (one Haiku smoke run before them).
 
 **Haiku 5.5, 20 runs per scenario.** Raw JSON: `eval/results/m4_flake_haiku.json`.
 
@@ -585,7 +588,8 @@ runs, pass on a pass rate of at least 0.75 (the baseline stand-in for the SPRT);
 Wald intervals): passed
 ```
 
-The one failure is run 19 of `transfer_swapped_refunds`, where the user asks
+The one failure is the last of the 20 runs of `transfer_swapped_refunds`
+(index 19 in the JSON), where the user asks
 to refund each order to the other order's payment method. Policy allows only
 the original method or a gift card, so the right action is a transfer to a
 human. In that run Haiku instead called `return_delivered_order_items` on
@@ -689,7 +693,7 @@ verdicts $0.330, the live test above $0.025); the remaining $0.079 (two
 re-judged duplicate mutant transcripts, two earlier live-test runs) comes from
 the session log, not from a file in this repo.
 
-API spend in M4: $1.175 (Opus flake runs $1.0696 and Haiku flake runs
-$0.1045, both in their committed JSON reports; one Haiku smoke run $0.0014,
-from the session log). Project total: $3.288 (M1 $0.014, M2 $0.691, M3
+API spend in M4: $1.175 (Opus flake runs $1.06960 and Haiku flake runs
+$0.10453, both in their committed JSON reports; one Haiku smoke run $0.00137,
+from the session log; sum $1.17550). Project total: $3.288 (M1 $0.014, M2 $0.691, M3
 $1.408, M4 $1.175).

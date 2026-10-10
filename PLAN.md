@@ -420,6 +420,7 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     through `stats_impl`, and the report names the method that actually ran
     (with `baseline`, a fixed-k majority and Wald intervals).
     `--runs-per-minute` spaces run starts; the SDK retries 429s itself.
+    Concurrency defaults to 4, or 1 when tools run for real.
     Classification is `passing` / `flaky` / `failing` / `broken`, separate
     from the gate's decision. Per-run seeds reach client factories that take
     a `seed`, so simulated flakiness is reproducible at any concurrency.
@@ -439,20 +440,30 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     regressions, `tools-live` 5/8 tool bugs; 0/5 benign refactors failed.
     Live `replay flake`: Haiku 5.5 passed 119/120 runs (one policy breach on
     the refund-swap task), Opus 5.5 30/30. M4 API spend $1.175.
-    (f) **Review fix.** The first scheduler bounded only the runs still
-    executing, so a slow first run let every later run start even when the
-    gate would decide after one; the window now counts finished-but-unfed
-    runs too (regression test in `tests/test_flake.py`).
+    (f) **Review fixes,** each with a test that fails on the old code: the
+    first scheduler bounded only the runs still executing, so a slow first
+    run let every later run start even when the gate would decide after one
+    (the window now counts finished-but-unfed runs); an agent using a plain
+    thread pool failed every run at concurrency above 1 and was reported as
+    failing (now `broken`, via a dedicated `UnattributedCallError`, naming the
+    fix); `tools-live` and `fallback` runs raced the example's shared database
+    at the default concurrency (they now default to one at a time, with a
+    warning when forced higher); an unexpected exception in one run dropped
+    the others' results and left the stored suite unfinished (it now makes the
+    scenario `broken` and keeps the rest). The mutation study now lists every
+    configured check type, so `forbidden_tools` shows its 0/32.
     (g) **Known limitations.** Five mutations survive every mode: three
     tool bugs that change only a tool's output (no check compares live tool
     results with recorded ones; a drift check is on the roadmap),
     `drops_error_flag` (no recording has a failing tool) and `strips_policy`
-    (the fake model ignores the prompt). Four `model-live` catches are the
+    (the fake model ignores the prompt). Three `model-live` catches are the
     fake model crashing on a corrupted conversation. Tools with
-    process-global state need `--concurrency 1` in `tools-live`. The
-    `parallel_tools` benign refactor orders its trajectory by thread start,
-    which Python does not guarantee; it was stable over 160 runs. `make
-    bench-flake` (D3) waits for the larger golden set in M6.
+    process-global state must not be forced above `--concurrency 1` in
+    `tools-live`. The `parallel_tools` benign refactor orders its trajectory
+    by thread start, which Python does not guarantee; it has been stable in
+    every study run so far, and CI would show a change as a diff in the
+    committed results. `make bench-flake` (D3) waits for the larger golden
+    set in M6.
 - [ ] M5: Dashboard — PostgreSQL + Alembic migrations sharing the SQLite models; FastAPI API with structured logging; React 19 + TypeScript strict dashboard (runs, run detail, trace viewer, aligned trace diff from `diff.py`, flakiness trend, calibration report page reading stored reports); Vitest and Playwright smoke test; Docker Compose; `replay serve`. Done when `docker compose up` shows the example data, API tests and UI tests pass in CI, and screenshots are in `docs/`.
 - [ ] M6: Judge calibration — `replay label` TUI, golden-set format, `replay calibrate` (kappa per criterion with bootstrap CI, agreement, confusion matrix, majority baseline, self-consistency across 3 judge runs, position / verbosity / self-preference probes), LLMBar harness (`make eval-llmbar`), calibration gating wired into `judge` checks, calibration page populated. Done when the full pipeline runs end to end on a fake judge offline with tests, and RESULTS.md lists the exact key-requiring commands under "To measure" with cost estimates; if D1 has been recorded and labelled, the measured kappa is in RESULTS.md.
 - [ ] M7: GitHub Action and release readiness — `action.yml` composite action with PR comment and artifact upload, example consumer workflow, `v1` tag procedure; PyPI build and guarded trusted-publishing workflow; Dockerfile and Compose finalised; RELEASE.md with every step and secret the maintainer must add; README complete (what/why, demo GIF placeholder with capture instructions, quickstart, Mermaid architecture, design decisions, results table from RESULTS.md, roadmap); CHANGELOG. Done when `uv build` produces a wheel that installs in a clean venv, the Action runs against the example repo workflow in CI (dry mode), and RESULTS.md is complete with every measured and to-measure number.
