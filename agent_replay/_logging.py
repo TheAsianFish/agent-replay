@@ -1,4 +1,4 @@
-"""structlog setup for the CLI: human-readable or JSON lines on stderr.
+"""structlog setup for the CLI and server: human-readable or JSON lines on stderr.
 
 ``REPLAY_LOG_LEVEL`` (default ``WARNING``) and ``REPLAY_LOG_FORMAT``
 (``console`` or ``json``, default ``console``) control it.
@@ -36,6 +36,7 @@ def configure_logging() -> None:
     )
     structlog.configure(
         processors=[
+            structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso", utc=True),
             renderer,

@@ -34,6 +34,10 @@ replay = "agent_replay.cli:main"
 ollama = [
     "ollama>=0.6,<0.7",
 ]
+server = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
+]
 postgres = [
     "psycopg[binary]>=3.2,<4",
 ]
@@ -47,6 +51,7 @@ packages = ["agent_replay"]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "hypothesis>=6.168.5",
     "mypy>=2.4.0",
     "pytest>=9.1.1",

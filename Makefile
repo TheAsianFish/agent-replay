@@ -2,7 +2,7 @@
 # are added with the code they run.
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
-	bench-sprt flake-demo eval-mutations
+	bench-sprt flake-demo eval-mutations openapi serve
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -91,3 +91,11 @@ eval-judge-smoke:
 # ~25 s). The JSON is byte-stable across runs.
 eval-mutations:
 	uv run python eval/mutation_study.py --out eval/results/mutations.json
+
+# Regenerate the API schema the dashboard's TypeScript types come from.
+openapi:
+	uv run python -m agent_replay.server.openapi dashboard/openapi.json
+
+# The dashboard and its API over the local run store (or $REPLAY_DB_URL) on :8000.
+serve:
+	uv run replay serve

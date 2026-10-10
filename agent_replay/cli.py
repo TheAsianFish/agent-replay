@@ -927,6 +927,63 @@ def diff_cmd(
     console.print(escape(summary(diff)))
 
 
+@app.command("serve")
+def serve_cmd(
+    host: Annotated[str, typer.Option(help="Interface to listen on.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(min=1, max=65535, help="Port to listen on.")] = 8000,
+    db: Annotated[
+        str | None,
+        typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db."),
+    ] = None,
+    dashboard: Annotated[
+        Path | None,
+        typer.Option(
+            help="Built dashboard to serve at / (default: $REPLAY_DASHBOARD_DIR, then the "
+            "build packaged with the server)."
+        ),
+    ] = None,
+) -> None:
+    """Serve the dashboard and its read-only API over the run store.
+
+    Logs one structured line per request (REPLAY_LOG_LEVEL defaults to INFO
+    here; REPLAY_LOG_FORMAT=json for JSON lines).
+    """
+    try:
+        import uvicorn  # noqa: PLC0415
+
+        from agent_replay.server import create_app  # noqa: PLC0415
+        from agent_replay.server.app import dashboard_dir  # noqa: PLC0415
+    except ImportError as exc:
+        raise _fail(
+            f"replay serve needs the server extra ({exc.name} is missing): "
+            "pip install 'agent-replay[server]'"
+        ) from exc
+    static = dashboard or dashboard_dir()
+    if static is not None and not (static / "index.html").is_file():
+        raise _fail(f"{static} has no index.html; build the dashboard with `make ui` first")
+    os.environ.setdefault("REPLAY_LOG_LEVEL", "INFO")
+    configure_logging()
+    try:
+        store = Store.open(db)
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+    where = str(static) if static else "none (API only; build it with `make ui`)"
+    console.print(
+        f"serving the {store.backend} run store on http://{host}:{port} (dashboard: "
+        f"{escape(where)}; API docs at /docs)"
+    )
+    try:
+        uvicorn.run(
+            create_app(store, static_dir=static),
+            host=host,
+            port=port,
+            access_log=False,
+            log_level="warning",
+        )
+    finally:
+        store.close()
+
+
 db_app = typer.Typer(help="Manage the run store.", no_args_is_help=True)
 app.add_typer(db_app, name="db")
 

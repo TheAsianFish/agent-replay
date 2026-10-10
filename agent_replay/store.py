@@ -484,6 +484,11 @@ class Store:
     def close(self) -> None:
         self._engine.dispose()
 
+    @property
+    def backend(self) -> str:
+        """``sqlite`` or ``postgresql``."""
+        return self._engine.dialect.name
+
     def revision(self) -> str | None:
         """The schema revision this store is at."""
         return current_revision(self._engine)
