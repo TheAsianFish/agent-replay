@@ -625,6 +625,27 @@ def test_rate_limiter_rejects_a_non_positive_rate(rate: float) -> None:
         RateLimiter(rate)
 
 
+def test_runs_per_minute_builds_the_limiter(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The ``--runs-per-minute`` setting, not only an injected limiter, spaces the starts."""
+    t = FakeTime(advance=False)
+    built: list[float] = []
+
+    class Recording(RateLimiter):
+        def __init__(self, per_minute: float, **kwargs: Any) -> None:
+            built.append(per_minute)
+            super().__init__(per_minute, clock=t.clock, sleep=t.sleep)
+
+    monkeypatch.setattr(flake, "RateLimiter", Recording)
+    flake_suite(
+        SUITE,
+        settings=FlakeSettings(max_runs=3, concurrency=2, runs_per_minute=60),
+        overrides=LIVE,
+        scenarios=["cancel_pending_laptop"],
+    )
+    assert built == [60]
+    assert t.sleeps == [pytest.approx(1.0), pytest.approx(2.0)]
+
+
 def test_flake_suite_uses_the_limiter_for_every_start() -> None:
     t = FakeTime(advance=False)
     flake_suite(
@@ -772,6 +793,42 @@ def test_markdown_names_the_baseline_gate_and_lists_failures(flaky_report: Flake
     boots = by_name(flaky_report)[BOOTS]
     fails = boots.runs - boots.passes
     assert f"**tool_sequence** failed {fails}/20 runs" in md
+
+
+def test_interval_uses_the_settings_confidence() -> None:
+    narrow = flake_suite(
+        SUITE,
+        settings=FlakeSettings(concurrency=8, confidence=0.5),
+        overrides=LIVE,
+        scenarios=[BOOTS],
+    )
+    wide = flake_suite(
+        SUITE,
+        settings=FlakeSettings(concurrency=8, confidence=0.99),
+        overrides=LIVE,
+        scenarios=[BOOTS],
+    )
+    n_lo, n_hi = narrow.scenarios[0].interval
+    w_lo, w_hi = wide.scenarios[0].interval
+    assert narrow.scenarios[0].passes == wide.scenarios[0].passes
+    assert w_hi - w_lo > n_hi - n_lo
+    assert "50% Wald" in to_markdown(narrow)
+
+
+def test_markdown_shows_runs_in_flight_when_the_gate_decided() -> None:
+    report = flake_suite(
+        SUITE,
+        settings=FlakeSettings(concurrency=4, max_runs=8),
+        overrides=LIVE,
+        scenarios=["cancel_pending_laptop"],
+        impl=ScriptedImpl(after(1)),  # type: ignore[arg-type]
+    )
+    scenario = report.scenarios[0]
+    assert scenario.runs == 1
+    assert scenario.executed > 1
+    extra = scenario.executed - scenario.runs
+    assert f"| 1 (+{extra}) |" in to_markdown(report)
+    assert f", {extra} more in flight" in describe(scenario)
 
 
 def test_gate_summary_depends_on_the_implementation() -> None:
