@@ -610,8 +610,13 @@ def flake_cmd(
     ] = 0.8,
     confidence: Annotated[float, typer.Option(help="Confidence of the reported interval.")] = 0.95,
     concurrency: Annotated[
-        int, typer.Option(min=1, help="Runs of one scenario in flight at once.")
-    ] = 4,
+        int | None,
+        typer.Option(
+            min=1,
+            help="Runs of one scenario in flight at once. Default: 4 when every tool call is "
+            "served, 1 when tools run for real (tools-live, --policy fallback).",
+        ),
+    ] = None,
     runs_per_minute: Annotated[
         float | None, typer.Option(help="Start at most this many runs a minute.")
     ] = None,

@@ -40,7 +40,12 @@ from agent_replay.cassette import (
     Kind,
     Usage,
 )
-from agent_replay.errors import ReplayError, UnrecordedCallError, rebuild_exception
+from agent_replay.errors import (
+    ReplayError,
+    UnattributedCallError,
+    UnrecordedCallError,
+    rebuild_exception,
+)
 from agent_replay.pricing import cost_usd
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
@@ -67,10 +72,11 @@ def current_session() -> Session | None:
         active = list(_active)
     if len(active) <= 1:
         return active[0] if active else None
-    error = ReplayError(
+    error = UnattributedCallError(
         f"a call from a thread with no session context while {len(active)} sessions are "
         "active cannot be attributed to one of them; submit work through "
-        "agent_replay.ContextThreadPoolExecutor (or contextvars.copy_context().run)"
+        "agent_replay.ContextThreadPoolExecutor (or contextvars.copy_context().run), or "
+        "run one session at a time (replay flake --concurrency 1)"
     )
     for candidate in active:
         candidate.fail(error)

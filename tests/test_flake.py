@@ -23,9 +23,10 @@ from typing import Any
 
 import pytest
 from pydantic import ValidationError
+from structlog.testing import capture_logs
 from typer.testing import CliRunner
 
-from agent_replay import stats_baseline
+from agent_replay import flake, stats_baseline
 from agent_replay.checks import CheckResult
 from agent_replay.ci import Overrides, RunSink, ScenarioReport
 from agent_replay.cli import app
@@ -51,6 +52,7 @@ from agent_replay.runner import make_client
 from agent_replay.stats import Decision
 from agent_replay.store import Store
 from examples.retail_agent import tools as retail_tools
+from examples.retail_agent.agent import RetailAgent
 from examples.retail_agent.flaky_model import SLIP_RATES
 
 ROOT = Path(__file__).parents[1]
@@ -860,3 +862,135 @@ def test_a_slow_first_run_does_not_let_later_runs_pile_up() -> None:
     assert gate.decision == "pass"
     assert sorted(outcomes) == [0, 1]
     assert [o.counted for o in outcomes.values()] == [True, False]
+
+
+# --- review fixes: shared state, plain thread pools, crashing runs -----------------
+
+
+class _PlainPoolAgent(RetailAgent):
+    """Runs a turn's tools on a plain ThreadPoolExecutor: its workers carry no session."""
+
+    def handle_tool_uses(self, blocks):
+        with ThreadPoolExecutor(2) as pool:
+            return list(pool.map(self.execute, blocks))
+
+
+class _OverlappingPlainPoolAgent(_PlainPoolAgent):
+    """Waits until four runs are inside their sessions, so the calls are ambiguous."""
+
+    barrier = threading.Barrier(4, timeout=10)
+
+    def run(self, client, task):
+        self.barrier.wait()
+        return super().run(client, task)
+
+
+plain_pool_run = _PlainPoolAgent().run
+overlapping_plain_pool_run = _OverlappingPlainPoolAgent().run
+PLAIN = Overrides(mode="model-live", client=FAKE, agent=f"{__name__}:plain_pool_run")
+
+
+def test_a_plain_thread_pool_agent_passes_one_run_at_a_time() -> None:
+    report = flake_suite(
+        SUITE,
+        settings=FlakeSettings(concurrency=1, max_runs=3),
+        overrides=PLAIN,
+        scenarios=["cancel_pending_laptop"],
+    )
+    [s] = report.scenarios
+    assert s.classification == "passing"
+    assert (s.passes, s.runs) == (3, 3)
+
+
+def test_unattributable_calls_under_concurrency_are_broken_not_failing() -> None:
+    # Concurrent sessions cannot tell whose plain-pool worker made a call; that is the
+    # agent's threading, so the scenario is broken (exit 2), never reported as a flake.
+    overrides = PLAIN.model_copy(update={"agent": f"{__name__}:overlapping_plain_pool_run"})
+    report = flake_suite(
+        SUITE,
+        settings=FlakeSettings(concurrency=4, max_runs=8),
+        overrides=overrides,
+        scenarios=["cancel_pending_laptop"],
+    )
+    [s] = report.scenarios
+    assert s.classification == "broken"
+    assert s.decision == "continue"
+    assert (s.runs, s.executed) == (0, 4)
+    assert s.error is not None
+    assert s.error.type == "UnattributedCallError"
+    assert "ContextThreadPoolExecutor" in s.error.message
+    assert "--concurrency 1" in s.error.message
+    assert report.broken == [s]
+
+
+def test_runs_that_execute_tools_default_to_one_at_a_time() -> None:
+    settings = FlakeSettings(max_runs=6)
+    tools_live = flake_suite(
+        SUITE,
+        settings=settings,
+        overrides=Overrides(mode="tools-live"),
+        scenarios=["return_damaged_bicycle"],
+    )
+    served = flake_suite(SUITE, settings=settings, overrides=LIVE, scenarios=[BOOTS])
+    fallback = flake_suite(
+        SUITE,
+        settings=settings,
+        overrides=Overrides(mode="model-live", policy="fallback", client=FAKE),
+        scenarios=["cancel_pending_laptop"],
+    )
+    assert [s.concurrency for s in tools_live.scenarios] == [1]
+    assert [s.concurrency for s in fallback.scenarios] == [1]
+    assert [s.concurrency for s in served.scenarios] == [4]
+    # One at a time, the retail database is never shared, so tools-live is stable.
+    [s] = tools_live.scenarios
+    assert (s.classification, s.passes, s.runs) == ("passing", 6, 6)
+
+
+def test_explicit_concurrency_with_live_tools_warns() -> None:
+    with capture_logs() as logs:
+        report = flake_suite(
+            SUITE,
+            settings=FlakeSettings(max_runs=1, concurrency=3),
+            overrides=Overrides(mode="tools-live"),
+            scenarios=["lookup_latest_order_total"],
+        )
+    assert report.scenarios[0].concurrency == 3
+    [warning] = [e for e in logs if e["event"] == "flake.shared_tools"]
+    assert warning["log_level"] == "warning"
+    assert "--concurrency 1" in warning["hint"]
+
+
+def test_a_run_that_crashes_is_broken_and_the_others_are_kept(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = flake.run_scenario
+    crash_seed = run_seed(0, BOOTS, 2)
+
+    def crashing(*args, seed=None, **kwargs):
+        if seed == crash_seed:
+            raise KeyError("boom in a worker")
+        return real(*args, seed=seed, **kwargs)
+
+    monkeypatch.setattr(flake, "run_scenario", crashing)
+    saved: list[int] = []
+    finished: list[tuple[bool, int, int]] = []
+    sink = RunSink(
+        save=lambda report, result, started: saved.append(1) or None,
+        finish=lambda passed, scenarios, failed: finished.append((passed, scenarios, failed)),
+    )
+    report = flake_suite(
+        SUITE,
+        settings=FlakeSettings(concurrency=1, max_runs=5),
+        overrides=LIVE,
+        scenarios=[BOOTS],
+        sink=sink,
+    )
+    [s] = report.scenarios
+    assert s.classification == "broken"
+    assert s.error is not None
+    assert s.error.type == "KeyError"
+    assert "boom in a worker" in s.error.message
+    assert s.runs == 2
+    assert s.executed == 3
+    assert len(saved) == 3
+    assert finished == [(False, 1, 1)]

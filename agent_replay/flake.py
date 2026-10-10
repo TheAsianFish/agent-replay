@@ -24,6 +24,13 @@ outcomes as Bernoulli trials:
   towards failures. No run starts more than ``concurrency`` places ahead of the
   last outcome fed to the gate, so at most ``concurrency - 1`` runs are wasted
   when it decides; those still finish and are reported with ``counted=False``.
+* **Shared state.** A run that executes tools for real (``tools-live``, or
+  the ``fallback`` policy) may race another run on whatever the tools share,
+  so such scenarios default to one run at a time; a larger ``concurrency`` is
+  honoured with a warning. A call that cannot be attributed to one run (an
+  agent starting plain threads while several runs are active) makes the
+  scenario ``broken``, not ``failing``: the agent's threading, not its
+  behaviour, is at fault.
 * **Rate limit.** ``runs_per_minute`` spaces run starts evenly. Each run makes
   several model calls; the Anthropic SDK retries rate-limited calls itself.
 
@@ -34,6 +41,7 @@ simulated flaky model gives the same outcomes on every invocation.
 
 from __future__ import annotations
 
+import functools
 import json
 import threading
 import time
@@ -51,15 +59,18 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from agent_replay import stats_impl
 from agent_replay.cassette import ErrorInfo
 from agent_replay.ci import (
+    Baselines,
+    Defaults,
     Overrides,
     RunSink,
+    Scenario,
     ScenarioReport,
     git_sha,
     load_baselines,
     load_suite,
     run_scenario,
 )
-from agent_replay.errors import ConfigError
+from agent_replay.errors import ConfigError, UnattributedCallError
 from agent_replay.runner import RunResult
 from agent_replay.session import Policy, ReplayMode
 from agent_replay.stats import Decision
@@ -91,7 +102,8 @@ class FlakeSettings(BaseModel):
     """``wilson``: the interval's lower bound must reach this."""
     confidence: float = Field(0.95, gt=0, lt=1)
     """Confidence of the reported interval (and of the ``wilson`` gate)."""
-    concurrency: int = Field(4, ge=1)
+    concurrency: int | None = Field(None, ge=1)
+    """Runs of one scenario in flight at once; ``None``: :func:`default_concurrency`."""
     runs_per_minute: float | None = Field(None, gt=0)
     seed: int = 0
 
@@ -150,6 +162,8 @@ class ScenarioFlake(BaseModel):
     (``error:Type``)."""
     executed: int
     """Runs started, including those in flight when the gate decided."""
+    concurrency: int = 1
+    """Runs of this scenario that were allowed in flight at once."""
     cost_usd: float = 0.0
     """Over every executed run."""
     error: ErrorInfo | None = None
@@ -292,6 +306,20 @@ class RateLimiter:
 # --- the engine -----------------------------------------------------------------
 
 
+DEFAULT_CONCURRENCY = 4
+
+
+def tools_may_run(mode: ReplayMode, policy: Policy) -> bool:
+    """Whether a replay in ``mode`` with ``policy`` can execute real tool code."""
+    return mode == "tools-live" or policy == "fallback"
+
+
+def default_concurrency(mode: ReplayMode, policy: Policy) -> int:
+    """:data:`DEFAULT_CONCURRENCY` when every tool call is served (or stubbed), else 1:
+    tools that run for real may share state between concurrent runs."""
+    return 1 if tools_may_run(mode, policy) else DEFAULT_CONCURRENCY
+
+
 def run_seed(seed: int, scenario: str, index: int) -> int:
     """The seed for run ``index`` of ``scenario``: stable across processes and platforms."""
     return zlib.crc32(f"{seed}:{scenario}:{index}".encode())
@@ -346,7 +374,8 @@ def flake_suite(
 
     ``scenarios`` restricts the run to those names (in suite order). Scenarios
     run one after another; the runs of one scenario run ``settings.concurrency``
-    at a time. ``impl`` defaults to :func:`agent_replay.stats_impl.load`.
+    at a time (by default :func:`default_concurrency` of its mode and policy).
+    ``impl`` defaults to :func:`agent_replay.stats_impl.load`.
     ``sink.save`` is called once per executed run, from the calling thread.
 
     Raises :class:`ConfigError` for a broken suite or baseline file, or an unknown
@@ -382,32 +411,41 @@ def flake_suite(
         scenarios=len(chosen),
         gate=settings.gate,
         stats_impl=impl_name,
-        concurrency=settings.concurrency,
+        concurrency=settings.concurrency or "per scenario",
     )
     results: list[ScenarioFlake] = []
+    plans = {s.name: _plan(s, suite.defaults, overrides, settings) for s in chosen}
     with ThreadPoolExecutor(
-        max_workers=settings.concurrency, thread_name_prefix="replay-flake"
+        max_workers=max(c for _, _, c in plans.values()), thread_name_prefix="replay-flake"
     ) as pool:
         for scenario in chosen:
+            mode, policy, concurrency = plans[scenario.name]
 
-            def one_run(index: int, seed: int) -> _Done:
-                run_started = clock()
-                report, result = run_scenario(
-                    scenario,  # noqa: B023 - every run is awaited within this iteration
-                    suite.defaults,
-                    overrides,
-                    base_dir,
-                    timer,
-                    baselines=baselines,
-                    seed=seed,
-                )
-                return report, result, run_started
-
+            one_run = functools.partial(
+                _run_once,
+                scenario,
+                suite.defaults,
+                overrides,
+                base_dir,
+                baselines,
+                mode,
+                policy,
+                clock=clock,
+                timer=timer,
+            )
             gate = make_gate(settings, impl)
             first, outcomes, broken = _repeat(
-                one_run, scenario.name, settings, gate, pool=pool, limiter=limiter, sink=sink
+                one_run,
+                scenario.name,
+                settings,
+                gate,
+                pool=pool,
+                limiter=limiter,
+                sink=sink,
+                concurrency=concurrency,
             )
-            results.append(_summarise(first, settings, impl, gate, outcomes, broken))
+            summary = _summarise(first, settings, impl, gate, outcomes, broken)
+            results.append(summary.model_copy(update={"concurrency": concurrency}))
             log.info(
                 "flake.scenario",
                 name=scenario.name,
@@ -433,8 +471,68 @@ def flake_suite(
     return report
 
 
+def _plan(
+    scenario: Scenario, defaults: Defaults, overrides: Overrides, settings: FlakeSettings
+) -> tuple[ReplayMode, Policy, int]:
+    """The scenario's mode and policy (resolved as :func:`run_scenario` does) and how many
+    of its runs may be in flight at once."""
+    mode = overrides.mode or scenario.mode or defaults.mode
+    policy = overrides.policy or scenario.policy or defaults.policy
+    if settings.concurrency is None:
+        return mode, policy, default_concurrency(mode, policy)
+    if settings.concurrency > 1 and tools_may_run(mode, policy):
+        log.warning(
+            "flake.shared_tools",
+            name=scenario.name,
+            mode=mode,
+            policy=policy,
+            concurrency=settings.concurrency,
+            hint="tools run for real in this mode; if they share state (a database, files, "
+            "globals) concurrent runs can interfere. Use --concurrency 1 unless they are "
+            "independent",
+        )
+    return mode, policy, settings.concurrency
+
+
 _Done = tuple[ScenarioReport, RunResult | None, datetime]
 """A finished run: its report, its result (``None`` if it could not run) and its start."""
+
+
+def _run_once(
+    scenario: Scenario,
+    defaults: Defaults,
+    overrides: Overrides,
+    base_dir: Path,
+    baselines: Baselines | None,
+    mode: ReplayMode,
+    policy: Policy,
+    index: int,
+    seed: int,
+    *,
+    clock: Callable[[], datetime],
+    timer: Callable[[], float],
+) -> _Done:
+    """One run of ``scenario``. An unexpected exception becomes a report that did not run,
+    so a bug in one run cannot lose the others' results."""
+    started = clock()
+    try:
+        report, result = run_scenario(
+            scenario, defaults, overrides, base_dir, timer, baselines=baselines, seed=seed
+        )
+    except Exception as exc:
+        log.exception("flake.run_crashed", name=scenario.name, index=index)
+        report = ScenarioReport(
+            name=scenario.name,
+            cassette=scenario.cassette,
+            agent=overrides.agent or scenario.agent or defaults.agent or "?",
+            mode=mode,
+            policy=policy,
+            passed=False,
+            ran=False,
+            error=ErrorInfo.from_exception(exc),
+        )
+        result = None
+    return report, result, started
 
 
 def _repeat(
@@ -446,12 +544,15 @@ def _repeat(
     pool: ThreadPoolExecutor,
     limiter: RateLimiter | None,
     sink: RunSink,
+    concurrency: int | None = None,
 ) -> tuple[ScenarioReport, dict[int, RunOutcome], ScenarioReport | None]:
-    """Run ``one_run(index, seed)`` until ``gate`` decides, ``concurrency`` at a time.
+    """Run ``one_run(index, seed)`` until ``gate`` decides, ``concurrency`` at a time
+    (default: ``settings.concurrency``, else :data:`DEFAULT_CONCURRENCY`).
 
     Returns run 0's report, every executed run's outcome by index, and the
-    report of the run that could not run, if one could not.
+    report of the run that could not run (or made an unattributable call), if any.
     """
+    window = concurrency or settings.concurrency or DEFAULT_CONCURRENCY
     in_flight: dict[Future[_Done], int] = {}
     done: dict[int, _Done] = {}
     seeds: dict[int, int] = {}
@@ -459,13 +560,12 @@ def _repeat(
     broken: ScenarioReport | None = None
     next_index = 0
 
-    def record(index: int, *, counted: bool) -> ScenarioReport:
+    def record(index: int, *, counted: bool) -> None:
         report, result, run_started = done[index]
         run_id = sink.save(report, result, run_started)
         outcomes[index] = _outcome(index, seeds[index], report).model_copy(
             update={"run_id": run_id, "counted": counted}
         )
-        return report
 
     while True:
         while (
@@ -473,7 +573,7 @@ def _repeat(
             and broken is None
             # At most `concurrency` runs ahead of the gate, finished or not: a slow early
             # run must not let later ones pile up past a decision it is about to cause.
-            and next_index < len(outcomes) + settings.concurrency
+            and next_index < len(outcomes) + window
             and next_index < settings.max_runs
         ):
             if limiter is not None:
@@ -488,14 +588,20 @@ def _repeat(
             done[in_flight.pop(future)] = future.result()
         # Feed the gate strictly in run order, whatever order the runs finished in.
         while len(outcomes) in done and gate.decision == "continue" and broken is None:
-            report = record(len(outcomes), counted=True)
-            if report.ran:
+            report = done[len(outcomes)][0]
+            usable = report.ran and not _unattributed(report)
+            record(len(outcomes), counted=usable)
+            if usable:
                 gate.update(report.passed)
             else:
                 broken = report
     for index in sorted(set(done) - set(outcomes)):
         record(index, counted=False)
     return done[0][0], outcomes, broken
+
+
+def _unattributed(report: ScenarioReport) -> bool:
+    return report.error is not None and report.error.type == UnattributedCallError.__name__
 
 
 def _summarise(
@@ -508,7 +614,7 @@ def _summarise(
 ) -> ScenarioFlake:
     """``first`` is run 0's report, which names the cassette, agent, mode and policy."""
     ordered = tuple(outcomes[i] for i in sorted(outcomes))
-    counted = [o for o in ordered if o.counted and o.ran]
+    counted = [o for o in ordered if o.counted]
     passes = sum(o.passed for o in counted)
     runs = len(counted)
     return ScenarioFlake(
