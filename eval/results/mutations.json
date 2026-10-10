@@ -1804,6 +1804,24 @@
           "caught": 0
         }
       },
+      "forbidden_tools": {
+        "full": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 0
+        }
+      },
       "max_tool_calls": {
         "full": {
           "alone": 0,

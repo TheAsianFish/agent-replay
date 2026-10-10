@@ -48,7 +48,7 @@ from pathlib import Path
 from pydantic import JsonValue
 
 from agent_replay._logging import configure_logging
-from agent_replay.ci import Overrides, ScenarioReport, SuiteReport, run_suite
+from agent_replay.ci import Overrides, ScenarioReport, SuiteReport, load_suite, run_suite
 from agent_replay.session import Policy, ReplayMode
 from eval.mutations import MUTATIONS, REFACTORS, Mutation, Refactor, Target
 from examples.retail_agent import tools as retail_tools
@@ -108,6 +108,17 @@ class Outcome:
 def check_type(name: str) -> str:
     """``arg_schema:cancel_pending_order`` -> ``arg_schema``; rules keep their name."""
     return name if name.startswith("rule:") else name.split(":", 1)[0]
+
+
+def suite_check_types() -> list[str]:
+    """Every check type the suite configures, so a type that caught nothing still gets a row."""
+    suite = load_suite(SUITE)
+    specs = [*suite.defaults.checks, *(c for s in suite.scenario for c in s.checks)]
+    types = {
+        f"rule:{str(spec['ref']).rsplit(':', 1)[-1]}" if spec["type"] == "rule" else spec["type"]
+        for spec in specs
+    }
+    return sorted(str(t) for t in types)
 
 
 def scenario_catches(scenario: ScenarioReport) -> set[str]:
@@ -195,7 +206,9 @@ def run(
         ],
         "mutations": mutation_rows,
         "refactors": refactor_rows,
-        "summary": summarise(mutation_rows, refactor_rows, [c.id for c in configs]),
+        "summary": summarise(
+            mutation_rows, refactor_rows, [c.id for c in configs], suite_check_types()
+        ),
     }
 
 
@@ -239,8 +252,13 @@ def _field(row: JsonValue, key: str) -> str:
 
 
 def summarise(
-    mutations: Sequence[JsonValue], refactors: Sequence[JsonValue], configs: Sequence[str]
+    mutations: Sequence[JsonValue],
+    refactors: Sequence[JsonValue],
+    configs: Sequence[str],
+    configured: Sequence[str] = (),
 ) -> dict[str, JsonValue]:
+    """Detection rates, per-check-type catches and false alarms. ``configured`` check
+    types get a row even when they caught nothing."""
     detection: dict[str, JsonValue] = {}
     for config in configs:
         by_target: dict[str, JsonValue] = {
@@ -250,7 +268,7 @@ def summarise(
             of_target = [m for m in mutations if _field(m, "target") == target]
             by_target[target] = _rate([m for m in of_target if _detected(m, config)], of_target)
         detection[config] = by_target
-    types = sorted({t for m in mutations for c in configs for t in _caught(m, c)})
+    types = sorted({*configured, *(t for m in mutations for c in configs for t in _caught(m, c))})
     check_types: dict[str, JsonValue] = {}
     for t in types:
         per_config: dict[str, JsonValue] = {}

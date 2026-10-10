@@ -209,9 +209,20 @@ def test_committed_results_cover_the_catalogue_and_summarise_consistently():
     assert [m["id"] for m in COMMITTED["mutations"]] == [m.id for m in MUTATIONS]
     assert [r["id"] for r in COMMITTED["refactors"]] == [r.id for r in REFACTORS]
     assert [c["id"] for c in COMMITTED["configurations"]] == list(CONFIG)
-    summary = study.summarise(COMMITTED["mutations"], COMMITTED["refactors"], list(CONFIG))
+    summary = study.summarise(
+        COMMITTED["mutations"], COMMITTED["refactors"], list(CONFIG), study.suite_check_types()
+    )
     assert summary == COMMITTED["summary"]
     markdown = study.to_markdown(COMMITTED)
     assert "stub-everything baseline" in markdown
     rows = len(MUTATIONS) + len(REFACTORS) + len(summary["check_types"])
     assert markdown.count("\n| `") == rows
+
+
+def test_every_configured_check_type_has_a_row_even_without_catches():
+    configured = study.suite_check_types()
+    assert "forbidden_tools" in configured
+    assert "rule:db_matches_ground_truth" in configured
+    assert set(configured) <= set(COMMITTED["summary"]["check_types"])
+    zero = COMMITTED["summary"]["check_types"]["forbidden_tools"]
+    assert all(cell == {"caught": 0, "alone": 0} for cell in zero.values())
