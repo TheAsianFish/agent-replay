@@ -9,8 +9,8 @@ retail example, run in-process exactly as on the command line:
   from the committed verdict cache: real costs and latencies;
 - each seeded regression (``examples/retail_agent/mutants.py``): failing runs to
   diff against the passing ones;
-- ``replay flake`` with the seeded flaky model at several seeds, and once with
-  the fake model: a pass-rate trend per scenario.
+- ``replay flake`` once with the fake model, then with the seeded flaky model
+  at several seeds: a pass-rate trend per scenario.
 
 The calibration page gets one report computed from ``eval/results/judge_smoke.json``:
 the judge's per-criterion verdicts against the suite's deterministic verdict on 24
@@ -84,36 +84,12 @@ def invocations(db: str) -> list[Invocation]:
     for mutant in MUTANTS:
         agent = f"examples.retail_agent.mutants:{mutant}"
         plan.append((["ci", SUITE, *store, "--agent", agent], FAIL))
-    plan.append(
-        (
-            [
-                "ci",
-                LIVE_SUITE,
-                *store,
-                "--agent",
-                "examples.retail_agent.mutants:skips_order_lookup",
-            ],
-            FAIL,
-        )
-    )
+    skips = "examples.retail_agent.mutants:skips_order_lookup"
+    plan.append((["ci", LIVE_SUITE, *store, "--agent", skips], FAIL))
+    flake = ["flake", SUITE, *store, "--max-runs", "12"]
+    plan.append(([*flake, "--client", FAKE], EITHER))
     for seed in FLAKE_SEEDS:
-        plan.append(
-            (
-                [
-                    "flake",
-                    SUITE,
-                    *store,
-                    "--client",
-                    FLAKY,
-                    "--seed",
-                    str(seed),
-                    "--max-runs",
-                    "12",
-                ],
-                EITHER,
-            )
-        )
-    plan.append((["flake", SUITE, *store, "--client", FAKE, "--max-runs", "12"], EITHER))
+        plan.append(([*flake, "--client", FLAKY, "--seed", str(seed)], EITHER))
     return plan
 
 
