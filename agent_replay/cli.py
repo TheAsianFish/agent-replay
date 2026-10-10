@@ -33,7 +33,6 @@ from agent_replay.ci import (
     Overrides,
     RunSink,
     ScenarioReport,
-    SuiteReport,
     measure_suite,
     run_suite,
 )
@@ -379,13 +378,10 @@ def _store_sink(store: Store, suite_path: Path) -> RunSink:
         suite_id[0] = new_id
         return new_id
 
-    def finish(report: SuiteReport) -> None:
+    def finish(passed: bool, scenarios: int, failed: int) -> None:
         if suite_id[0] is not None:
             store.finish_suite(
-                suite_id[0],
-                passed=report.passed,
-                scenario_count=len(report.scenarios),
-                failed_count=len(report.failed),
+                suite_id[0], passed=passed, scenario_count=scenarios, failed_count=failed
             )
 
     return RunSink(start=start, save=save, finish=finish)

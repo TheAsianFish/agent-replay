@@ -195,14 +195,15 @@ class RunSink:
     """Where :func:`run_suite` reports as it goes (the CLI plugs the run store in here).
 
     ``start(git_sha)`` returns a suite id; ``save(report, result, started_at)``
-    returns a run id (``result`` is ``None`` when the scenario could not run).
+    returns a run id (``result`` is ``None`` when the scenario could not run);
+    ``finish(passed, scenarios, failed)`` closes the suite.
     """
 
     start: Callable[[str | None], str | None] = lambda _sha: None
     save: Callable[[ScenarioReport, RunResult | None, datetime], str | None] = (
         lambda _report, _result, _started: None
     )
-    finish: Callable[[SuiteReport], None] = lambda _report: None
+    finish: Callable[[bool, int, int], None] = lambda _passed, _scenarios, _failed: None
 
 
 def run_suite(
@@ -226,7 +227,7 @@ def run_suite(
     overrides = overrides or Overrides()
     sink = sink or RunSink()
     base_dir = path.parent
-    baselines = _load_baselines(suite, overrides, base_dir)
+    baselines = load_baselines(suite, overrides, base_dir)
     started_at = clock()
     started = timer()
     sha = git_sha(base_dir)
@@ -235,7 +236,7 @@ def run_suite(
     reports: list[ScenarioReport] = []
     for scenario in suite.scenario:
         scenario_started = clock()
-        outcome, result = _run_scenario(
+        outcome, result = run_scenario(
             scenario, suite.defaults, overrides, base_dir, timer, baselines=baselines
         )
         run_id = sink.save(outcome, result, scenario_started)
@@ -250,40 +251,48 @@ def run_suite(
         suite_id=suite_id,
         scenarios=tuple(reports),
     )
-    sink.finish(report)
+    sink.finish(report.passed, len(report.scenarios), len(report.failed))
     log.info("ci.done", passed=report.passed, failed=len(report.failed))
     return report
 
 
 @dataclass(frozen=True)
-class _Baselines:
+class Baselines:
+    """A suite's baseline file, read once per command."""
+
     path: Path
     file: BaselineFile
 
 
-def _load_baselines(suite: Suite, overrides: Overrides, base_dir: Path) -> _Baselines | None:
+def load_baselines(suite: Suite, overrides: Overrides, base_dir: Path) -> Baselines | None:
+    """The baseline file ``overrides.baseline`` or the suite's ``baseline`` names, if any.
+
+    Raises :class:`ConfigError` when the file is missing or broken.
+    """
     if overrides.baseline is not None:
         path = overrides.baseline
     elif suite.defaults.baseline is not None:
         path = base_dir / suite.defaults.baseline
     else:
         return None
-    return _Baselines(path, BaselineFile.load(path))
+    return Baselines(path, BaselineFile.load(path))
 
 
-def _run_scenario(
+def run_scenario(
     scenario: Scenario,
     defaults: Defaults,
     overrides: Overrides,
     base_dir: Path,
     timer: Callable[[], float],
     *,
-    baselines: _Baselines | None = None,
+    baselines: Baselines | None = None,
     with_checks: bool = True,
+    seed: int | None = None,
 ) -> tuple[ScenarioReport, RunResult | None]:
     """Resolve, replay and (``with_checks``) check one scenario.
 
-    Returns ``(report, None)`` when the scenario could not run at all.
+    Returns ``(report, None)`` when the scenario could not run at all. ``seed``
+    goes to a client factory that takes one (see :func:`make_client`).
     """
     baseline = baselines.file.scenarios.get(scenario.name) if baselines is not None else None
     mode = overrides.mode or scenario.mode or defaults.mode
@@ -322,7 +331,7 @@ def _run_scenario(
         agent = load_agent(agent_ref)
         checks = _checks(scenario, defaults, base_dir, cassette, baselines) if with_checks else []
         client_ref = overrides.client or scenario.client or defaults.client
-        client = make_client(client_ref) if client_ref is not None else None
+        client = make_client(client_ref, seed=seed) if client_ref is not None else None
         result = replay(
             cassette, agent, mode=mode, policy=policy, task=scenario.task, client=client
         )
@@ -376,7 +385,7 @@ def _checks(
     defaults: Defaults,
     base_dir: Path,
     cassette: Cassette,
-    baselines: _Baselines | None,
+    baselines: Baselines | None,
 ) -> list[Check]:
     checks: list[Check] = []
     expected = cassette.tool_names()
@@ -435,7 +444,7 @@ def measure_suite(
     errored: list[str] = []
     for scenario in suite.scenario:
         for _ in range(runs):
-            report, result = _run_scenario(
+            report, result = run_scenario(
                 scenario, suite.defaults, overrides, base_dir, timer, with_checks=False
             )
             if result is None or result.error is not None:
