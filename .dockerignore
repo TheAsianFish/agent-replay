@@ -14,3 +14,4 @@ dashboard/test-results
 dashboard/playwright-report
 agent_replay/server/static
 docs
+**/.env*

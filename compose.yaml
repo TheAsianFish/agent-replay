@@ -1,7 +1,9 @@
 # The self-hosted dashboard: PostgreSQL, a one-off seed of demo data, and the app.
 #   docker compose up --build    then open http://localhost:8000
 # The database credentials are for this local stack only; override them with
-# POSTGRES_PASSWORD (and REPLAY_DB_URL to match) for anything shared.
+# POSTGRES_PASSWORD (and REPLAY_DB_URL to match) for anything shared. The app
+# has no authentication and serves every stored request and response, so it
+# listens on the loopback interface only; set REPLAY_BIND=0.0.0.0 to expose it.
 
 services:
   db:
@@ -36,7 +38,7 @@ services:
       REPLAY_DB_URL: postgresql+psycopg://replay:${POSTGRES_PASSWORD:-replay}@db:5432/replay
       REPLAY_LOG_FORMAT: json
     ports:
-      - "${REPLAY_PORT:-8000}:8000"
+      - "${REPLAY_BIND:-127.0.0.1}:${REPLAY_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy

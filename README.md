@@ -573,7 +573,10 @@ credentials).
 | `REPLAY_TEST_PG_URL` | — | Tests only: a disposable PostgreSQL database for the `postgres`-marked tests (they reset its schema) |
 
 `docker compose` also reads `POSTGRES_PASSWORD` (default `replay`, for the local
-stack only) and `REPLAY_PORT` (default `8000`).
+stack only), `REPLAY_PORT` (default `8000`) and `REPLAY_BIND` (default
+`127.0.0.1`: the stack is reachable from this machine only, since the API has no
+authentication and serves every stored request and response; `0.0.0.0` exposes it
+to the network).
 
 ## Architecture
 
