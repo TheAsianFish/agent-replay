@@ -264,13 +264,18 @@ def make_gate(settings: FlakeSettings, impl: StatsImpl) -> Gate:
             min_pass_rate=settings.min_pass_rate,
             confidence=settings.confidence,
         )
-    return impl.SequentialGate(
-        settings.p_fail,
-        settings.p_pass,
-        alpha=settings.alpha,
-        beta=settings.beta,
-        max_runs=settings.max_runs,
-    )
+    try:
+        return impl.SequentialGate(
+            settings.p_fail,
+            settings.p_pass,
+            alpha=settings.alpha,
+            beta=settings.beta,
+            max_runs=settings.max_runs,
+        )
+    except NotImplementedError as exc:  # the core is still a specification
+        raise ConfigError(
+            f"the selected statistics implementation has no SequentialGate yet: {exc}"
+        ) from exc
 
 
 class RateLimiter:

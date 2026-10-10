@@ -555,6 +555,16 @@ def test_cli_names_the_option_of_a_bad_setting() -> None:
     assert "--confidence" in result.output
 
 
+def test_an_unimplemented_core_is_a_config_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``REPLAY_STATS_IMPL=core`` before ``stats.py`` is written must exit 2 with the
+    fix named, not 1 with a traceback (1 means "a scenario failed the gate")."""
+    monkeypatch.setenv("REPLAY_STATS_IMPL", "core")
+    result = invoke("flake", SUITE_ARG, "--no-store", "--client", FAKE)
+    assert result.exit_code == 2, result.output
+    assert "REPLAY_STATS_IMPL" in result.output
+    assert "Traceback" not in result.output
+
+
 def test_unknown_scenario_names_the_known_ones() -> None:
     with pytest.raises(ConfigError, match="nope"):
         flake_suite(SUITE, overrides=LIVE, scenarios=["nope"])
