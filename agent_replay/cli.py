@@ -38,7 +38,18 @@ from agent_replay.ci import (
 )
 from agent_replay.ci import to_json as report_json
 from agent_replay.ci import to_markdown as report_markdown
-from agent_replay.errors import MeasurementError, ReplayError
+from agent_replay.diff import (
+    DiffStep,
+    cost_text,
+    describe_change,
+    diff_steps,
+    steps_from_cassette,
+    steps_from_record,
+    summary,
+)
+from agent_replay.diff import to_json as diff_json
+from agent_replay.diff import to_markdown as diff_markdown
+from agent_replay.errors import MeasurementError, ReplayError, StoreError
 from agent_replay.flake import (
     FlakeSettings,
     describe,
@@ -834,6 +845,86 @@ def show_cmd(
     console.print(_steps_table(Trajectory(steps=tuple(steps))))
     f = cassette.footer
     console.print(f"status: {f.status}\noutput: {escape(str(f.output))}")
+
+
+_DIFF_STYLE = {"same": "dim", "changed": "yellow", "added": "green", "removed": "red"}
+
+
+def _is_cassette_ref(ref: str) -> bool:
+    return ref.endswith(".jsonl") or Path(ref).is_file()
+
+
+def _diff_side(ref: str, store: Store | None) -> tuple[list[DiffStep], str]:
+    """Steps and a label for one side of `replay diff`: a cassette file or a stored run."""
+    if store is None or _is_cassette_ref(ref):
+        return steps_from_cassette(Cassette.load(ref)), ref
+    try:
+        run = store.get_run(ref)
+    except StoreError as exc:
+        raise StoreError(
+            f"{ref!r} is neither a cassette file nor a stored run: {exc} "
+            "Pass a .jsonl cassette path or a run id."
+        ) from exc
+    return steps_from_record(run), run.id[:12]
+
+
+@app.command("diff")
+def diff_cmd(
+    base: Annotated[
+        str, typer.Argument(metavar="BASE", help="Cassette (.jsonl) or stored run id (prefix).")
+    ],
+    head: Annotated[
+        str, typer.Argument(metavar="HEAD", help="Cassette (.jsonl) or stored run id (prefix).")
+    ],
+    json_path: Annotated[
+        Path | None, typer.Option("--json", help="Write the JSON diff here.")
+    ] = None,
+    markdown_path: Annotated[
+        Path | None, typer.Option("--markdown", help="Write the Markdown table here.")
+    ] = None,
+    db: Annotated[
+        str | None,
+        typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db."),
+    ] = None,
+) -> None:
+    """Align the steps of BASE and HEAD and show what was added, removed or changed.
+
+    Each side is a cassette file or a stored run (see `replay runs`). Steps are
+    aligned by sequence alignment, so an inserted call shows as one added row.
+    Exit 0 whenever the diff was produced (it is informational), 2 when a side
+    cannot be loaded.
+    """
+    try:
+        if _is_cassette_ref(base) and _is_cassette_ref(head):
+            base_steps, base_label = _diff_side(base, None)
+            head_steps, head_label = _diff_side(head, None)
+        else:
+            with Store.open(db) as store:
+                base_steps, base_label = _diff_side(base, store)
+                head_steps, head_label = _diff_side(head, store)
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+
+    diff = diff_steps(base_steps, head_steps, base_label=base_label, head_label=head_label)
+    console.print(f"Diff [bold]{escape(base_label)}[/] → [bold]{escape(head_label)}[/]")
+    table = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+    for column in ("op", "base", "head", "cost", "changes"):
+        table.add_column(column)
+    for row in diff.rows:
+        style = _DIFF_STYLE[row.op]
+        table.add_row(
+            f"[{style}]{row.op}[/]",
+            escape(row.base.label) if row.base else "—",
+            escape(row.head.label) if row.head else "—",
+            cost_text(row.cost),
+            escape("\n".join(describe_change(c) for c in row.changes)),
+        )
+    console.print(table)
+    if json_path is not None:
+        _write(json_path, diff_json(diff), "JSON")
+    if markdown_path is not None:
+        _write(markdown_path, diff_markdown(diff), "Markdown")
+    console.print(escape(summary(diff)))
 
 
 db_app = typer.Typer(help="Manage the run store.", no_args_is_help=True)

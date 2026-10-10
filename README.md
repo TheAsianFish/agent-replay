@@ -475,6 +475,7 @@ kept.
 | `replay baseline SUITE -o FILE [--runs N] [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR]` | Measure every scenario (no checks) and write median cost, tokens, model calls and p95 latency; exit 2 if a scenario cannot run, 1 if the agent errors (nothing written) |
 | `replay flake SUITE [--gate sprt\|wilson] [--max-runs N] [--p-fail P] [--p-pass P] [--alpha A] [--beta B] [--min-pass-rate R] [--concurrency N] [--runs-per-minute R] [--seed S] [-s SCENARIO] [--mode] [--agent] [--client] [--cassette-dir DIR] [--json FILE] [--markdown FILE] [--no-store]` | Replay each scenario repeatedly, gate on its pass rate, classify passing / flaky / failing |
 | `replay runs [RUN_ID] [--limit N] [--scenario NAME] [--db URL]` | List stored runs, or show one |
+| `replay diff BASE HEAD [--json FILE] [--markdown FILE] [--db URL]` | Align two runs (each a cassette or a stored run id) step by step: same, changed (with the differing request keys), added, removed. Always exits 0 once the diff is produced |
 | `replay show CASSETTE` | Print a cassette's header, envelopes and outcome |
 
 Exit codes: `0` passed, `1` a check failed or the agent raised, `2` bad input
