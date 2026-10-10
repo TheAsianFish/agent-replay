@@ -1,6 +1,8 @@
 """Shared fixtures. Every test except those marked ``live`` runs with sockets blocked.
 
 Tests marked ``postgres`` may reach the host of ``REPLAY_TEST_PG_URL`` and nothing else.
+The guard patches Python's socket layer; psycopg resolves names through it, so a
+hostname is enforced, while a numeric host would let libpq connect natively.
 """
 
 from __future__ import annotations
@@ -30,7 +32,8 @@ def _host_of(address: object) -> object:
 
 def _only(hosts: set[str], real: Callable[..., Any], position: int) -> Callable[..., Any]:
     def guarded(*args: Any, **kwargs: Any) -> Any:
-        if _host_of(args[position]) in hosts:
+        address = args[position] if len(args) > position else kwargs.get("host")
+        if _host_of(address) in hosts:
             return real(*args, **kwargs)
         return _blocked()
 
