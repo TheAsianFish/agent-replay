@@ -2,7 +2,7 @@
 # are added with the code they run.
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
-	bench-sprt
+	bench-sprt flake-demo
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -67,6 +67,13 @@ ci-demo:
 			--agent examples.retail_agent.mutants:$$mutant > /dev/null; \
 		test $$? -eq 1 || { echo "mutant $$mutant was not caught"; exit 1; }; \
 	done
+
+# replay flake offline: the fake model passes every scenario's gate; a seeded flaky
+# model is classified passing, flaky or failing per scenario and fails the gate (exit 1).
+flake-demo:
+	uv run replay flake $(RETAIL_SUITE) --no-store --client examples.retail_agent.fake_model:make_client
+	uv run replay flake $(RETAIL_SUITE) --no-store \
+		--client examples.retail_agent.flaky_model:make_client; test $$? -eq 1
 
 # Simulate the sequential CI gate over a grid of true pass rates (offline, ~seconds).
 bench-sprt:

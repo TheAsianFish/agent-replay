@@ -37,6 +37,8 @@ jobs:
         run: make demo
       - name: replay ci on the retail suite (every mode passes, every mutant fails)
         run: make ci-demo
+      - name: replay flake offline (fake model passes, seeded flaky model fails the gate)
+        run: make flake-demo
 
   live:
     name: Live API tests
