@@ -15,8 +15,10 @@ transaction, so a failed migration leaves the store as it was.
 from __future__ import annotations
 
 import os
+import threading
 import uuid
 from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
@@ -439,6 +441,12 @@ class Store:
         self._engine = engine
         self._clock = clock
         self._session = sessionmaker(engine, expire_on_commit=False)
+        # An in-memory SQLite store shares one connection between every checkout, and
+        # pysqlite is not safe to use from several threads at once (the server runs
+        # its endpoints in a thread pool), so its sessions take turns.
+        self._lock: AbstractContextManager[object] = (
+            threading.RLock() if isinstance(engine.pool, StaticPool) else nullcontext()
+        )
 
     @classmethod
     def open(cls, url: str | None = None, *, clock: Callable[[], datetime] = _now) -> Store:
@@ -450,10 +458,13 @@ class Store:
         try:
             parsed = make_url(raw)
         except ArgumentError as exc:
+            # The message never echoes the URL: it may carry a password.
             raise StoreError(
-                f"invalid database URL {raw!r}: {exc}. "
-                f"Set REPLAY_DB_URL to a SQLAlchemy URL such as {DEFAULT_URL!r}."
+                "invalid database URL in REPLAY_DB_URL or --db. "
+                f"Set it to a SQLAlchemy URL such as {DEFAULT_URL!r} or "
+                "'postgresql+psycopg://user:password@host/db'."
             ) from exc
+        shown = parsed.render_as_string(hide_password=True)
         sqlite = parsed.get_backend_name() == "sqlite"
         memory = sqlite and parsed.database in (None, "", ":memory:")
         kwargs: dict[str, Any] = {}
@@ -476,7 +487,7 @@ class Store:
             if engine is not None:
                 engine.dispose()
             raise StoreError(
-                f"cannot open the run store at {raw!r}: {exc}. "
+                f"cannot open the run store at {shown!r}: {exc}. "
                 "Check that the location is writable, or set REPLAY_DB_URL to another one."
             ) from exc
         return cls(engine, clock=clock)
@@ -506,7 +517,7 @@ class Store:
 
     def start_suite(self, *, config_path: str, git_sha: str | None = None) -> str:
         suite_id = _new_id()
-        with self._session.begin() as session:
+        with self._lock, self._session.begin() as session:
             session.add(
                 SuiteRow(
                     id=suite_id,
@@ -520,7 +531,7 @@ class Store:
     def finish_suite(
         self, suite_id: str, *, passed: bool, scenario_count: int, failed_count: int
     ) -> None:
-        with self._session.begin() as session:
+        with self._lock, self._session.begin() as session:
             suite = session.get(SuiteRow, suite_id)
             if suite is None:
                 raise StoreError(f"no suite {suite_id!r} in the store; call start_suite first")
@@ -587,7 +598,7 @@ class Store:
             step_count=len(steps),
             approximate_count=result.trajectory.count(StepStatus.APPROXIMATE),
             unconsumed_count=len(result.unconsumed),
-            started_at=started_at,
+            started_at=_utc(started_at),
             duration_ms=duration_ms,
             steps=steps,
             checks=[
@@ -602,7 +613,7 @@ class Store:
                 for i, c in enumerate(checks)
             ],
         )
-        with self._session.begin() as session:
+        with self._lock, self._session.begin() as session:
             session.add(row)
         log.debug("store.run_saved", run_id=run_id, scenario=scenario)
         return run_id
@@ -624,7 +635,7 @@ class Store:
             .limit(limit)
             .offset(offset)
         )
-        with self._session() as session:
+        with self._lock, self._session() as session:
             return [_summary(r) for r in session.scalars(stmt)]
 
     def count_runs(
@@ -638,7 +649,7 @@ class Store:
         stmt = self._filter_runs(
             select(func.count()).select_from(RunRow), scenario, suite_id, mode, passed
         )
-        with self._session() as session:
+        with self._lock, self._session() as session:
             return session.scalar(stmt) or 0
 
     @staticmethod
@@ -657,14 +668,14 @@ class Store:
 
     def scenarios(self) -> list[str]:
         """Every scenario name with a stored run, sorted."""
-        with self._session() as session:
+        with self._lock, self._session() as session:
             return list(
                 session.scalars(select(RunRow.scenario).distinct().order_by(RunRow.scenario))
             )
 
     def get_run(self, run_id: str) -> RunRecord:
         """One run with steps and checks; ``run_id`` may be a unique prefix (>= 6 chars)."""
-        with self._session() as session:
+        with self._lock, self._session() as session:
             row = self._by_prefix(session, RunRow, run_id, "run", "List ids with `replay runs`.")
             return _record(row)
 
@@ -699,11 +710,11 @@ class Store:
             .order_by(SuiteRow.started_at.desc(), SuiteRow.id)
             .limit(limit)
         )
-        with self._session() as session:
+        with self._lock, self._session() as session:
             return [_suite_summary(s, n) for s, n in session.execute(stmt)]
 
     def get_suite(self, suite_id: str) -> SuiteSummary:
-        with self._session() as session:
+        with self._lock, self._session() as session:
             row = session.get(SuiteRow, suite_id)
             if row is None:
                 raise StoreError(
@@ -722,7 +733,7 @@ class Store:
             stats_impl=report.stats_impl,
             settings=report.settings.model_dump(mode="json"),
             passed=report.passed,
-            started_at=report.started_at,
+            started_at=_utc(report.started_at),
             duration_ms=report.duration_ms,
             git_sha=report.git_sha,
             scenario_count=len(report.scenarios),
@@ -755,7 +766,7 @@ class Store:
                 for i, s in enumerate(report.scenarios)
             ],
         )
-        with self._session.begin() as session:
+        with self._lock, self._session.begin() as session:
             session.add(row)
         log.debug("store.flake_saved", report_id=report_id, suite=report.suite)
         return report_id
@@ -767,12 +778,12 @@ class Store:
             .order_by(FlakeReportRow.started_at.desc(), FlakeReportRow.id)
             .limit(limit)
         )
-        with self._session() as session:
+        with self._lock, self._session() as session:
             return [_flake_summary(r) for r in session.scalars(stmt)]
 
     def get_flake_report(self, report_id: str) -> FlakeReportRecord:
         """One flake report with its scenarios; ``report_id`` may be a unique prefix."""
-        with self._session() as session:
+        with self._lock, self._session() as session:
             row = self._by_prefix(
                 session, FlakeReportRow, report_id, "flake report", "List them on /api/flake."
             )
@@ -789,13 +800,15 @@ class Store:
             select(FlakeScenarioRow, FlakeReportRow)
             .join(FlakeReportRow, FlakeScenarioRow.report_id == FlakeReportRow.id)
             .order_by(
-                FlakeReportRow.started_at.desc(), FlakeReportRow.id, FlakeScenarioRow.position
+                FlakeReportRow.started_at.desc(),
+                FlakeReportRow.id.desc(),
+                FlakeScenarioRow.position.desc(),
             )
             .limit(limit)
         )
         if scenario is not None:
             stmt = stmt.where(FlakeScenarioRow.name == scenario)
-        with self._session() as session:
+        with self._lock, self._session() as session:
             points = [
                 FlakePoint(
                     report_id=r.id,
@@ -819,7 +832,7 @@ class Store:
     def save_calibration(self, report: CalibrationReport) -> str:
         """Store a calibration report; the dashboard's calibration page reads these."""
         report_id = _new_id()
-        with self._session.begin() as session:
+        with self._lock, self._session.begin() as session:
             session.add(
                 CalibrationRow(
                     id=report_id,
@@ -827,7 +840,7 @@ class Store:
                     rubric_fingerprint=report.rubric_fingerprint,
                     judge_id=report.judge_id,
                     prompt_version=report.prompt_version,
-                    created_at=report.created_at,
+                    created_at=_utc(report.created_at),
                     stored_at=self._clock(),
                     n_items=report.n_items,
                     report=report.model_dump(mode="json"),
@@ -843,11 +856,11 @@ class Store:
             .order_by(CalibrationRow.created_at.desc(), CalibrationRow.id)
             .limit(limit)
         )
-        with self._session() as session:
+        with self._lock, self._session() as session:
             return [_calibration_summary(r) for r in session.scalars(stmt)]
 
     def get_calibration(self, report_id: str) -> CalibrationRecord:
-        with self._session() as session:
+        with self._lock, self._session() as session:
             row = self._by_prefix(
                 session,
                 CalibrationRow,
@@ -906,6 +919,12 @@ def migrate(engine: Engine) -> None:
                 conn.execute(lock, {"key": _PG_MIGRATION_LOCK})
             config = _alembic_config(conn)
             tables = set(inspect(conn).get_table_names())
+            if "alembic_version" not in tables and tables and "runs" not in tables:
+                raise StoreError(
+                    f"the run store has tables ({', '.join(sorted(tables))}) but neither a "
+                    "schema version nor a 'runs' table, so it is not a store this version can "
+                    "adopt; delete it, or set REPLAY_DB_URL to another location"
+                )
             if "runs" in tables and "alembic_version" not in tables:
                 _upgrade_legacy(conn)
                 command.stamp(config, "0001")

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
-from datetime import UTC, datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -83,7 +84,55 @@ def test_flake_trend_is_oldest_first_and_keeps_the_newest_points(
     assert [p.name for p in boots] == [BOOTS] * 3
     newest = store.flake_trend(limit=2)
     assert {p.started_at for p in newest} == {T0 + timedelta(days=2)}
-    assert [p.name for p in newest] == [BOOTS, LAPTOP]
+    # Within a report, scenarios keep their suite order (the laptop task comes first).
+    assert [p.name for p in newest] == [LAPTOP, BOOTS]
+    assert [p.name for p in trend[:2]] == [LAPTOP, BOOTS]
+
+
+def test_timestamps_with_an_offset_are_stored_as_the_same_instant(store: Store):
+    created = datetime(2026, 10, 10, 12, 0, tzinfo=timezone(timedelta(hours=2)))
+    report_id = store.save_calibration(calibration(created=created))
+    (listed,) = store.list_calibrations()
+    assert listed.created_at == created
+    assert listed.created_at.utcoffset() == timedelta(0)
+    assert store.get_calibration(report_id).report.created_at == created
+
+    result = replay(Cassette.load(TOY), toy.run)
+    run_id = store.save_run(
+        result,
+        [],
+        scenario="s",
+        cassette_path=str(TOY),
+        agent="examples.toy_agent.agent:run",
+        passed=True,
+        started_at=created,
+        duration_ms=1.0,
+    )
+    assert store.get_run(run_id).started_at == created
+
+
+def test_an_in_memory_store_serves_concurrent_readers(tmp_path: Path):
+    # The server runs endpoints in a thread pool; the shared in-memory connection
+    # must not be used by two threads at once.
+    with Store.open("sqlite://") as store:
+        result = replay(Cassette.load(TOY), toy.run)
+        run_id = store.save_run(
+            result,
+            [],
+            scenario="s",
+            cassette_path=str(TOY),
+            agent="examples.toy_agent.agent:run",
+            passed=True,
+            started_at=T0,
+            duration_ms=1.0,
+        )
+
+        def read(_: int) -> int:
+            return len(store.get_run(run_id).steps) + store.count_runs()
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            counts = set(pool.map(read, range(200)))
+    assert counts == {len(result.trajectory.steps) + 1}
 
 
 def test_unknown_flake_report_names_the_fix(store: Store):

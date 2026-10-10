@@ -9,9 +9,10 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from agent_replay import Cassette
+from agent_replay import store as store_module
 from agent_replay.cassette import ErrorInfo
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.errors import ReplayError, StoreError
@@ -421,6 +422,23 @@ def test_not_a_database_file_raises_store_error(tmp_path: Path):
     junk.write_bytes(b"this is not sqlite" * 100)
     with pytest.raises(StoreError, match="REPLAY_DB_URL"):
         Store.open(f"sqlite:///{junk}")
+
+
+def test_store_errors_never_show_the_password(monkeypatch: pytest.MonkeyPatch):
+    with pytest.raises(StoreError) as bad_url:
+        Store.open("notaurl://user:hunter2@host/db")
+    assert "hunter2" not in str(bad_url.value)
+    assert "REPLAY_DB_URL" in str(bad_url.value)
+
+    def failing(engine: object) -> None:
+        raise OperationalError("SELECT 1", {}, Exception("connection refused"))
+
+    monkeypatch.setattr(store_module, "migrate", failing)
+    with pytest.raises(StoreError) as cannot_open:
+        Store.open("postgresql+psycopg://user:hunter2@nohost.invalid:1/db")
+    assert "hunter2" not in str(cannot_open.value)
+    assert "user:***@nohost.invalid" in str(cannot_open.value)
+    assert "connection refused" in str(cannot_open.value)
 
 
 def test_advisory_flag_round_trips(store: Store, result: RunResult):

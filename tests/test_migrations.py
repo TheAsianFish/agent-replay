@@ -149,6 +149,15 @@ def test_a_failed_migration_leaves_the_store_as_it_was(
     engine.dispose()
 
 
+def test_a_half_made_legacy_store_is_refused_with_the_fix(tmp_path: Path):
+    url = f"sqlite:///{tmp_path / 'm.db'}"
+    engine = create_engine(url)
+    Base.metadata.create_all(engine, tables=[Base.metadata.tables["suites"]])
+    engine.dispose()
+    with pytest.raises(StoreError, match="neither a schema version nor a 'runs' table"):
+        Store.open(url)
+
+
 def test_a_store_from_a_newer_version_names_the_fix(tmp_path: Path):
     url = f"sqlite:///{tmp_path / 'm.db'}"
     Store.open(url).close()
