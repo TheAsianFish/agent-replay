@@ -43,6 +43,11 @@ def test_a_small_seed_fills_every_page(tmp_path: Path, monkeypatch: pytest.Monke
         assert store.count_runs() == total
 
 
+def test_a_usage_error_is_an_exit_code_not_a_traceback(capsys: pytest.CaptureFixture[str]):
+    assert demo_data.run_replay(["runs", "--limit", "abc", "--db", "sqlite://"]) == 2
+    assert "abc" in capsys.readouterr().err
+
+
 def test_an_unexpected_exit_code_stops_the_seed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         demo_data, "invocations", lambda db: [(["ci", "missing.toml", "--db", db], demo_data.PASS)]

@@ -36,7 +36,7 @@ from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
-import click
+import typer
 
 from agent_replay import stats_impl
 from agent_replay.cli import app
@@ -111,9 +111,14 @@ def run_replay(args: Sequence[str]) -> int:
     """Run one ``replay`` command in this process and return its exit code."""
     try:
         code = app(list(args), standalone_mode=False)
-    except click.ClickException as exc:
-        exc.show()
-        return exc.exit_code
+    except typer.exceptions.TyperException as exc:
+        # Usage errors from the command-line parser (typer's bundled click) carry
+        # their exit code; `typer.Exit` is returned by the app itself.
+        show = getattr(exc, "show", None)
+        if callable(show):
+            show()
+        exit_code = getattr(exc, "exit_code", 1)
+        return exit_code if isinstance(exit_code, int) else 1
     return code if isinstance(code, int) else 0
 
 
