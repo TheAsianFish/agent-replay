@@ -22,6 +22,7 @@ from agent_replay.diff import (
     FieldChange,
     TraceDiff,
     argument_distance,
+    describe_change,
     diff_runs,
     diff_steps,
     diff_trajectories,
@@ -35,6 +36,7 @@ from agent_replay.runner import replay
 from agent_replay.store import Store
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 from examples.toy_agent import agent as toy
+from tests.test_modes import record_nested
 
 ROOT = Path(__file__).parents[1]
 TOY = ROOT / "examples" / "toy_agent" / "cassettes"
@@ -172,8 +174,54 @@ def test_model_steps_with_only_earlier_messages_different() -> None:
     assert row.op == "changed"
     assert row.cost == 0.5
     assert row.changes == [
-        FieldChange(path="request.messages", base="2 message(s)", head="3 message(s)")
+        FieldChange(
+            path="request.messages[0]",
+            base={"role": "user", "content": "hi"},
+            head={"role": "user", "content": "hello"},
+        )
     ]
+
+
+def test_an_extra_earlier_message_is_reported_as_absent_on_the_other_side() -> None:
+    (row,) = diff_steps([model("hi", "done")], [model("hi", "done", "done")]).rows
+    (change,) = row.changes
+    assert change.path == "request.messages[2]"
+    assert (change.base, change.base_present) == (None, False)
+    assert (change.head, change.head_present) == ({"role": "user", "content": "done"}, True)
+    assert describe_change(change).startswith("request.messages[2]: (absent) → ")
+    # Only the count differs when a side has no messages at all.
+    base = DiffStep(
+        index=0, kind="model", name="m", status="exact", request={"messages": [], "k": 1}
+    )
+    head = base.model_copy(update={"request": {"messages": [1], "k": 1}})
+    (row,) = diff_steps([base], [head]).rows
+    assert [c.path for c in row.changes] == ["request.messages[-1]"]
+
+
+def test_a_null_value_is_told_apart_from_an_absent_key() -> None:
+    (row,) = diff_steps([tool("t", {"a": None})], [tool("t", {})]).rows
+    assert row.cost == 1
+    (change,) = row.changes
+    assert (change.base, change.base_present) == (None, True)
+    assert (change.head, change.head_present) == (None, False)
+    assert describe_change(change) == "request.a: null → (absent)"
+
+
+def test_error_only_change_is_explained() -> None:
+    failed = tool("t").model_copy(update={"error": {"type": "E", "message": "boom"}})
+    (row,) = diff_steps([tool("t")], [failed]).rows
+    assert row.op == "changed"
+    assert row.cost == 0.5
+    assert [c.path for c in row.changes] == ["error"]
+    assert row.changes[0].head == {"type": "E", "message": "boom"}
+
+
+def test_a_repeated_base_call_pairs_with_its_earliest_copy() -> None:
+    a = tool("a")
+    diff = diff_steps(indexed([a, a]), [a])
+    assert ops(diff) == ["same", "removed"]
+    assert diff.rows[0].base is not None
+    assert diff.rows[0].base.index == 0
 
 
 def test_names_never_cross() -> None:
@@ -326,6 +374,38 @@ def test_trajectory_record_and_cassette_adapters_agree(
     assert diff.base_label == run.id
     assert diff.counts["same"] == len(run.steps)
     assert diff_trajectories(result.trajectory, result.trajectory).distance == 0
+
+
+def test_adapters_agree_on_a_run_with_a_nested_call(store: Store) -> None:
+    cassette, agent = record_nested()
+    assert any(e.parent_span_id is not None for e in cassette.envelopes)
+    result = replay(cassette, agent, mode="tools-live")
+    assert result.ok, result.error
+    run_id = store.save_run(
+        result,
+        [],
+        scenario="nested",
+        cassette_path="nested.jsonl",
+        agent="nested",
+        passed=True,
+        started_at=T0,
+        duration_ms=1.0,
+    )
+    run = store.get_run(run_id)
+    labels = {
+        "trajectory": [s.label for s in steps_from_trajectory(result.trajectory)],
+        "record": [s.label for s in steps_from_record(run)],
+        "cassette": [s.label for s in steps_from_cassette(cassette)],
+    }
+    assert labels == {k: ["0 tool summarise"] for k in labels}
+    assert diff_steps(steps_from_cassette(cassette), steps_from_record(run)).distance == 0
+
+
+def test_markdown_code_spans_survive_backticks() -> None:
+    diff = diff_steps([tool("t`x", {"k": "a`b"})], [tool("t`x", {"k": "c"})], base_label="o`l")
+    markdown = to_markdown(diff)
+    assert "`` 0 tool t`x ``" in markdown
+    assert '`` request.k: "a`b" → "c" ``' in markdown
 
 
 def test_nested_steps_are_left_out() -> None:

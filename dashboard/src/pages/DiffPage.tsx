@@ -6,7 +6,7 @@ import { KindBadge, OP_STYLE, OpBadge, ResultBadge, StepStatusBadge } from "../c
 import { PageHeader } from "../components/Layout";
 import { Code, Empty, ErrorState, Loading } from "../components/States";
 import { button, card, link, table, td, th, thNum, thead } from "../components/table";
-import { formatCost, formatFixed, formatMs, formatTimestamp, previewJson, shortId } from "../lib/format";
+import { formatCost, formatFixed, formatMs, formatTimestamp, previewChange, shortId } from "../lib/format";
 
 export const OPS: readonly DiffOp[] = ["same", "changed", "added", "removed"];
 
@@ -166,12 +166,17 @@ export function DiffTable({ rows }: { rows: DiffRow[] }) {
                   <StepCell step={row.head} />
                   {changes.length > 0 ? (
                     <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-slate-800" aria-label="Field changes">
-                      {changes.map((c) => (
-                        <li key={c.path} className="break-all">
-                          <span className="font-semibold">{c.path}</span>: <span className="text-red-800">{previewJson(c.base)}</span>{" "}
-                          <span aria-label="becomes">→</span> <span className="text-green-800">{previewJson(c.head)}</span>
-                        </li>
-                      ))}
+                      {changes.map((c) => {
+                        const [before, after] = previewChange(c.base, c.head);
+                        const absent = "(absent)";
+                        return (
+                          <li key={c.path} className="break-all" data-testid="field-change">
+                            <span className="font-semibold">{c.path}</span>: <span className="text-red-800">{c.base_present ? before : absent}</span>{" "}
+                            <span aria-label="becomes">→</span>{" "}
+                            <span className="text-green-800">{c.head_present ? after : absent}</span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : null}
                 </td>

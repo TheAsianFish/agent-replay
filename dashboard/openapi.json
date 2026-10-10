@@ -410,13 +410,23 @@
         "type": "object"
       },
       "FieldChange": {
-        "description": "One field that differs between the two sides of a ``changed`` row.\n\n``path`` is ``request.<key>`` for a top-level request key, ``request`` for a\nrequest that is not an object, ``request.messages[-1]`` for a model call's\nnewest message (``request.messages`` with message counts when only earlier\nmessages differ), ``response`` or ``error``. A key one side lacks is ``None``.",
+        "description": "One field that differs between the two sides of a ``changed`` row.\n\n``path`` is ``request.<key>`` for a top-level request key, ``request`` for a\nrequest that is not an object, ``request.messages[-1]`` for a model call's\nnewest message (``request.messages[<i>]`` for the first earlier message that\ndiffers, ``request.messages`` when only the count does), ``response`` or\n``error``. A key or message one side lacks is ``None`` with its ``*_present``\nflag false, which tells it apart from a genuine ``null``.",
         "properties": {
           "base": {
             "$ref": "#/components/schemas/JsonValue"
           },
+          "base_present": {
+            "default": true,
+            "title": "Base Present",
+            "type": "boolean"
+          },
           "head": {
             "$ref": "#/components/schemas/JsonValue"
+          },
+          "head_present": {
+            "default": true,
+            "title": "Head Present",
+            "type": "boolean"
           },
           "path": {
             "title": "Path",

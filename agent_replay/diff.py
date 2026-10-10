@@ -24,8 +24,10 @@ Ties between equally cheap alignments are broken deterministically, reading
 both lists front to back: at each point prefer pairing the next two steps
 (same or changed), then removing the next base step, then adding the next head
 step. So a repeated call pairs with its earliest copy and a replaced call reads
-``removed`` before ``added``. Time and memory are O(n * m) for n and m steps;
-trajectories hold at most a few hundred top-level steps.
+``removed`` before ``added``. Swapping the sides keeps the distance but not
+necessarily the row order: ``removed`` still comes first. Time and memory are
+O(n * m) for n and m steps; trajectories hold at most a few hundred top-level
+steps.
 """
 
 from __future__ import annotations
@@ -131,8 +133,10 @@ class FieldChange(BaseModel):
 
     ``path`` is ``request.<key>`` for a top-level request key, ``request`` for a
     request that is not an object, ``request.messages[-1]`` for a model call's
-    newest message (``request.messages`` with message counts when only earlier
-    messages differ), ``response`` or ``error``. A key one side lacks is ``None``.
+    newest message (``request.messages[<i>]`` for the first earlier message that
+    differs, ``request.messages`` when only the count does), ``response`` or
+    ``error``. A key or message one side lacks is ``None`` with its ``*_present``
+    flag false, which tells it apart from a genuine ``null``.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -140,6 +144,8 @@ class FieldChange(BaseModel):
     path: str
     base: JsonValue
     head: JsonValue
+    base_present: bool = True
+    head_present: bool = True
 
 
 class DiffRow(BaseModel):
@@ -251,16 +257,12 @@ def _changes(a: _Prepared, b: _Prepared) -> list[FieldChange]:
                             path=f"request.{key}",
                             base=base_fields.get(key),
                             head=head_fields.get(key),
+                            base_present=key in base_fields,
+                            head_present=key in head_fields,
                         )
                     )
             if not changes:
-                changes.append(
-                    FieldChange(
-                        path="request.messages",
-                        base=_message_count(base.request),
-                        head=_message_count(head.request),
-                    )
-                )
+                changes.append(_earlier_message_change(base.request, head.request))
     if canonical_json(base.response) != canonical_json(head.response):
         changes.append(FieldChange(path="response", base=base.response, head=head.response))
     if canonical_json(base.error) != canonical_json(head.error):
@@ -268,9 +270,32 @@ def _changes(a: _Prepared, b: _Prepared) -> list[FieldChange]:
     return changes
 
 
-def _message_count(request: JsonValue) -> str:
+def _messages(request: JsonValue) -> list[JsonValue]:
     messages = request.get("messages") if isinstance(request, dict) else None
-    return f"{len(messages)} message(s)" if isinstance(messages, list) else "no messages"
+    return messages if isinstance(messages, list) else []
+
+
+def _earlier_message_change(base: JsonValue, head: JsonValue) -> FieldChange:
+    """The first message before the last that differs; or the counts when only those do."""
+    base_messages, head_messages = _messages(base), _messages(head)
+    for i, (b, h) in enumerate(zip(base_messages, head_messages, strict=False)):
+        if canonical_json(b) != canonical_json(h):
+            return FieldChange(path=f"request.messages[{i}]", base=b, head=h)
+    i = min(len(base_messages), len(head_messages))
+    if i < max(len(base_messages), len(head_messages)):
+        shorter_is_base = len(base_messages) < len(head_messages)
+        return FieldChange(
+            path=f"request.messages[{i}]",
+            base=None if shorter_is_base else base_messages[i],
+            head=head_messages[i] if shorter_is_base else None,
+            base_present=not shorter_is_base,
+            head_present=shorter_is_base,
+        )
+    return FieldChange(
+        path="request.messages",
+        base=f"{len(base_messages)} message(s)",
+        head=f"{len(head_messages)} message(s)",
+    )
 
 
 _DIAG, _DEL, _INS = 0, 1, 2
@@ -372,7 +397,9 @@ def cost_text(value: float) -> str:
 
 def describe_change(change: FieldChange, limit: int = 60) -> str:
     """``path: base → head`` with both values shortened to ``limit`` characters."""
-    return f"{change.path}: {preview(change.base, limit)} → {preview(change.head, limit)}"
+    base = preview(change.base, limit) if change.base_present else "(absent)"
+    head = preview(change.head, limit) if change.head_present else "(absent)"
+    return f"{change.path}: {base} → {head}"
 
 
 def summary(diff: TraceDiff) -> str:
@@ -389,11 +416,17 @@ def _cell(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
 
+def _code(text: str) -> str:
+    """A Markdown code span; a double-backtick span when the text has a backtick."""
+    cell = _cell(text)
+    return f"`` {cell} ``" if "`" in cell else f"`{cell}`"
+
+
 def to_markdown(diff: TraceDiff) -> str:
     """A table with one row per aligned step pair, under a one-line summary."""
     title = "## Trace diff"
     if diff.base_label is not None and diff.head_label is not None:
-        title += f": `{_cell(diff.base_label)}` → `{_cell(diff.head_label)}`"
+        title += f": {_code(diff.base_label)} → {_code(diff.head_label)}"
     lines = [
         title,
         "",
@@ -403,8 +436,8 @@ def to_markdown(diff: TraceDiff) -> str:
         "|---|---|---|---|---|",
     ]
     for row in diff.rows:
-        base = f"`{_cell(row.base.label)}`" if row.base else "—"
-        head = f"`{_cell(row.head.label)}`" if row.head else "—"
-        changes = "<br>".join(f"`{_cell(describe_change(c))}`" for c in row.changes)
+        base = _code(row.base.label) if row.base else "—"
+        head = _code(row.head.label) if row.head else "—"
+        changes = "<br>".join(_code(describe_change(c)) for c in row.changes)
         lines.append(f"| {row.op} | {base} | {head} | {cost_text(row.cost)} | {changes or '—'} |")
     return "\n".join(lines) + "\n"

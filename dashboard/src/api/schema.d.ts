@@ -382,12 +382,24 @@ export interface components {
          *
          *     ``path`` is ``request.<key>`` for a top-level request key, ``request`` for a
          *     request that is not an object, ``request.messages[-1]`` for a model call's
-         *     newest message (``request.messages`` with message counts when only earlier
-         *     messages differ), ``response`` or ``error``. A key one side lacks is ``None``.
+         *     newest message (``request.messages[<i>]`` for the first earlier message that
+         *     differs, ``request.messages`` when only the count does), ``response`` or
+         *     ``error``. A key or message one side lacks is ``None`` with its ``*_present``
+         *     flag false, which tells it apart from a genuine ``null``.
          */
         FieldChange: {
             base: components["schemas"]["JsonValue"];
+            /**
+             * Base Present
+             * @default true
+             */
+            base_present: boolean;
             head: components["schemas"]["JsonValue"];
+            /**
+             * Head Present
+             * @default true
+             */
+            head_present: boolean;
             /** Path */
             path: string;
         };

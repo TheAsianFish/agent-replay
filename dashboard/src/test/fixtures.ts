@@ -125,7 +125,7 @@ export const diff: RunDiff = {
       {
         op: "changed",
         cost: 0.5,
-        changes: [{ path: "request.email", base: "a@example.com", head: "b@example.com" }],
+        changes: [{ path: "request.email", base: "a@example.com", head: "b@example.com", base_present: true, head_present: true }],
         base: { index: 1, kind: "tool", name: "find_user_id_by_email", status: "exact", request: {}, response: {}, error: null, latency_ms: 1, cost_usd: null },
         head: { index: 1, kind: "tool", name: "find_user_id_by_email", status: "approximate", request: {}, response: {}, error: null, latency_ms: 1, cost_usd: null },
       },

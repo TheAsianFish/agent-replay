@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCost, formatFixed, formatInt, formatMs, formatPercent, formatTimestamp, previewJson, shortId, truncate } from "./format";
+import { formatCost, formatFixed, formatInt, formatMs, formatPercent, formatTimestamp, previewChange, previewJson, shortId, truncate } from "./format";
 
 describe("formatCost", () => {
   it("uses four decimals below a dollar", () => {
@@ -18,6 +18,11 @@ describe("formatCost", () => {
     expect(formatCost(undefined)).toBe("—");
     expect(formatCost(Number.NaN)).toBe("—");
   });
+  it("picks the unit after rounding", () => {
+    expect(formatCost(0.99996)).toBe("$1.00");
+    expect(formatCost(0.00004)).toBe("<$0.0001");
+    expect(formatCost(0.00005)).toBe("$0.0001");
+  });
 });
 
 describe("formatMs", () => {
@@ -27,6 +32,13 @@ describe("formatMs", () => {
     expect(formatMs(845.2)).toBe("845 ms");
     expect(formatMs(1925.378)).toBe("1.93 s");
     expect(formatMs(125_000)).toBe("2m 05s");
+  });
+  it("never shows a unit's rounding overflow", () => {
+    expect(formatMs(99.96)).toBe("100 ms");
+    expect(formatMs(999.6)).toBe("1.00 s");
+    expect(formatMs(59_999.6)).toBe("1m 00s");
+    expect(formatMs(119_600)).toBe("2m 00s");
+    expect(formatMs(125_600)).toBe("2m 06s");
   });
   it("shows a dash for missing values", () => {
     expect(formatMs(null)).toBe("—");
@@ -71,5 +83,29 @@ describe("other formatters", () => {
     expect(previewJson({ a: 1 })).toBe('{"a":1}');
     expect(previewJson(undefined)).toBe("undefined");
     expect(previewJson("x".repeat(100), 10)).toHaveLength(10);
+  });
+});
+
+describe("previewChange", () => {
+  const prefix = "the quick brown fox jumps over the lazy dog and keeps running until ";
+
+  it("shows where two values with a long shared prefix diverge", () => {
+    const [before, after] = previewChange({ note: `${prefix}noon` }, { note: `${prefix}dusk` });
+    expect(before).toBe('…nning until noon"}');
+    expect(after).toBe('…nning until dusk"}');
+    // previewJson would cut both to the same shared prefix.
+    expect(previewJson({ note: `${prefix}noon` })).toBe(previewJson({ note: `${prefix}dusk` }));
+  });
+  it("truncates like previewJson when values differ early", () => {
+    expect(previewChange("a@example.com", "b@example.com")).toEqual(['"a@example.com"', '"b@example.com"']);
+    const [before, after] = previewChange("x".repeat(100), "y".repeat(100));
+    expect(before).toBe(`"${"x".repeat(58)}…`);
+    expect(after).toBe(`"${"y".repeat(58)}…`);
+    expect([before, after]).toEqual([previewJson("x".repeat(100)), previewJson("y".repeat(100))]);
+  });
+  it("gives identical previews for identical values", () => {
+    expect(previewChange({ a: 1 }, { a: 1 })).toEqual(['{"a":1}', '{"a":1}']);
+    const [before, after] = previewChange({ a: prefix }, { a: prefix });
+    expect(before).toBe(after);
   });
 });

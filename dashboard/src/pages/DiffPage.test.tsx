@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import type { DiffRow, RunDiff } from "../api/types";
 import { diff } from "../test/fixtures";
 import { mockApi, renderAt } from "../test/render";
 
@@ -30,6 +31,27 @@ describe("DiffPage", () => {
     const call = calls.find((u) => u.pathname === "/api/diff");
     expect(call?.searchParams.get("base")).toBe("aaaaaa");
     expect(call?.searchParams.get("head")).toBe("bbbbbb");
+  });
+
+  it("keeps the difference in view when two values share a long prefix", async () => {
+    const changed = diff.diff.rows[1] as DiffRow;
+    const prefix = "Please change the shipping address on order #W2378156 to 445 Maple Drive, Suite ";
+    const body: RunDiff = {
+      ...diff,
+      diff: {
+        ...diff.diff,
+        rows: [{ ...changed, changes: [{ path: "request.note", base: `${prefix}100`, head: `${prefix}200`, base_present: true, head_present: true }] }],
+      },
+    };
+    mockApi({ "/api/diff": { body } });
+    renderAt("/diff?base=aaaaaa&head=bbbbbb");
+    const item = await screen.findByTestId("field-change");
+    const before = item.querySelector(".text-red-800")?.textContent ?? "";
+    const after = item.querySelector(".text-green-800")?.textContent ?? "";
+    expect(before).not.toBe(after);
+    expect(before).toBe('…rive, Suite 100"');
+    expect(after).toBe('…rive, Suite 200"');
+    expect(item).toHaveTextContent('request.note: …rive, Suite 100" → …rive, Suite 200"');
   });
 
   it("edits and swaps the run ids", async () => {
