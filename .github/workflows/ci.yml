@@ -123,7 +123,7 @@ jobs:
           server=$!
           # Stop the server when the step ends: left running, it holds uv's
           # cache lock and the setup-uv post step times out on it.
-          trap 'kill $server 2>/dev/null; wait $server 2>/dev/null' EXIT
+          trap 'rc=$?; kill $server 2>/dev/null; wait $server 2>/dev/null || true; exit $rc' EXIT
           timeout 60 bash -c 'until curl -sf http://127.0.0.1:8000/api/health; do sleep 1; done'
           npm run e2e --prefix dashboard
       - uses: actions/upload-artifact@v4
