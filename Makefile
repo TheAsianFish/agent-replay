@@ -3,7 +3,7 @@
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
 	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check \
-	golden record-golden eval-judge eval-judge-objective \
+	golden record-golden eval-judge eval-judge-objective token-rates \
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
@@ -173,6 +173,11 @@ data-llmbar:
 # so an interrupted run resumes.
 eval-llmbar:
 	uv run python eval/llmbar.py --max-cost-usd 25 --out eval/results/llmbar.json
+
+# Offline: re-derive the calibrate cost estimate's constants (characters per input token,
+# output tokens per call) from the committed retail verdicts and check them (exit 1 if stale).
+token-rates:
+	uv run python eval/token_rates.py
 
 # Offline: the calls eval-llmbar still needs after cache hits and their estimated cost.
 eval-llmbar-dry:

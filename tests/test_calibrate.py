@@ -943,3 +943,15 @@ def test_baseline_and_objective_reports_never_gate(tmp_path: Path, core_shim: No
     assert objective.stats_impl == "core"
     result = _check_run(objective, "fails resolved")
     assert (result.passed, result.advisory) == (False, True)
+
+
+def test_the_estimate_constants_match_the_committed_verdicts(capsys: pytest.CaptureFixture[str]):
+    """``make token-rates``: the constants behind the cost estimate are re-derived from the
+    committed retail verdicts, so a change to either side fails here."""
+    from eval import token_rates  # noqa: PLC0415
+
+    assert token_rates.main() == 0
+    out = capsys.readouterr().out
+    assert "21 committed verdicts matched" in out
+    assert "median 2.32" in out
+    assert "median 289" in out

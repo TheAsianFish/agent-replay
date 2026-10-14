@@ -901,8 +901,13 @@ judged in both orders. A length tie flips with the order, which gives the
   `REPLAY_STATS_IMPL=core make eval-judge`: 84 calls to `claude-opus-5-5`
   (3 verdicts per item plus the position and verbosity probes; the first
   verdicts are already cached), estimated at $1.30 by `replay calibrate
-  --dry-run` from the measured tokens of the committed verdicts ($0.0153 a
-  call). A gating report also needs kappa from `stats.py`
+  --dry-run` from the measured tokens of the committed verdicts (`make
+  token-rates` re-derives them: 2.3 characters per input token and 289
+  output tokens a call, medians over the 21 verdicts; the estimator gives
+  $0.3274 for calls that really cost $0.3302) (about
+  $0.015 a call: $0.0153 for a main verdict, a little more for a position-probe
+  call, whose reversed rubric is a fresh prompt-cache write). A gating report
+  also needs kappa from `stats.py`
   and at least 20 labelled items per criterion (`REPLAY_JUDGE_MIN_ITEMS`);
   21 items barely clear that floor and give a wide interval, so the gating
   report is meant to come from D1.
@@ -911,7 +916,7 @@ judged in both orders. A length tie flips with the order, which gives the
   runs), estimated at $2.19 from the M4 cost per run; then label it with
   `replay label eval/golden/retail-d1 ...` and calibrate it with the
   `eval-judge` command pointed at `eval/golden/retail-d1`, at about $0.077 a
-  distinct item (5 verdicts at $0.0153).
+  distinct item (5 verdicts at about $0.015).
 - **LLMBar accuracy and position bias for the real judge.** `make
   eval-llmbar`: 838 calls to `claude-opus-5-5` at effort `low`, estimated at
   $12.73 by `make eval-llmbar-dry` (characters / 4 for input, an assumed 600
@@ -940,6 +945,9 @@ API spend in M4: $1.213 (Opus flake runs $1.06960, Haiku flake runs
 $0.10453 and the Haiku repeat $0.03786, all in their committed JSON reports;
 one Haiku smoke run $0.00137, from the session log; sum $1.21336). Project
 total: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213).
+
+API spend in M5: $0 (the demo data comes from offline replays and the
+committed verdict cache).
 
 API spend in M6: $0 (every judge verdict used came from the committed cache;
 the new calls are under "To measure"). Project total: $3.326.

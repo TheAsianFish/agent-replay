@@ -84,12 +84,13 @@ because of it; a judge that passes more runs with it is rewarding length or tone
 OUTPUT_TOKENS_PER_CALL: Final = 289
 """Output tokens assumed per judge call in :func:`estimate`: the median ``output_tokens``
 of the 21 committed retail verdicts in ``examples/retail_agent/judge-cache/``
-(claude-opus-5-5, effort low, 3 criteria; range 227 to 691)."""
+(claude-opus-5-5, effort low, 3 criteria; range 227 to 691). ``make token-rates``
+(``eval/token_rates.py``) re-derives this and :data:`CHARS_PER_TOKEN`."""
 
 CHARS_PER_TOKEN: Final = 2.3
 """Characters per input token for :func:`estimate`. Measured on the same 21 committed
 verdicts: rendered transcript characters over ``input_tokens`` ranged 2.24 to 2.46
-(median 2.33; JSON tool results tokenise densely), and the retail system prompt's 5472
+(median 2.32; JSON tool results tokenise densely), and the retail system prompt's 5472
 characters were read from the prompt cache as 2243 tokens (2.44, the verdict schema
 included). The common 4-characters-per-token rule would undercount by about 40%."""
 
