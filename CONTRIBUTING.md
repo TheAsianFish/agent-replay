@@ -16,7 +16,9 @@ React dashboard. See PLAN.md "Architecture" for the component map.
 ```
 agent_replay/        Python package (record, cassette, replay, checks, judge,
                      stats, flake, calibrate, diff, store, cli)
-server/              FastAPI app over the store
+agent_replay/migrations/  Alembic revisions for the run store (applied on open)
+agent_replay/server/ FastAPI app over the store (`replay serve`); the dashboard
+                     build lands in agent_replay/server/static (untracked)
 dashboard/           React 19 + TypeScript strict (Vite, TanStack Query, Tailwind)
 examples/            retail_agent (τ-bench retail subset, MIT, attributed) and a toy agent
 eval/                datasets, mutation suite, SPRT simulation, eval scripts
@@ -47,19 +49,33 @@ make flake-demo   replay flake offline: the fake model passes; a seeded flaky mo
 make eval-judge-smoke  judge vs deterministic checks on 24 retail runs, from the committed verdict cache
 make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in five replay
                        configurations; detection per check type and mode (offline, byte-stable JSON)
+make demo-data    real replay ci / replay flake runs of the retail example into .replay/demo.db
+make openapi      regenerate dashboard/openapi.json (then `npm run gen:types` in dashboard/)
+make ui           npm ci + build the dashboard into agent_replay/server/static
+make ui-check     dashboard: check:types, typecheck, lint, vitest
+make serve        replay serve over $REPLAY_DB_URL
+docker compose up --build   PostgreSQL + demo seed + dashboard on :8000
 ```
+
+PostgreSQL tests are marked `postgres` and run with `REPLAY_TEST_PG_URL` set to a
+disposable database (`uv run pytest -m postgres`); they reset its schema. Playwright:
+`npm run e2e` in `dashboard/` against a served build (`DASHBOARD_URL`, default :8000);
+`npm run screenshots` rewrites `docs/screenshots/`.
+
+A new store column or table needs an Alembic revision in `agent_replay/migrations/versions/`
+(hand-written, both backends); `tests/test_migrations.py` fails if models and migrations
+disagree.
 
 Planned with later milestones (not in the Makefile yet): `make eval`, `make bench`,
 `make eval-judge`, `make eval-llmbar`, `make bench-flake` (key-requiring ones print a
-cost estimate first), `make ui`, `make serve`, dashboard lint/typecheck, and
-`docker compose up`.
+cost estimate first).
 
 Until a target exists, say so in the PR rather than inventing it.
 
 ## Quality gates (CI must pass all)
 
 - `ruff check` and `ruff format --check` clean; `mypy --strict` clean for
-  `agent_replay/` and `server/`; TypeScript `strict: true`, `eslint` clean.
+  `agent_replay/` (the server included); TypeScript `strict: true`, `eslint` clean.
 - `pytest` fully offline and deterministic: no network, no API key, no clock
   dependence (use the replay clock helpers), fixed seeds. Mock at the SDK
   wrapper boundary, not with HTTP mocking: `anthropic` 1.x uses `httpx2`, so

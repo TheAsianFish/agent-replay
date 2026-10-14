@@ -1,0 +1,49 @@
+# The self-hosted dashboard: PostgreSQL, a one-off seed of demo data, and the app.
+#   docker compose up --build    then open http://localhost:8000
+# The database credentials are for this local stack only; override them with
+# POSTGRES_PASSWORD (and REPLAY_DB_URL to match) for anything shared. The app
+# has no authentication and serves every stored request and response, so it
+# listens on the loopback interface only; set REPLAY_BIND=0.0.0.0 to expose it.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: replay
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-replay}
+      POSTGRES_DB: replay
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U replay -d replay"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  seed:
+    build: .
+    image: agent-replay:local
+    command: ["python", "-m", "examples.demo_data", "--if-empty"]
+    environment:
+      REPLAY_DB_URL: postgresql+psycopg://replay:${POSTGRES_PASSWORD:-replay}@db:5432/replay
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build: .
+    image: agent-replay:local
+    environment:
+      REPLAY_DB_URL: postgresql+psycopg://replay:${POSTGRES_PASSWORD:-replay}@db:5432/replay
+      REPLAY_LOG_FORMAT: json
+    ports:
+      - "${REPLAY_BIND:-127.0.0.1}:${REPLAY_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

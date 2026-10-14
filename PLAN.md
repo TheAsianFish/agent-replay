@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-10 (M4).
+definition of done is met and CI is green. Last updated: 2026-10-10 (M5).
 
 ## Goal
 
@@ -69,7 +69,7 @@ module.
 | `agent_replay.diff` | Python | Trace alignment (Needleman-Wunsch over tool-call sequences with per-step cost) producing an aligned diff. |
 | `agent_replay.store` | SQLAlchemy 2.1, SQLite (local) / PostgreSQL 16 (server), Alembic | Runs, envelopes, check results, baselines, labels. Same models for both backends. |
 | `agent_replay.cli` | Typer, Rich | `replay record | run | ci | flake | calibrate | label | diff | serve | baseline`. |
-| `server/` | FastAPI 0.143, uvicorn | REST + SSE API over the store for the dashboard; structured logging (structlog). |
+| `agent_replay.server` | FastAPI 0.143, uvicorn | Read-only REST API over the store for the dashboard (`replay serve`); structured logging (structlog). |
 | `dashboard/` | React 19, TypeScript strict, Vite 8, TanStack Query 5, Tailwind 4, Vitest | Runs, run detail, trace viewer, trace diff, flakiness trend, calibration report. |
 | `action.yml` | GitHub composite action | `uses: TheAsianFish/agent-replay@v1`: installs, runs `replay ci`, posts a PR comment, uploads the report, fails on regression. |
 | `examples/retail_agent` | Python | Demo agent on τ-bench retail tasks and tools (MIT, vendored subset) with objectively checkable outcomes (final DB state). |
@@ -473,6 +473,60 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     every study run so far, and CI would show a change as a diff in the
     committed results. `make bench-flake` (D3) waits for the larger golden
     set in M6.
-- [ ] M5: Dashboard — PostgreSQL + Alembic migrations sharing the SQLite models; FastAPI API with structured logging; React 19 + TypeScript strict dashboard (runs, run detail, trace viewer, aligned trace diff from `diff.py`, flakiness trend, calibration report page reading stored reports); Vitest and Playwright smoke test; Docker Compose; `replay serve`. Done when `docker compose up` shows the example data, API tests and UI tests pass in CI, and screenshots are in `docs/`.
+- [x] M5: Dashboard — PostgreSQL + Alembic migrations sharing the SQLite models; FastAPI API with structured logging; React 19 + TypeScript strict dashboard (runs, run detail, trace viewer, aligned trace diff from `diff.py`, flakiness trend, calibration report page reading stored reports); Vitest and Playwright smoke test; Docker Compose; `replay serve`. Done when `docker compose up` shows the example data, API tests and UI tests pass in CI, and screenshots are in `docs/`.
+  - *M5 notes (2026-10-10).* Built as planned, with these changes and refinements:
+    (a) **Plan change: the server lives in the package.** It is
+    `agent_replay/server/` rather than a top-level `server/`, so `replay serve`
+    and `pip install 'agent-replay[server]'` ship it. The dashboard build goes to
+    `agent_replay/server/static/` (untracked; bundling it in the wheel is M7).
+    (b) **Plan change: REST without SSE.** The dashboard shows finished runs,
+    so TanStack Query's refetch is enough; live updates are on the roadmap.
+    (c) **Migrations.** Alembic revisions `0001` (the M2 to M4 schema) and
+    `0002` (flake reports, flake scenarios, calibration reports), applied on
+    every open under a lock: `BEGIN IMMEDIATE` on SQLite, a transaction-scoped
+    advisory lock on PostgreSQL. DDL runs inside that transaction on both
+    backends, so a failed migration rolls back. Pre-Alembic stores gain their
+    missing column and are stamped `0001`. Tests compare the models with the
+    migrated schema on both backends, run eight concurrent first opens (and
+    fail when the lock is removed), and cover downgrade, rollback and a store
+    from a newer version.
+    (d) **Stored reports.** `replay flake` now stores its report (the
+    flake-level table M4 left to M5); `replay db add-calibration` stores a
+    calibration report until `replay calibrate` (M6) writes them itself.
+    (e) **Diff.** `diff.py` aligns top-level steps with Needleman-Wunsch (0
+    identical; 0.5 + 0.5·d for the same call with different arguments, d the
+    fraction of top-level request keys that differ, model calls compared on
+    their last message; 1 per gap; different names never pair). It is
+    available as `replay diff` and `/api/diff`.
+    (f) **Demo data.** `make demo-data` runs the repo's own `replay ci` and
+    `replay flake` commands (about 480 runs). The demo calibration report
+    compares the judge with the deterministic verdicts, not human labels, and
+    says so in its `method`.
+    (g) **Known limitations.** The API has no authentication (read-only,
+    trusted network). Stores are large (about 40 MB for the demo) because
+    model requests are stored whole. The diff page fetches the two full
+    runs. The demo calibration shows raw agreement in the kappa column until
+    `REPLAY_STATS_IMPL=core` exists. The new CI jobs (PostgreSQL, dashboard,
+    Playwright, Compose) were run locally step for step; their first GitHub run
+    is on the PR.
+    (h) **Review fixes,** each with a test that fails on the old code: an
+    in-memory store shared one SQLite connection between the server's worker
+    threads (concurrent requests corrupted rows or crashed the process; its
+    sessions now take turns); timestamps with a non-UTC offset were stored
+    shifted on SQLite (normalised to UTC on write); store errors echoed the
+    database password (redacted); a half-made pre-migration store got a
+    misleading error; the flake trend reversed scenario order within a report;
+    `replay flake` lost its verdict when storing the report failed; server
+    errors now answer with a JSON 500 carrying the request id, a malformed
+    `X-Request-ID` is replaced, and odd paths no longer 500 the dashboard
+    fallback; the diff told a `null` value from an absent key, named the first
+    earlier message that differs instead of equal message counts, and
+    survived backticks in Markdown; the dashboard kept both sides of a long
+    changed value readable, recovered from an offset past the end, dropped
+    empty filter params, rounded durations and costs before choosing a unit,
+    thinned trend labels and showed cycles in a trace; Compose binds to
+    loopback by default (`REPLAY_BIND`); the demo seed returns usage errors
+    instead of raising. The dashboard's tests grew from 57 to 84, the Python
+    suite from 873 to 888.
 - [ ] M6: Judge calibration — `replay label` TUI, golden-set format, `replay calibrate` (kappa per criterion with bootstrap CI, agreement, confusion matrix, majority baseline, self-consistency across 3 judge runs, position / verbosity / self-preference probes), LLMBar harness (`make eval-llmbar`), calibration gating wired into `judge` checks, calibration page populated. Done when the full pipeline runs end to end on a fake judge offline with tests, and RESULTS.md lists the exact key-requiring commands under "To measure" with cost estimates; if D1 has been recorded and labelled, the measured kappa is in RESULTS.md.
 - [ ] M7: GitHub Action and release readiness — `action.yml` composite action with PR comment and artifact upload, example consumer workflow, `v1` tag procedure; PyPI build and guarded trusted-publishing workflow; Dockerfile and Compose finalised; RELEASE.md with every step and secret the maintainer must add; README complete (what/why, demo GIF placeholder with capture instructions, quickstart, Mermaid architecture, design decisions, results table from RESULTS.md, roadmap); CHANGELOG. Done when `uv build` produces a wheel that installs in a clean venv, the Action runs against the example repo workflow in CI (dry mode), and RESULTS.md is complete with every measured and to-measure number.

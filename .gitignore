@@ -19,6 +19,7 @@ htmlcov/
 # Node / dashboard
 node_modules/
 dashboard/dist/
+agent_replay/server/static/
 dashboard/coverage/
 
 # Env and secrets

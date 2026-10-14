@@ -712,6 +712,56 @@ Each run gets a seed derived from the scenario and run index, and outcomes are
 fed to the gate in run order, so the result is the same at any
 `--concurrency` (asserted in `tests/test_flake.py`).
 
+## Dashboard demo data and `docker compose up` (M5, offline)
+
+Not a quality measurement. It records where the dashboard's demo numbers come
+from and that the Compose stack serves them. No API calls: the live retail runs
+replay the committed `claude-opus-5-5` recordings, judged from the committed
+verdict cache.
+
+- **Dataset:** the retail example: `examples/retail_agent/replay.toml` (fake-model
+  cassettes) and `replay-live.toml` (six live Opus recordings), three seeded
+  regressions, and the seeded flaky model at seeds 0 to 4.
+- **Method:** `examples/demo_data.py` runs `replay ci` and `replay flake` in-process,
+  exactly as on the command line, into one store. The demo calibration report
+  compares the judge's per-criterion verdicts with the suite's deterministic verdict
+  on the 24 runs of the judge smoke test above. Under `REPLAY_STATS_IMPL=baseline` its
+  kappa column holds raw agreement, and its `method` field says so. It is not a
+  calibration against human labels.
+- **Date:** 2026-10-10.
+- **Commands:** `make demo-data` (SQLite), then `docker compose up --build --detach
+  --wait app` (PostgreSQL 16).
+
+Raw output (`make demo-data`, last line; about 25 s, a 39 MB SQLite file):
+
+```
+demo store ready: 480 runs, 14 suites, 6 flake reports, 1 calibration report
+```
+
+Raw output (Compose; `curl` against the running stack):
+
+```
+$ curl -sf 'http://localhost:8000/api/runs?limit=1' | jq .total
+480
+$ curl -sf http://localhost:8000/api/health
+{"status":"ok","version":"0.1.0","backend":"postgresql","revision":"0002"}
+seed-1  | demo store ready: 480 runs, 14 suites, 6 flake reports, 1 calibration report
+# second `docker compose up`:
+seed-1  | the store already holds 480 runs; left as it is
+```
+
+The Playwright smoke test (`npm run e2e` in `dashboard/`) passed against both the
+SQLite demo store and the Compose stack (`2 passed`).
+
+Demo calibration report (baseline statistics: raw agreement, normal-approximation
+bootstrap interval, n = 24):
+
+| Criterion | Agreement | Interval | Gates at 0.6 |
+|---|---|---|---|
+| resolved | 0.54 | [0.34, 0.74] | no |
+| policy_followed | 0.88 | [0.74, 1.00] | yes (on raw agreement; not meaningful until `core`) |
+| accurate_report | 0.42 | [0.22, 0.61] | no |
+
 ## To measure
 
 - **SPRT savings vs the fixed-sample test.** `make bench-sprt` (offline, about

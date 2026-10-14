@@ -23,7 +23,7 @@ the build. Agents are not deterministic either, so `replay flake` re-runs a
 scenario, estimates its pass probability with an interval, gates on it, and
 tells flaky from failing.
 
-**Status: milestone 4 of 7.** Working today:
+**Status: milestone 5 of 7.** Working today:
 - recording through the Anthropic SDK (sync, async, streaming,
   `messages.parse`), Ollama, `@tool`, and the clock and random helpers;
 - the three cut-point modes, fingerprint matching and the three
@@ -32,7 +32,8 @@ tells flaky from failing.
   structured outputs, Ollama fallback, verdict cache, advisory until
   calibrated);
 - cost and latency baselines (`replay baseline`) and relative budget limits;
-- `replay ci` with JSON and Markdown reports, and a local SQLite run store;
+- `replay ci` with JSON and Markdown reports, and a run store on SQLite
+  (local) or PostgreSQL (shared), versioned with Alembic migrations;
 - a τ-bench retail example agent with fake-model and live `claude-opus-5-5`
   cassettes;
 - the statistics interface (kappa, bootstrap CI, Wilson, SPRT) with a naive
@@ -41,7 +42,12 @@ tells flaky from failing.
   limiting, a sequential or fixed-sample gate, and passing / flaky / failing
   classification;
 - a mutation study: 32 injected regressions and 5 benign refactors replayed
-  in every mode, with and without failing on `approximate` steps.
+  in every mode, with and without failing on `approximate` steps;
+- an aligned trace diff (`replay diff`): two runs lined up by sequence
+  alignment, so an inserted call reads as one added step;
+- a dashboard (`replay serve`, or `docker compose up`): runs, a trace viewer,
+  the aligned diff, suites, pass-rate trends from `replay flake`, and stored
+  calibration reports.
 
 Measured so far ([RESULTS.md](RESULTS.md)):
 - **Mutation study (offline).** Stubbing everything (`full`) caught 7 of
@@ -63,8 +69,7 @@ and failed all six tasks of a variant with prompt caching removed (+76% to
 deterministic checks on 23 of 24 runs; that is a wiring test, not a
 calibration.
 
-Judge calibration, the dashboard and the GitHub Action are planned, not
-built, and the statistics core (`agent_replay/stats.py`) is a specification
+Judge calibration and the GitHub Action are planned, not built, and the statistics core (`agent_replay/stats.py`) is a specification
 until it is written; until then the gate runs the naive baseline (see
 [Statistics](#statistics)). See [PLAN.md](PLAN.md).
 
@@ -465,6 +470,69 @@ active; such a scenario is reported `broken` (exit 2) with the fix
 flake. A run that crashes the harness is also `broken`, and the other runs are
 kept.
 
+## Dashboard
+
+![Runs page](docs/screenshots/runs.png)
+
+```bash
+docker compose up --build        # PostgreSQL, a demo-data seed, the app on http://localhost:8000
+```
+
+Or locally, against the SQLite store your `replay ci` runs already fill:
+
+```bash
+make ui                          # build the React app into agent_replay/server/static
+uv run replay serve              # http://127.0.0.1:8000 (API docs at /docs)
+make demo-data && make serve REPLAY_DB_URL=sqlite:///.replay/demo.db   # the demo data instead
+```
+
+The dashboard is read-only and has no authentication: run it on a trusted
+network. It has six pages:
+
+- **Runs**: every stored run, filterable by scenario, mode and result.
+- **Run detail**: the trace viewer. Each step shows its kind, status
+  (`exact`, `approximate`, `live`, ...), latency, tokens and cost, and expands
+  to its request and response. Nested calls are indented.
+- **Diff**: two runs aligned step by step, with each changed request field.
+  The run detail page links here, for any other run of the same scenario.
+- **Suites**: each `replay ci` and `replay flake` invocation.
+- **Flakiness**: each scenario's pass rate over successive `replay flake`
+  reports, with its interval as a band, and the latest classification.
+- **Calibration**: stored calibration reports. Each criterion shows kappa with
+  its interval against `REPLAY_JUDGE_MIN_KAPPA`, and whether it would gate.
+
+| Page | | |
+|---|---|---|
+| ![Run detail](docs/screenshots/run-detail.png) | ![Diff](docs/screenshots/diff.png) | ![Flakiness](docs/screenshots/flakiness.png) |
+| ![Calibration](docs/screenshots/calibration.png) | ![Suites](docs/screenshots/suites.png) | |
+
+`make demo-data` fills a store with about 480 real runs: `replay ci` on the
+retail suite in every mode, on the live `claude-opus-5-5` recordings and
+against each seeded regression, plus six `replay flake` reports. The demo
+calibration report compares the judge with the suite's deterministic verdicts,
+not with human labels, and its `method` says so; human-label calibration
+arrives with `replay calibrate` (M6).
+
+The API is plain JSON under `/api` (OpenAPI at `/docs`). The dashboard's
+TypeScript types are generated from that schema (`make openapi`, then `npm run
+gen:types` in `dashboard/`). CI fails if either is stale.
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/health` | Status, version, backend, schema revision |
+| `GET /api/runs?limit&offset&scenario&suite_id&mode&passed` | A page of runs and the total |
+| `GET /api/runs/{id}` | One run with steps and checks (an id prefix works) |
+| `GET /api/diff?base=&head=` | The aligned diff of two stored runs |
+| `GET /api/scenarios`, `/api/suites`, `/api/suites/{id}` | Scenario names; suite invocations |
+| `GET /api/flake`, `/api/flake/{id}`, `/api/flake/trend?scenario=` | Flake reports, one in full, and per-scenario points over time |
+| `GET /api/calibration`, `/api/calibration/{id}` | Calibration reports, and one with which criteria would gate |
+
+The store's schema is versioned with Alembic. Every command that opens a store
+first migrates it to the newest revision, under a lock: `BEGIN IMMEDIATE` on
+SQLite, an advisory lock on PostgreSQL. Two processes opening the same store at
+once therefore neither collide nor migrate twice, and a failed migration rolls
+back. Stores created before migrations are adopted in place.
+
 ## CLI
 
 | Command | What it does |
@@ -475,7 +543,11 @@ kept.
 | `replay baseline SUITE -o FILE [--runs N] [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR]` | Measure every scenario (no checks) and write median cost, tokens, model calls and p95 latency; exit 2 if a scenario cannot run, 1 if the agent errors (nothing written) |
 | `replay flake SUITE [--gate sprt\|wilson] [--max-runs N] [--p-fail P] [--p-pass P] [--alpha A] [--beta B] [--min-pass-rate R] [--concurrency N] [--runs-per-minute R] [--seed S] [-s SCENARIO] [--mode] [--agent] [--client] [--cassette-dir DIR] [--json FILE] [--markdown FILE] [--no-store]` | Replay each scenario repeatedly, gate on its pass rate, classify passing / flaky / failing |
 | `replay runs [RUN_ID] [--limit N] [--scenario NAME] [--db URL]` | List stored runs, or show one |
+| `replay diff BASE HEAD [--json FILE] [--markdown FILE] [--db URL]` | Align two runs (each a cassette or a stored run id) step by step: same, changed (with the differing request keys), added, removed. Always exits 0 once the diff is produced |
 | `replay show CASSETTE` | Print a cassette's header, envelopes and outcome |
+| `replay serve [--host H] [--port P] [--db URL] [--dashboard DIR]` | Serve the dashboard and its read-only API (needs the `server` extra) |
+| `replay db upgrade [--db URL]` | Create the run store or migrate it to the newest revision |
+| `replay db add-calibration REPORT [--db URL]` | Store a calibration report for the dashboard |
 
 Exit codes: `0` passed, `1` a check failed or the agent raised, `2` bad input
 (missing cassette or suite, unimportable agent, invalid config, missing
@@ -486,8 +558,9 @@ credentials).
 | Variable | Default | Meaning |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | — | Used by `--client anthropic` (recording, `model-live`) and `make test-live` |
-| `REPLAY_DB_URL` | `sqlite:///.replay/replay.db` | Run store (SQLAlchemy URL). The SQLite file is a local cache until migrations land with PostgreSQL in M5 |
-| `REPLAY_LOG_LEVEL` | `WARNING` | structlog level for the CLI (`DEBUG` shows every recorded or replayed step) |
+| `REPLAY_DB_URL` | `sqlite:///.replay/replay.db` | Run store (SQLAlchemy URL): SQLite, or PostgreSQL as `postgresql+psycopg://user:password@host/db` (the `postgres` extra) |
+| `REPLAY_DASHBOARD_DIR` | the build in `agent_replay/server/static` | Built dashboard that `replay serve` serves at `/` |
+| `REPLAY_LOG_LEVEL` | `WARNING` (`INFO` for `replay serve`) | structlog level (`DEBUG` shows every recorded or replayed step; `INFO` in `serve` logs each request) |
 | `REPLAY_LOG_FORMAT` | `console` | `console` or `json` (one JSON object per line on stderr) |
 | `REPLAY_JUDGE_PROVIDER` | `anthropic` | Judge provider: `anthropic`, `ollama`, `fake` or `module:factory` |
 | `REPLAY_JUDGE_MODEL` | `claude-opus-5-5` (`qwen3:8b` for Ollama) | Judge model |
@@ -497,6 +570,13 @@ credentials).
 | `REPLAY_JUDGE_OFFLINE` | off | `1` / `true`: judge from the cache only; a miss breaks the scenario (exit 2) |
 | `REPLAY_PRICES_FILE` | — | JSON `{"model": {"input", "output", "cache_read", "cache_write"}}` in USD per MTok, extending or overriding the built-in price table |
 | `REPLAY_STATS_IMPL` | `baseline` | Statistics implementation: `baseline` (naive reference) or `core` (`agent_replay/stats.py`) |
+| `REPLAY_TEST_PG_URL` | — | Tests only: a disposable PostgreSQL database for the `postgres`-marked tests (they reset its schema) |
+
+`docker compose` also reads `POSTGRES_PASSWORD` (default `replay`, for the local
+stack only), `REPLAY_PORT` (default `8000`) and `REPLAY_BIND` (default
+`127.0.0.1`: the stack is reachable from this machine only, since the API has no
+authentication and serves every stored request and response; `0.0.0.0` exposes it
+to the network).
 
 ## Architecture
 
@@ -521,8 +601,11 @@ flowchart LR
   K -->|transcript| J{judge cache}
   J -->|miss| JM[claude-opus-5-5 / Ollama<br/>structured verdict]
   CR[(calibration report)] -.gating criteria.-> K
-  K --> CI[replay ci: exit code,<br/>JSON / Markdown reports]
-  CI --> DB[(SQLite run store)]
+  K --> CI[replay ci / replay flake: exit code,<br/>JSON / Markdown reports]
+  CI --> DB[(run store<br/>SQLite / PostgreSQL · Alembic)]
+  DB --> API[FastAPI read-only API<br/>replay serve]
+  DF[diff.py: Needleman-Wunsch<br/>alignment] --> API
+  API --> UI[React dashboard<br/>runs · trace · diff · flakiness · calibration]
 ```
 
 The hard part of M2 is making replay trustworthy when only some of the world
@@ -548,8 +631,21 @@ for twenty runs every time, and knowing what the checks can and cannot see.
 concurrency does not bias it and early stopping stays valid. The mutation
 study measures detection per check type and per mode, which is where the case
 for cut-point replay comes from: the stub-everything mode missed every model
-and tool regression. The remaining hard part is M6: a judge measured against
-humans before it may fail a build. PLAN.md has the full component map.
+and tool regression.
+
+M5's hard part is the trace diff and a store that several processes share.
+Comparing two runs position by position shows "everything after step 3
+changed" when the agent inserted one call. `diff.py` instead aligns the two
+step lists with Needleman-Wunsch: an identical step costs 0, the same call with
+different arguments 0.5 + 0.5 x (fraction of argument keys that differ), and a
+step only one side has 1. Steps with different names are never paired. A
+changed step therefore always costs less than removing and re-adding it, so
+the diff reads "one call added, one argument changed". The store is now shared
+by CI jobs, `replay flake` threads and the dashboard. Migrations run on open
+under a database lock, inside one transaction.
+
+The remaining hard part is M6: a judge measured against humans before it may
+fail a build. PLAN.md has the full component map.
 
 ## Design decisions so far
 
@@ -615,6 +711,24 @@ humans before it may fail a build. PLAN.md has the full component map.
 - **State checks only where state is real.** `rule:db_matches_ground_truth`
   (τ-bench's reward) passes as "not applicable" unless every tool call ran
   for real, because a served tool never touched the database.
+- **Migrations on open, under a lock.** Every command migrates the store it
+  opens, so a CI job never meets an old schema. SQLite takes its write lock
+  before reading the schema version and PostgreSQL takes an advisory lock, so
+  concurrent first opens are safe (a test runs eight processes at once on
+  both backends). The alternative, a separate `migrate` step, is still there
+  (`replay db upgrade`), but nothing depends on someone running it.
+- **The server lives in the package, the dashboard is static.** `replay
+  serve` is one process serving JSON and the built React app, so `pip install
+  'agent-replay[server]'` and Docker Compose run the same thing. The API is
+  read-only REST. The plan had server-sent events; for a page that shows
+  finished runs, refetching on focus is enough, and SSE is on the roadmap.
+- **Types generated from the API schema.** The dashboard's TypeScript types
+  come from the FastAPI OpenAPI schema, and CI fails when either is stale, so
+  a model change in Python breaks the TypeScript build rather than the page.
+- **Alignment, not positional diff.** See M5's hard part above. A changed
+  step's cost is capped below the cost of a gap pair, so steps with the same
+  name always pair when the order allows. Ties break deterministically, front
+  to back.
 - **Committed cassettes are regenerated, not hand-edited.** Drift tests
   re-record the toy and retail cassettes and fail if they changed (`make
   cassettes`, `make retail-cassettes`).
@@ -632,7 +746,18 @@ make bench-sprt        # simulate the sequential gate over true pass rates (offl
 make flake-demo        # replay flake offline: fake model passes, seeded flaky model fails
 make eval-mutations    # the mutation study: 32 mutations + 5 benign refactors, 5 configurations (~25 s)
 make eval-judge-smoke  # judge vs deterministic checks on 24 retail runs (offline, from the cache)
+make demo-data         # fill .replay/demo.db with real replay runs for the dashboard (~25 s)
+make ui                # npm ci + build the dashboard into agent_replay/server/static
+make ui-check          # dashboard: generated types current, tsc, eslint, vitest
+make serve             # replay serve over $REPLAY_DB_URL (or .replay/replay.db)
+make openapi           # regenerate dashboard/openapi.json from the API
+docker compose up --build   # PostgreSQL + demo seed + dashboard on :8000
 ```
+
+PostgreSQL tests run when `REPLAY_TEST_PG_URL` points at a disposable database
+(`uv run pytest -m postgres`); CI runs them against a PostgreSQL 16 service.
+The Playwright smoke test runs against a served build (`npm run e2e` in
+`dashboard/`, with `DASHBOARD_URL` if it is not on :8000).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and [RESULTS.md](RESULTS.md)
 for every measured number.
@@ -646,12 +771,14 @@ for every measured number.
 3. ~~LLM judge (structured outputs), cost and latency baselines, statistics
    interface~~
 4. ~~Flakiness engine (`replay flake`, Wilson and SPRT gates through the stats
-   interface) and a mutation study~~ (this milestone)
-5. FastAPI + React dashboard with aligned trace diffs
+   interface) and a mutation study~~
+5. ~~FastAPI + React dashboard with aligned trace diffs, PostgreSQL and
+   migrations, Docker Compose~~ (this milestone)
 6. Judge calibration against human labels (kappa, bootstrap CI, bias probes, LLMBar)
 7. GitHub Action, PyPI release, Docker Compose
 
-Later: a tool-result drift check (in `tools-live`, compare each live tool
+Later: live updates in the dashboard (server-sent events), authentication for
+a shared deployment, and a tool-result drift check (in `tools-live`, compare each live tool
 result with the recorded one, so that drift is caught without failing on
 every `approximate` model request as `fail_on_approximate` does), and running
 a flake suite's scenarios in parallel as well as their runs.

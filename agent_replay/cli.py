@@ -22,6 +22,7 @@ from pydantic import JsonValue, ValidationError
 from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
+from sqlalchemy.exc import SQLAlchemyError
 
 from agent_replay import __version__
 from agent_replay._json import canonical_json, to_jsonable
@@ -38,8 +39,20 @@ from agent_replay.ci import (
 )
 from agent_replay.ci import to_json as report_json
 from agent_replay.ci import to_markdown as report_markdown
-from agent_replay.errors import MeasurementError, ReplayError
+from agent_replay.diff import (
+    DiffStep,
+    cost_text,
+    describe_change,
+    diff_steps,
+    steps_from_cassette,
+    steps_from_record,
+    summary,
+)
+from agent_replay.diff import to_json as diff_json
+from agent_replay.diff import to_markdown as diff_markdown
+from agent_replay.errors import MeasurementError, ReplayError, StoreError
 from agent_replay.flake import (
+    FlakeReport,
     FlakeSettings,
     describe,
     flake_suite,
@@ -48,6 +61,7 @@ from agent_replay.flake import (
 )
 from agent_replay.flake import to_json as flake_json
 from agent_replay.flake import to_markdown as flake_markdown
+from agent_replay.judge.calibration import CalibrationReport
 from agent_replay.pricing import prices
 from agent_replay.record import wrap
 from agent_replay.runner import RunResult, load_agent, make_client, record, replay
@@ -692,15 +706,9 @@ def flake_cmd(
         baseline=baseline,
     )
     try:
-        store = Store.open(db) if use_store else None
-        sink = _store_sink(store, suite_path) if store is not None else RunSink()
-        try:
-            report = flake_suite(
-                suite_path, settings=settings, overrides=overrides, scenarios=scenario, sink=sink
-            )
-        finally:
-            if store is not None:
-                store.close()
+        report, store_failure = _flake_and_store(
+            suite_path, settings, overrides, scenario, db=db, use_store=use_store
+        )
     except ReplayError as exc:
         raise _fail(str(exc)) from exc
 
@@ -728,12 +736,43 @@ def flake_cmd(
     )
     if report.suite_id is not None:
         console.print(f"[dim]stored as suite {report.suite_id[:12]}; see `replay runs`[/]")
+    if store_failure is not None:
+        raise _fail(store_failure)
     if report.broken:
         console.print(
             f"[bold yellow]{len(report.broken)} scenario(s) could not run; fix the suite[/]"
         )
         raise typer.Exit(EXIT_USAGE)
     raise typer.Exit(EXIT_OK if report.passed else EXIT_FAILED)
+
+
+def _flake_and_store(
+    suite_path: Path,
+    settings: FlakeSettings,
+    overrides: Overrides,
+    scenarios: list[str] | None,
+    *,
+    db: str | None,
+    use_store: bool,
+) -> tuple[FlakeReport, str | None]:
+    """Run the flake suite and store its report; a store failure is returned, not raised,
+    because the runs are done (and paid for) and the verdict should still be printed."""
+    store = Store.open(db) if use_store else None
+    sink = _store_sink(store, suite_path) if store is not None else RunSink()
+    try:
+        report = flake_suite(
+            suite_path, settings=settings, overrides=overrides, scenarios=scenarios, sink=sink
+        )
+        if store is None:
+            return report, None
+        try:
+            store.save_flake(report)
+        except (SQLAlchemyError, StoreError) as exc:
+            return report, f"could not store the flake report: {exc}"
+        return report, None
+    finally:
+        if store is not None:
+            store.close()
 
 
 @app.command("runs")
@@ -831,6 +870,184 @@ def show_cmd(
     console.print(_steps_table(Trajectory(steps=tuple(steps))))
     f = cassette.footer
     console.print(f"status: {f.status}\noutput: {escape(str(f.output))}")
+
+
+_DIFF_STYLE = {"same": "dim", "changed": "yellow", "added": "green", "removed": "red"}
+
+
+def _is_cassette_ref(ref: str) -> bool:
+    return ref.endswith(".jsonl") or Path(ref).is_file()
+
+
+def _diff_side(ref: str, store: Store | None) -> tuple[list[DiffStep], str]:
+    """Steps and a label for one side of `replay diff`: a cassette file or a stored run."""
+    if store is None or _is_cassette_ref(ref):
+        return steps_from_cassette(Cassette.load(ref)), ref
+    try:
+        run = store.get_run(ref)
+    except StoreError as exc:
+        raise StoreError(
+            f"{ref!r} is neither a cassette file nor a stored run: {exc} "
+            "Pass a .jsonl cassette path or a run id."
+        ) from exc
+    return steps_from_record(run), run.id[:12]
+
+
+@app.command("diff")
+def diff_cmd(
+    base: Annotated[
+        str, typer.Argument(metavar="BASE", help="Cassette (.jsonl) or stored run id (prefix).")
+    ],
+    head: Annotated[
+        str, typer.Argument(metavar="HEAD", help="Cassette (.jsonl) or stored run id (prefix).")
+    ],
+    json_path: Annotated[
+        Path | None, typer.Option("--json", help="Write the JSON diff here.")
+    ] = None,
+    markdown_path: Annotated[
+        Path | None, typer.Option("--markdown", help="Write the Markdown table here.")
+    ] = None,
+    db: Annotated[
+        str | None,
+        typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db."),
+    ] = None,
+) -> None:
+    """Align the steps of BASE and HEAD and show what was added, removed or changed.
+
+    Each side is a cassette file or a stored run (see `replay runs`). Steps are
+    aligned by sequence alignment, so an inserted call shows as one added row.
+    Exit 0 whenever the diff was produced (it is informational), 2 when a side
+    cannot be loaded.
+    """
+    try:
+        if _is_cassette_ref(base) and _is_cassette_ref(head):
+            base_steps, base_label = _diff_side(base, None)
+            head_steps, head_label = _diff_side(head, None)
+        else:
+            with Store.open(db) as store:
+                base_steps, base_label = _diff_side(base, store)
+                head_steps, head_label = _diff_side(head, store)
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+
+    diff = diff_steps(base_steps, head_steps, base_label=base_label, head_label=head_label)
+    console.print(f"Diff [bold]{escape(base_label)}[/] → [bold]{escape(head_label)}[/]")
+    table = Table(show_header=True, header_style="bold", box=None, pad_edge=False)
+    for column in ("op", "base", "head", "cost", "changes"):
+        table.add_column(column)
+    for row in diff.rows:
+        style = _DIFF_STYLE[row.op]
+        table.add_row(
+            f"[{style}]{row.op}[/]",
+            escape(row.base.label) if row.base else "—",
+            escape(row.head.label) if row.head else "—",
+            cost_text(row.cost),
+            escape("\n".join(describe_change(c) for c in row.changes)),
+        )
+    console.print(table)
+    if json_path is not None:
+        _write(json_path, diff_json(diff), "JSON")
+    if markdown_path is not None:
+        _write(markdown_path, diff_markdown(diff), "Markdown")
+    console.print(escape(summary(diff)))
+
+
+@app.command("serve")
+def serve_cmd(
+    host: Annotated[str, typer.Option(help="Interface to listen on.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(min=1, max=65535, help="Port to listen on.")] = 8000,
+    db: Annotated[
+        str | None,
+        typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db."),
+    ] = None,
+    dashboard: Annotated[
+        Path | None,
+        typer.Option(
+            help="Built dashboard to serve at / (default: $REPLAY_DASHBOARD_DIR, then the "
+            "build packaged with the server)."
+        ),
+    ] = None,
+) -> None:
+    """Serve the dashboard and its read-only API over the run store.
+
+    Logs one structured line per request (REPLAY_LOG_LEVEL defaults to INFO
+    here; REPLAY_LOG_FORMAT=json for JSON lines).
+    """
+    try:
+        import uvicorn  # noqa: PLC0415
+
+        from agent_replay.server import create_app  # noqa: PLC0415
+        from agent_replay.server.app import dashboard_dir  # noqa: PLC0415
+    except ImportError as exc:
+        raise _fail(
+            f"replay serve needs the server extra ({exc.name} is missing): "
+            "pip install 'agent-replay[server]'"
+        ) from exc
+    static = dashboard or dashboard_dir()
+    if static is not None and not (static / "index.html").is_file():
+        raise _fail(f"{static} has no index.html; build the dashboard with `make ui` first")
+    os.environ.setdefault("REPLAY_LOG_LEVEL", "INFO")
+    configure_logging()
+    try:
+        store = Store.open(db)
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+    where = str(static) if static else "none (API only; build it with `make ui`)"
+    console.print(
+        f"serving the {store.backend} run store on http://{host}:{port} (dashboard: "
+        f"{escape(where)}; API docs at /docs)"
+    )
+    try:
+        uvicorn.run(
+            create_app(store, static_dir=static),
+            host=host,
+            port=port,
+            access_log=False,
+            log_level="warning",
+        )
+    finally:
+        store.close()
+
+
+db_app = typer.Typer(help="Manage the run store.", no_args_is_help=True)
+app.add_typer(db_app, name="db")
+
+_DB_OPTION = typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db.")
+
+
+@db_app.command("upgrade")
+def db_upgrade_cmd(db: Annotated[str | None, _DB_OPTION] = None) -> None:
+    """Create the run store, or migrate it to the newest schema revision.
+
+    Every command that opens the store does this too; run it on its own to
+    prepare a shared PostgreSQL store before the dashboard starts.
+    """
+    try:
+        with Store.open(db) as store:
+            revision = store.revision()
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+    console.print(f"run store at schema revision {revision}")
+
+
+@db_app.command("add-calibration")
+def db_add_calibration_cmd(
+    report_path: Annotated[
+        Path, typer.Argument(metavar="REPORT", help="Calibration report (JSON) to store.")
+    ],
+    db: Annotated[str | None, _DB_OPTION] = None,
+) -> None:
+    """Store a calibration report so the dashboard's calibration page shows it."""
+    try:
+        report = CalibrationReport.load(report_path)
+        with Store.open(db) as store:
+            report_id = store.save_calibration(report)
+    except ReplayError as exc:
+        raise _fail(str(exc)) from exc
+    console.print(
+        f"stored calibration report {report_id[:12]} for rubric {escape(report.rubric)} "
+        f"({report.n_items} items, judge {escape(report.judge_id)})"
+    )
 
 
 def main() -> None:
