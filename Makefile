@@ -2,7 +2,9 @@
 # are added with the code they run.
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
-	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check
+	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check \
+	golden record-golden eval-judge eval-judge-objective \
+	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -85,6 +87,27 @@ bench-sprt:
 eval-judge-smoke:
 	uv run python eval/judge_smoke.py --offline --out eval/results/judge_smoke.json
 
+# Calibrate the judge against human labels on the retail golden set: kappa per criterion
+# with a bootstrap CI, self-consistency over 3 verdicts per item, and the position,
+# verbosity and self-preference probes. Needs human labels (`replay label`), an
+# ANTHROPIC_API_KEY for uncached verdicts, and REPLAY_STATS_IMPL=core for a report that
+# can gate. Prints its call count and cost estimate first (84 calls, about $1.30, on the
+# 21 retail items: their first verdicts are already in the committed cache); add --dry-run
+# to stop there. New verdicts land in the same cache, so commit it with the report.
+eval-judge:
+	uv run replay calibrate eval/golden/retail --rubric examples/retail_agent/rubric.yaml \
+		--reference human --repeats 3 --cache-dir examples/retail_agent/judge-cache \
+		-o eval/results/calibration_human.json
+
+# The judge against the objective (deterministic-check) labels of the retail golden set,
+# offline from the committed verdict cache. Informative only: such a report never gates.
+# created_at is the newest cached verdict used, so the JSON is byte-stable across runs.
+eval-judge-objective:
+	REPLAY_JUDGE_OFFLINE=1 uv run replay calibrate eval/golden/retail \
+		--rubric examples/retail_agent/rubric.yaml --reference objective --repeats 1 \
+		--no-probes --cache-dir examples/retail_agent/judge-cache \
+		-o eval/results/calibration_objective.json --no-store
+
 # The mutation study: 32 known-bad variants and 5 benign refactors of the retail agent,
 # replayed in full, tools-live, model-live, model-live with fallback and tools-live with
 # fail_on_approximate; detection rate per check type and per configuration (offline,
@@ -117,3 +140,50 @@ ui-check:
 	npm --prefix dashboard run typecheck
 	npm --prefix dashboard run lint
 	npm --prefix dashboard test
+
+# The retail golden set for judge calibration: the six live recordings replayed with
+# the real agent and the three seeded mutants (24 runs, 21 distinct transcripts), with
+# objective labels from the suite's deterministic checks. Offline and judge-free (~10 s);
+# re-running changes nothing. Label it by hand with `uv run replay label eval/golden/retail
+# --rubric examples/retail_agent/rubric.yaml --labeller NAME`.
+GOLDEN_RETAIL = eval/golden/retail
+golden:
+	uv run replay golden add examples/retail_agent/replay-live.toml --out $(GOLDEN_RETAIL)
+	for mutant in wrong_write_argument skips_order_lookup first_tool_only; do \
+		uv run replay golden add examples/retail_agent/replay-live.toml --out $(GOLDEN_RETAIL) \
+			--variant $$mutant --agent examples.retail_agent.mutants:$$mutant || exit 1; \
+	done
+
+# D1, the larger golden set: 10 model-live runs per retail task with claude-opus-5-5 and
+# 10 with claude-haiku-5-5 (120 runs), saved as cassettes and built into golden items with
+# objective labels. Needs ANTHROPIC_API_KEY; about $2.19 at the measured cost per run (the
+# estimate prints first). Resumes: recorded cassettes are kept. Then label it with
+# `uv run replay label eval/golden/retail-d1 --rubric examples/retail_agent/rubric.yaml`.
+record-golden:
+	uv run python eval/record_golden.py --runs 10 --out eval/golden/retail-d1
+
+# Re-download LLMBar (princeton-nlp/LLMBar, MIT) at the pinned commit into eval/data/llmbar
+# and verify every file's sha256 (network; stdlib only). `--verify` checks the vendored copy.
+data-llmbar:
+	python3 -I eval/llmbar_fetch.py
+
+# The judge on LLMBar's 419 Natural + Adversarial pairs in both orders: accuracy and
+# position-bias rate. 838 calls to claude-opus-5-5 at effort low; needs ANTHROPIC_API_KEY,
+# about $13 (dry-run estimate; stops past $25). Verdicts are cached in eval/llmbar-cache,
+# so an interrupted run resumes.
+eval-llmbar:
+	uv run python eval/llmbar.py --max-cost-usd 25 --out eval/results/llmbar.json
+
+# Offline: the calls eval-llmbar still needs after cache hits and their estimated cost.
+eval-llmbar-dry:
+	uv run python eval/llmbar.py --dry-run
+
+# Offline: three heuristic judges on LLMBar (always the first output, the longer, the
+# shorter), the floor any real judge's numbers are read against (~5 s, no key).
+eval-llmbar-heuristics:
+	for judge in first longer shorter; do \
+		cache=$$(mktemp -d) && \
+		uv run python eval/llmbar.py --provider fake-$$judge --cache-dir $$cache \
+			--out eval/results/llmbar_heuristic_$$judge.json > /dev/null; \
+		status=$$?; rm -rf $$cache; test $$status -eq 0 || exit 1; \
+	done

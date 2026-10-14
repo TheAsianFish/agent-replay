@@ -1,0 +1,4625 @@
+{
+  "cost_usd": 0.0,
+  "dataset": {
+    "citation": "Zeng et al., Evaluating Large Language Models at Evaluating Instruction Following, ICLR 2024",
+    "commit": "900616bff90b6c6c8e1681f7d079250637c55992",
+    "name": "LLMBar",
+    "source": "https://github.com/princeton-nlp/LLMBar"
+  },
+  "errors": {},
+  "groups": [
+    {
+      "accuracy_average": {
+        "interval": [
+          0.4307,
+          0.5693
+        ],
+        "rate": 0.5,
+        "successes": 100,
+        "trials": 200
+      },
+      "accuracy_original": {
+        "interval": [
+          0.3233,
+          0.5167
+        ],
+        "rate": 0.42,
+        "successes": 42,
+        "trials": 100
+      },
+      "accuracy_swapped": {
+        "interval": [
+          0.4833,
+          0.6767
+        ],
+        "rate": 0.58,
+        "successes": 58,
+        "trials": 100
+      },
+      "consistent_correct": {
+        "interval": [
+          0.0,
+          0.0
+        ],
+        "rate": 0.0,
+        "successes": 0,
+        "trials": 100
+      },
+      "errors": 0,
+      "flips_to_first": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 100,
+        "trials": 100
+      },
+      "group": "Natural",
+      "instances": 100,
+      "position_bias": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 100,
+        "trials": 100
+      }
+    },
+    {
+      "accuracy_average": {
+        "interval": [
+          0.4401,
+          0.5599
+        ],
+        "rate": 0.5,
+        "successes": 134,
+        "trials": 268
+      },
+      "accuracy_original": {
+        "interval": [
+          0.4756,
+          0.6438
+        ],
+        "rate": 0.5597,
+        "successes": 75,
+        "trials": 134
+      },
+      "accuracy_swapped": {
+        "interval": [
+          0.3562,
+          0.5244
+        ],
+        "rate": 0.4403,
+        "successes": 59,
+        "trials": 134
+      },
+      "consistent_correct": {
+        "interval": [
+          0.0,
+          0.0
+        ],
+        "rate": 0.0,
+        "successes": 0,
+        "trials": 134
+      },
+      "errors": 0,
+      "flips_to_first": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 134,
+        "trials": 134
+      },
+      "group": "Adversarial/Neighbor",
+      "instances": 134,
+      "position_bias": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 134,
+        "trials": 134
+      }
+    },
+    {
+      "accuracy_average": {
+        "interval": [
+          0.4278,
+          0.5722
+        ],
+        "rate": 0.5,
+        "successes": 92,
+        "trials": 184
+      },
+      "accuracy_original": {
+        "interval": [
+          0.387,
+          0.5913
+        ],
+        "rate": 0.4891,
+        "successes": 45,
+        "trials": 92
+      },
+      "accuracy_swapped": {
+        "interval": [
+          0.4087,
+          0.613
+        ],
+        "rate": 0.5109,
+        "successes": 47,
+        "trials": 92
+      },
+      "consistent_correct": {
+        "interval": [
+          0.0,
+          0.0
+        ],
+        "rate": 0.0,
+        "successes": 0,
+        "trials": 92
+      },
+      "errors": 0,
+      "flips_to_first": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 92,
+        "trials": 92
+      },
+      "group": "Adversarial/GPTInst",
+      "instances": 92,
+      "position_bias": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 92,
+        "trials": 92
+      }
+    },
+    {
+      "accuracy_average": {
+        "interval": [
+          0.3989,
+          0.6011
+        ],
+        "rate": 0.5,
+        "successes": 47,
+        "trials": 94
+      },
+      "accuracy_original": {
+        "interval": [
+          0.3254,
+          0.6107
+        ],
+        "rate": 0.4681,
+        "successes": 22,
+        "trials": 47
+      },
+      "accuracy_swapped": {
+        "interval": [
+          0.3893,
+          0.6746
+        ],
+        "rate": 0.5319,
+        "successes": 25,
+        "trials": 47
+      },
+      "consistent_correct": {
+        "interval": [
+          0.0,
+          0.0
+        ],
+        "rate": 0.0,
+        "successes": 0,
+        "trials": 47
+      },
+      "errors": 0,
+      "flips_to_first": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 47,
+        "trials": 47
+      },
+      "group": "Adversarial/GPTOut",
+      "instances": 47,
+      "position_bias": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 47,
+        "trials": 47
+      }
+    },
+    {
+      "accuracy_average": {
+        "interval": [
+          0.3978,
+          0.6022
+        ],
+        "rate": 0.5,
+        "successes": 46,
+        "trials": 92
+      },
+      "accuracy_original": {
+        "interval": [
+          0.3339,
+          0.6226
+        ],
+        "rate": 0.4783,
+        "successes": 22,
+        "trials": 46
+      },
+      "accuracy_swapped": {
+        "interval": [
+          0.3774,
+          0.6661
+        ],
+        "rate": 0.5217,
+        "successes": 24,
+        "trials": 46
+      },
+      "consistent_correct": {
+        "interval": [
+          0.0,
+          0.0
+        ],
+        "rate": 0.0,
+        "successes": 0,
+        "trials": 46
+      },
+      "errors": 0,
+      "flips_to_first": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 46,
+        "trials": 46
+      },
+      "group": "Adversarial/Manual",
+      "instances": 46,
+      "position_bias": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 46,
+        "trials": 46
+      }
+    },
+    {
+      "accuracy_average": {
+        "interval": [
+          0.4612,
+          0.5388
+        ],
+        "rate": 0.5,
+        "successes": 319,
+        "trials": 638
+      },
+      "accuracy_original": {
+        "interval": [
+          0.4593,
+          0.569
+        ],
+        "rate": 0.5141,
+        "successes": 164,
+        "trials": 319
+      },
+      "accuracy_swapped": {
+        "interval": [
+          0.431,
+          0.5407
+        ],
+        "rate": 0.4859,
+        "successes": 155,
+        "trials": 319
+      },
+      "consistent_correct": {
+        "interval": [
+          0.0,
+          0.0
+        ],
+        "rate": 0.0,
+        "successes": 0,
+        "trials": 319
+      },
+      "errors": 0,
+      "flips_to_first": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 319,
+        "trials": 319
+      },
+      "group": "Adversarial (pooled)",
+      "instances": 319,
+      "position_bias": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 319,
+        "trials": 319
+      }
+    },
+    {
+      "accuracy_average": {
+        "interval": [
+          0.4661,
+          0.5339
+        ],
+        "rate": 0.5,
+        "successes": 419,
+        "trials": 838
+      },
+      "accuracy_original": {
+        "interval": [
+          0.4438,
+          0.5395
+        ],
+        "rate": 0.4916,
+        "successes": 206,
+        "trials": 419
+      },
+      "accuracy_swapped": {
+        "interval": [
+          0.4605,
+          0.5562
+        ],
+        "rate": 0.5084,
+        "successes": 213,
+        "trials": 419
+      },
+      "consistent_correct": {
+        "interval": [
+          0.0,
+          0.0
+        ],
+        "rate": 0.0,
+        "successes": 0,
+        "trials": 419
+      },
+      "errors": 0,
+      "flips_to_first": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 419,
+        "trials": 419
+      },
+      "group": "Overall",
+      "instances": 419,
+      "position_bias": {
+        "interval": [
+          1.0,
+          1.0
+        ],
+        "rate": 1.0,
+        "successes": 419,
+        "trials": 419
+      }
+    }
+  ],
+  "instances": [
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 0,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 1,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 2,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 3,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 4,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 5,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 6,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 7,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 8,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 9,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 10,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 11,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 12,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 13,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 14,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 15,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 16,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 17,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 18,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 19,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 20,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 21,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 22,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 23,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 24,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 25,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 26,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 27,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 28,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 29,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 30,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 31,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 32,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 33,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 34,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 35,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 36,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 37,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 38,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 39,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 40,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 41,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 42,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 43,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 44,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 45,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 46,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 47,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 48,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 49,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 50,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 51,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 52,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 53,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 54,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 55,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 56,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 57,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 58,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 59,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 60,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 61,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 62,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 63,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 64,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 65,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 66,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 67,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 68,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 69,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 70,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 71,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 72,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 73,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 74,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 75,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 76,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 77,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 78,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 79,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 80,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 81,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 82,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 83,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 84,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 85,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 86,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 87,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 88,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 89,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 90,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 91,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 92,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 93,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 94,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 95,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 96,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 97,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 98,
+      "label": 2,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 99,
+      "label": 1,
+      "subset": "Natural"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 0,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 1,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 2,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 3,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 4,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 5,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 6,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 7,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 8,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 9,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 10,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 11,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 12,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 13,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 14,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 15,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 16,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 17,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 18,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 19,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 20,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 21,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 22,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 23,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 24,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 25,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 26,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 27,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 28,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 29,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 30,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 31,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 32,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 33,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 34,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 35,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 36,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 37,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 38,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 39,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 40,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 41,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 42,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 43,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 44,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 45,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 46,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 47,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 48,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 49,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 50,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 51,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 52,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 53,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 54,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 55,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 56,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 57,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 58,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 59,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 60,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 61,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 62,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 63,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 64,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 65,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 66,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 67,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 68,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 69,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 70,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 71,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 72,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 73,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 74,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 75,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 76,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 77,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 78,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 79,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 80,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 81,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 82,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 83,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 84,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 85,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 86,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 87,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 88,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 89,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 90,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 91,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 92,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 93,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 94,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 95,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 96,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 97,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 98,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 99,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 100,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 101,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 102,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 103,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 104,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 105,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 106,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 107,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 108,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 109,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 110,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 111,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 112,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 113,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 114,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 115,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 116,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 117,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 118,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 119,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 120,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 121,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 122,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 123,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 124,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 125,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 126,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 127,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 128,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 129,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 130,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 131,
+      "label": 2,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 132,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 133,
+      "label": 1,
+      "subset": "Adversarial/Neighbor"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 0,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 1,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 2,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 3,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 4,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 5,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 6,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 7,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 8,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 9,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 10,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 11,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 12,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 13,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 14,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 15,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 16,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 17,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 18,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 19,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 20,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 21,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 22,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 23,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 24,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 25,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 26,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 27,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 28,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 29,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 30,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 31,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 32,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 33,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 34,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 35,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 36,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 37,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 38,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 39,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 40,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 41,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 42,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 43,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 44,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 45,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 46,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 47,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 48,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 49,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 50,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 51,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 52,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 53,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 54,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 55,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 56,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 57,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 58,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 59,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 60,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 61,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 62,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 63,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 64,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 65,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 66,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 67,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 68,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 69,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 70,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 71,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 72,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 73,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 74,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 75,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 76,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 77,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 78,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 79,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 80,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 81,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 82,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 83,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 84,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 85,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 86,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 87,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 88,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 89,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 90,
+      "label": 2,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 91,
+      "label": 1,
+      "subset": "Adversarial/GPTInst"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 0,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 1,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 2,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 3,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 4,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 5,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 6,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 7,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 8,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 9,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 10,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 11,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 12,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 13,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 14,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 15,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 16,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 17,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 18,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 19,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 20,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 21,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 22,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 23,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 24,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 25,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 26,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 27,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 28,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 29,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 30,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 31,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 32,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 33,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 34,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 35,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 36,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 37,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 38,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 39,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 40,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 41,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 42,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 43,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 44,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 45,
+      "label": 1,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 46,
+      "label": 2,
+      "subset": "Adversarial/GPTOut"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 0,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 1,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 2,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 3,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 4,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 5,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 6,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 7,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 8,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 9,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 10,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 11,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 12,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 13,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 14,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 15,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 16,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 17,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 18,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 19,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 20,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 21,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 22,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 23,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 24,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 25,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 26,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 27,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 28,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 29,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 30,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 31,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 32,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 33,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 34,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 35,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 36,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 37,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 38,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 39,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 40,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 41,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 42,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 43,
+      "label": 2,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 44,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    },
+    {
+      "chosen_original": 1,
+      "chosen_swapped": 2,
+      "cost_usd": 0.0,
+      "error_original": null,
+      "error_swapped": null,
+      "index": 45,
+      "label": 1,
+      "subset": "Adversarial/Manual"
+    }
+  ],
+  "interval": "95% Wald",
+  "judge_id": "fake:first",
+  "prompt_version": "1",
+  "selection": {
+    "limit_per_subset": null,
+    "seed": null
+  },
+  "stats_impl": "baseline"
+}
