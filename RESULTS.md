@@ -902,9 +902,10 @@ judged in both orders. A length tie flips with the order, which gives the
   (3 verdicts per item plus the position and verbosity probes; the first
   verdicts are already cached), estimated at $1.30 by `replay calibrate
   --dry-run` from the measured tokens of the committed verdicts ($0.0153 a
-  call). With 21 items no criterion can gate (`REPLAY_JUDGE_MIN_ITEMS`
-  defaults to 20 per criterion, and kappa needs `stats.py`), so the gating
-  report comes from D1.
+  call). A gating report also needs kappa from `stats.py`
+  and at least 20 labelled items per criterion (`REPLAY_JUDGE_MIN_ITEMS`);
+  21 items barely clear that floor and give a wide interval, so the gating
+  report is meant to come from D1.
 - **D1, the larger golden set.** `make record-golden` records 10
   `model-live` runs per retail task with Opus 5.5 and 10 with Haiku 5.5 (120
   runs), estimated at $2.19 from the M4 cost per run; then label it with
