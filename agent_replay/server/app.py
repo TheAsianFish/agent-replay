@@ -25,7 +25,12 @@ from pydantic import BaseModel, ConfigDict
 from agent_replay import __version__
 from agent_replay.diff import TraceDiff, diff_runs
 from agent_replay.errors import StoreError
-from agent_replay.judge.calibration import resolve_min_kappa
+from agent_replay.judge.calibration import (
+    criterion_gates,
+    report_blocker,
+    resolve_min_items,
+    resolve_min_kappa,
+)
 from agent_replay.store import (
     CalibrationRecord,
     CalibrationSummary,
@@ -77,7 +82,12 @@ class CalibrationView(_Model):
     record: CalibrationRecord
     min_kappa: float
     """``REPLAY_JUDGE_MIN_KAPPA`` (default 0.6) on the server."""
+    min_items: int = 20
+    """``REPLAY_JUDGE_MIN_ITEMS`` (default 20) on the server: the labelled items a criterion
+    needs before it may gate."""
     gates: dict[str, CriterionGateView]
+    blocked: str | None = None
+    """Why no criterion of this report can gate (objective reference, baseline statistics)."""
 
 
 def dashboard_dir() -> Path | None:
@@ -238,13 +248,18 @@ def create_app(
     def get_calibration(store: StoreDep, report_id: str) -> CalibrationView:
         record = store.get_calibration(report_id)
         min_kappa = resolve_min_kappa(None)
+        min_items = resolve_min_items(None)
         return CalibrationView(
             record=record,
             min_kappa=min_kappa,
+            min_items=min_items,
             gates={
-                name: CriterionGateView(gating=c.ci_low >= min_kappa)
-                for name, c in record.report.criteria.items()
+                name: CriterionGateView(gating=gates)
+                for name, gates in criterion_gates(
+                    record.report, min_kappa, min_items=min_items
+                ).items()
             },
+            blocked=report_blocker(record.report),
         )
 
     @app.get("/api/{rest:path}", include_in_schema=False)

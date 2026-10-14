@@ -380,6 +380,10 @@ class CalibrationSummary(_Model):
     created_at: datetime
     stored_at: datetime
     n_items: int
+    # Read from the stored report (no columns of their own); schema 1 reports get the defaults.
+    reference: str = "human"
+    repeats: int = 1
+    stats_impl: str | None = None
 
 
 class CalibrationRecord(_Model):
@@ -425,8 +429,15 @@ def _flake_summary(row: FlakeReportRow) -> FlakeReportSummary:
 
 def _calibration_summary(row: CalibrationRow) -> CalibrationSummary:
     summary = CalibrationSummary.model_validate(row)
+    report = row.report
     return summary.model_copy(
-        update={"created_at": _utc(summary.created_at), "stored_at": _utc(summary.stored_at)}
+        update={
+            "created_at": _utc(summary.created_at),
+            "stored_at": _utc(summary.stored_at),
+            "reference": report.get("reference", "human"),
+            "repeats": report.get("repeats", 1),
+            "stats_impl": report.get("stats_impl"),
+        }
     )
 
 

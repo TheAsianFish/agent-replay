@@ -228,6 +228,10 @@ export interface components {
          * @description How well one judge agrees with human labels on one rubric version.
          */
         CalibrationReport: {
+            /** Cached Calls */
+            cached_calls?: number | null;
+            /** Cost Usd */
+            cost_usd?: number | null;
             /**
              * Created At
              * Format: date-time
@@ -237,24 +241,50 @@ export interface components {
             criteria: {
                 [key: string]: components["schemas"]["CriterionCalibration"];
             };
+            /** Golden Fingerprint */
+            golden_fingerprint?: string | null;
+            /** Golden Set */
+            golden_set?: string | null;
+            /** Judge Calls */
+            judge_calls?: number | null;
             /** Judge Id */
             judge_id: string;
+            /** Labeller */
+            labeller?: string | null;
             /** Method */
             method: string;
             /** N Items */
             n_items: number;
+            /**
+             * Probes
+             * @default []
+             */
+            probes: components["schemas"]["ProbeResult"][];
             /** Prompt Version */
             prompt_version: string;
+            /**
+             * Reference
+             * @default human
+             * @enum {string}
+             */
+            reference: "human" | "objective";
+            /**
+             * Repeats
+             * @default 1
+             */
+            repeats: number;
             /** Rubric */
             rubric: string;
             /** Rubric Fingerprint */
             rubric_fingerprint: string;
             /**
              * Schema Version
-             * @default 1
-             * @constant
+             * @default 2
+             * @enum {integer}
              */
-            schema_version: 1;
+            schema_version: 1 | 2;
+            /** Stats Impl */
+            stats_impl?: string | null;
         };
         /** CalibrationSummary */
         CalibrationSummary: {
@@ -271,10 +301,22 @@ export interface components {
             n_items: number;
             /** Prompt Version */
             prompt_version: string;
+            /**
+             * Reference
+             * @default human
+             */
+            reference: string;
+            /**
+             * Repeats
+             * @default 1
+             */
+            repeats: number;
             /** Rubric */
             rubric: string;
             /** Rubric Fingerprint */
             rubric_fingerprint: string;
+            /** Stats Impl */
+            stats_impl?: string | null;
             /**
              * Stored At
              * Format: date-time
@@ -283,10 +325,17 @@ export interface components {
         };
         /** CalibrationView */
         CalibrationView: {
+            /** Blocked */
+            blocked?: string | null;
             /** Gates */
             gates: {
                 [key: string]: components["schemas"]["CriterionGateView"];
             };
+            /**
+             * Min Items
+             * @default 20
+             */
+            min_items: number;
             /** Min Kappa */
             min_kappa: number;
             record: components["schemas"]["CalibrationRecord"];
@@ -311,18 +360,38 @@ export interface components {
             /** Position */
             position: number;
         };
+        /**
+         * Confusion
+         * @description Judge verdicts against the reference labels on the same items.
+         */
+        Confusion: {
+            /** Both Fail */
+            both_fail: number;
+            /** Both Pass */
+            both_pass: number;
+            /** Judge Fail Reference Pass */
+            judge_fail_reference_pass: number;
+            /** Judge Pass Reference Fail */
+            judge_pass_reference_fail: number;
+        };
         /** CriterionCalibration */
         CriterionCalibration: {
             /** Agreement */
             agreement: number;
             /** Ci High */
-            ci_high: number;
+            ci_high: number | null;
             /** Ci Low */
-            ci_low: number;
+            ci_low: number | null;
+            confusion?: components["schemas"]["Confusion"] | null;
             /** Kappa */
-            kappa: number;
+            kappa: number | null;
+            /** Majority Agreement */
+            majority_agreement?: number | null;
+            /** Majority Label */
+            majority_label?: ("pass" | "fail") | null;
             /** N */
             n: number;
+            self_consistency?: components["schemas"]["SelfConsistency"] | null;
         };
         /** CriterionGateView */
         CriterionGateView: {
@@ -599,6 +668,42 @@ export interface components {
              */
             seed: number;
         };
+        /**
+         * FlipStats
+         * @description How often a perturbation that should not matter changed the judge's verdict.
+         */
+        FlipStats: {
+            /** Ci High */
+            ci_high?: number | null;
+            /** Ci Low */
+            ci_low?: number | null;
+            /** Flips */
+            flips: number;
+            /** N */
+            n: number;
+            /** Rate */
+            rate: number | null;
+            /** To Fail */
+            to_fail: number;
+            /** To Pass */
+            to_pass: number;
+        };
+        /**
+         * GroupStats
+         * @description Judge leniency on one group of items, measured against the reference labels.
+         */
+        GroupStats: {
+            /** False Pass Rate */
+            false_pass_rate: number | null;
+            /** Judge Pass Rate */
+            judge_pass_rate: number | null;
+            /** N */
+            n: number;
+            /** Reference Fail N */
+            reference_fail_n: number;
+            /** Reference Pass Rate */
+            reference_pass_rate: number | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -616,6 +721,32 @@ export interface components {
             version: string;
         };
         JsonValue: unknown;
+        /**
+         * ProbeResult
+         * @description One bias probe. ``flips`` is set for perturbation probes (position, verbosity),
+         *     ``groups`` for the self-preference comparison; ``skipped`` says why neither is.
+         */
+        ProbeResult: {
+            /** Description */
+            description: string;
+            /** Flips */
+            flips?: {
+                [key: string]: components["schemas"]["FlipStats"];
+            } | null;
+            /** Groups */
+            groups?: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["GroupStats"];
+                };
+            } | null;
+            /**
+             * Probe
+             * @enum {string}
+             */
+            probe: "position" | "verbosity" | "self_preference";
+            /** Skipped */
+            skipped?: string | null;
+        };
         /** RunDiff */
         RunDiff: {
             base: components["schemas"]["RunSummary"];
@@ -773,6 +904,20 @@ export interface components {
             tokens: number;
             /** Unconsumed Count */
             unconsumed_count: number;
+        };
+        /**
+         * SelfConsistency
+         * @description How much the judge agrees with itself over repeated runs on the same items.
+         */
+        SelfConsistency: {
+            /** Mean Pairwise Kappa */
+            mean_pairwise_kappa?: number | null;
+            /** N */
+            n: number;
+            /** Runs */
+            runs: number;
+            /** Unanimous */
+            unanimous: number;
         };
         /** StepRecord */
         StepRecord: {
