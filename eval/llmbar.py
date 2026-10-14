@@ -78,7 +78,7 @@ from agent_replay.judge.pairwise import (
     render_pair,
 )
 from agent_replay.pricing import prices
-from eval.llmbar_fetch import COMMIT, REPOSITORY, FetchError, parse_records
+from eval.llmbar_fetch import COMMIT, REPOSITORY, FetchError, parse_records, verify
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "eval" / "data" / "llmbar"
@@ -507,16 +507,19 @@ def report(
     limit: int | None,
     seed: int,
     timestamp: str | None = None,
+    pinned: bool = True,
 ) -> dict[str, JsonValue]:
     """The result document. Byte-stable under ``json.dumps(..., sort_keys=True)``: it holds
-    no run-dependent values (cache hits, wall time) and a timestamp only when given one."""
+    no run-dependent values (cache hits, wall time) and a timestamp only when given one.
+    ``pinned`` says the data matched the vendored commit's checksums; otherwise the document
+    names no commit, so a result on edited or other data is not attributed to LLMBar's."""
     doc: dict[str, JsonValue] = {
         "dataset": {
             "name": "LLMBar",
             "citation": "Zeng et al., Evaluating Large Language Models at Evaluating "
             "Instruction Following, ICLR 2024",
             "source": f"https://github.com/{REPOSITORY}",
-            "commit": COMMIT,
+            "commit": COMMIT if pinned else None,
         },
         "judge_id": judge_id,
         "prompt_version": PAIRWISE_PROMPT_VERSION,
@@ -662,6 +665,15 @@ def _budget_problem(est: Estimate, max_cost_usd: float | None) -> str | None:
     return None
 
 
+def is_pinned(data_dir: Path) -> bool:
+    """Whether every file under ``data_dir`` matches the pinned commit's checksums."""
+    try:
+        verify(data_dir)
+    except (FetchError, OSError):
+        return False
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
@@ -705,6 +717,7 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
             seed=args.seed,
             timestamp=args.timestamp,
+            pinned=is_pinned(args.data),
         )
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(

@@ -424,7 +424,7 @@ def test_the_json_is_byte_stable_and_the_table_names_its_interval(data, tmp_path
     assert list(doc) == sorted(doc)
     assert "generated_at" not in doc
     assert doc["interval"] == "95% Wald"
-    assert doc["dataset"]["commit"] == llmbar_fetch.COMMIT
+    assert doc["dataset"]["commit"] is None  # synthetic data is not LLMBar's pinned commit
     assert len(doc["instances"]) == N_BALANCED
     assert "95% Wald (`REPLAY_STATS_IMPL=baseline`)" in out
     assert "| Overall | 12 | 0.0% " in out  # the wrong output is the longer one throughout
@@ -527,3 +527,6 @@ def test_the_committed_heuristic_floors_reproduce_byte_for_byte(judge, tmp_path,
     assert code == 0
     committed = llmbar.ROOT / "eval" / "results" / f"llmbar_heuristic_{judge}.json"
     assert out_path.read_bytes() == committed.read_bytes()
+    assert json.loads(committed.read_text(encoding="utf-8"))["dataset"]["commit"] == (
+        llmbar_fetch.COMMIT
+    )  # the vendored data matched the pinned checksums, so the result is attributed to them

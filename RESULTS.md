@@ -917,7 +917,11 @@ judged in both orders. A length tie flips with the order, which gives the
   $12.73 by `make eval-llmbar-dry` (characters / 4 for input, an assumed 600
   output tokens a call; output is about 80% of the estimate). `--limit N
   --seed S` runs a stratified sample for less. Compare with the heuristic
-  baselines above.
+  baselines above. Commit `eval/llmbar-cache/` with the result, as the retail
+  judge cache is, so `uv run python eval/llmbar.py --offline --out
+  eval/results/llmbar.json` reproduces it without a key; under the default
+  `baseline` statistics the intervals are Wald, so prefer
+  `REPLAY_STATS_IMPL=core make eval-llmbar` once `stats.py` exists.
 - The M2 live smoke test above can be re-run with the two commands in its
   section (about $0.30 each with `claude-opus-5-5` and a cold prompt cache);
   the M3 cost-gate run with the two commands in its section (about $1.00);
