@@ -35,16 +35,17 @@ describe("Calibration pages", () => {
   });
 
   it("shows each criterion with a gate badge, whisker and threshold", async () => {
-    mockApi({ "/api/calibration/*": { body: calibrationView } });
-    renderAt("/calibration/cal1aaaabbbbcccc");
+    mockApi({ "/api/calibration/*": { body: calibrationViewV2 } });
+    renderAt("/calibration/cal2ddddeeeeffff");
     await screen.findByTestId("method");
-    expect(screen.getByText("(1 of 2 gating)")).toBeInTheDocument();
-    const row = (name: string) => screen.getByText(name, { selector: "td" }).closest("tr") as HTMLElement;
+    expect(screen.getByText("(1 of 4 gating)")).toBeInTheDocument();
+    const criteria = within(screen.getByRole("table", { name: "Criteria" }));
+    const row = (name: string) => criteria.getByText(name, { selector: "td" }).closest("tr") as HTMLElement;
     expect(within(row("resolves_request")).getByText("gating")).toBeInTheDocument();
-    expect(within(row("resolves_request")).getByText("92%")).toBeInTheDocument();
+    expect(within(row("resolves_request")).getByText("91.7%")).toBeInTheDocument();
     expect(within(row("tone")).getByText("advisory")).toBeInTheDocument();
-    expect(within(row("tone")).getByText("[0.12, 0.50]")).toBeInTheDocument();
-    const whisker = within(row("tone")).getByRole("img", { name: /tone: kappa 0.31/ });
+    expect(within(row("tone")).getByText("[-0.18, 0.63]")).toBeInTheDocument();
+    const whisker = within(row("tone")).getByRole("img", { name: /tone: kappa 0.25/ });
     expect(whisker.querySelector("[data-testid=min-kappa-line]")).not.toBeNull();
   });
 
@@ -94,13 +95,15 @@ describe("Calibration pages", () => {
     expect(kappaDomain([c, { ...c, kappa: null, ci_low: null, ci_high: null }], 0.6)).toEqual([0, 1]);
   });
 
-  it("renders a schema 1 report without the schema 2 sections", async () => {
+  it("renders a schema 1 report as blocked, without the schema 2 sections", async () => {
     mockApi({ "/api/calibration/*": { body: calibrationView } });
     renderAt("/calibration/cal1aaaabbbbcccc");
     await screen.findByTestId("method");
     expect(screen.getByText("schema 1")).toBeInTheDocument();
     expect(screen.getByText("human labels")).toBeInTheDocument();
-    expect(screen.queryByTestId("blocked")).toBeNull();
+    // A schema 1 report does not say which statistics made it, so the server blocks it.
+    expect(screen.getByTestId("blocked")).toHaveTextContent("statistics that it does not name");
+    expect(screen.getByText("(0 of 2 gating)")).toBeInTheDocument();
     expect(screen.queryByText("Repeats")).toBeNull();
     expect(screen.queryByText("Judge × reference")).toBeNull();
     expect(screen.queryByText("Self-consistency")).toBeNull();
@@ -129,7 +132,7 @@ describe("Calibration page, schema 2", () => {
     expect(within(method).getByText("18 live · 270 cached")).toBeInTheDocument();
     expect(within(method).getByText("$0.4312")).toBeInTheDocument();
     expect(screen.queryByTestId("blocked")).toBeNull();
-    expect(screen.getByText("(2 of 4 gating)")).toBeInTheDocument();
+    expect(screen.getByText("(1 of 4 gating)")).toBeInTheDocument();
   });
 
   it("shows an undefined kappa without a whisker", async () => {
@@ -151,9 +154,10 @@ describe("Calibration page, schema 2", () => {
     expect(within(row("resolves_request")).getByTestId("agreement")).not.toHaveClass("text-amber-800");
   });
 
-  it("shows the whole-run criterion by name", async () => {
+  it("shows the whole-run criterion by name and never as gating", async () => {
     await open();
-    expect(within(row("whole run")).getByText("gating")).toBeInTheDocument();
+    // kappa 1.0 on 24 items would gate a rubric criterion; the whole-run entry is not one.
+    expect(within(row("whole run")).getByText("advisory")).toBeInTheDocument();
     expect(screen.queryByText("_overall")).toBeNull();
   });
 

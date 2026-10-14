@@ -272,11 +272,16 @@ export const calibrations: CalibrationSummary[] = [
   },
 ];
 
-/** A schema 1 report as the API returns it (the server fills in the schema 2 defaults). */
+/**
+ * A schema 1 report as the API returns it: the server fills in the schema 2 defaults, and because
+ * such a report does not name its statistics it is blocked, so no criterion gates whatever its kappa.
+ */
 export const calibrationView: CalibrationView = {
   min_kappa: 0.6,
   min_items: 20,
-  gates: { resolves_request: { gating: true }, tone: { gating: false } },
+  blocked:
+    "the calibration report was computed with statistics that it does not name; recalibrate with REPLAY_STATS_IMPL=core",
+  gates: { resolves_request: { gating: false }, tone: { gating: false } },
   record: {
     id: "cal1aaaabbbbcccc",
     stored_at: "2026-10-10T00:00:00Z",
@@ -309,7 +314,8 @@ export const calibrationViewV2: CalibrationView = {
     resolves_request: { gating: true },
     tone: { gating: false },
     follows_policy: { gating: false },
-    _overall: { gating: true },
+    // The whole-run entry is not a rubric criterion and never gates, however good its numbers.
+    _overall: { gating: false },
   },
   record: {
     id: "cal2ddddeeeeffff",
