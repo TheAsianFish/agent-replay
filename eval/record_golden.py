@@ -11,8 +11,11 @@ become a golden item with its objective label; ``replay label`` adds the human
 ones.
 
 Cassettes already on disk are kept, so an interrupted run resumes where it
-stopped and costs nothing for the runs it already has. The estimate printed
-first uses the measured cost per ``model-live`` run from the M4 flake reports.
+stopped and costs nothing for the runs it already has. A run that ends in an
+agent error (an API or credentials failure, say) is not kept: it would become a
+golden item that "fails" for free and would never be re-recorded. If the first
+three runs all end that way the harness stops. The estimate printed first uses
+the measured cost per ``model-live`` run from the M4 flake reports.
 
 Usage::
 
@@ -22,6 +25,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -44,6 +48,8 @@ AGENTS = {
 }
 COST_PER_RUN = {"opus": 1.0696 / 30, "haiku": 0.1045 / 120}
 """Measured: total spend over runs of the M4 live flake reports (RESULTS.md)."""
+GIVE_UP_AFTER = 3
+"""Runs that all end in an agent error, from the first on, before recording stops."""
 
 
 def plan(out: Path, runs: int, agents: Sequence[str]) -> list[tuple[str, str, Path]]:
@@ -58,15 +64,22 @@ def plan(out: Path, runs: int, agents: Sequence[str]) -> list[tuple[str, str, Pa
 
 
 def record(jobs: list[tuple[str, str, Path]], client: str) -> int:
-    """Record every missing cassette; returns how many runs failed to record."""
+    """Record every missing cassette; returns how many runs failed to record.
+
+    A run whose agent raised is a failed recording: its cassette is removed, so the next
+    invocation records it again, and it never becomes a golden item. When the first
+    :data:`GIVE_UP_AFTER` runs all fail that way (no credentials, a wrong model name) the
+    rest are not attempted.
+    """
     suite = {s.name: s for s in load_suite(SUITE).scenario}
-    failed = 0
+    attempted = failed = 0
     for scenario, name, path in jobs:
         if path.exists():
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
         source = Cassette.load(RECORDINGS / Path(suite[scenario].cassette).name)
         retail_tools.reset_db()
+        attempted += 1
         try:
             result = replay(
                 source,
@@ -78,8 +91,25 @@ def record(jobs: list[tuple[str, str, Path]], client: str) -> int:
         except ReplayError as exc:
             print(f"{path.name}: {exc}", file=sys.stderr)
             failed += 1
-            continue
-        print(f"{path.name}: {'ok' if result.ok else 'agent error'} ${result.cost_usd:.4f}")
+        else:
+            if result.ok:
+                print(f"{path.name}: ok ${result.cost_usd:.4f}")
+                continue
+            assert result.error is not None
+            print(
+                f"{path.name}: agent error {result.error.type}: {result.error.message}; "
+                "cassette discarded",
+                file=sys.stderr,
+            )
+            path.unlink(missing_ok=True)
+            failed += 1
+        if failed == attempted >= GIVE_UP_AFTER:
+            print(
+                f"the first {attempted} runs all failed, so recording stopped; fix the model "
+                "client (credentials, model name) and rerun",
+                file=sys.stderr,
+            )
+            break
     return failed
 
 
@@ -128,8 +158,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"{len(missing)} of {len(jobs)} runs to record; estimated cost ${cost:.2f}")
     if args.dry_run:
         return 0
+    if missing and args.client == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
+        print(
+            "record_golden: ANTHROPIC_API_KEY is not set, so no run can be recorded; set it, "
+            "or pass --client module:factory for a fake model",
+            file=sys.stderr,
+        )
+        return 2
     failed = record(jobs, args.client)
-    build(jobs, args.out)
+    if any(path.exists() for _, _, path in jobs):
+        build(jobs, args.out)
     return 1 if failed else 0
 
 
