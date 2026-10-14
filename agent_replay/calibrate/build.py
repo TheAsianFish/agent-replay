@@ -16,7 +16,7 @@ judge check's own ``max_chars`` so items match what that check sends.
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -81,8 +81,12 @@ def golden_from_suite(
     client: str | None = None,
     clock: Callable[[], datetime] | None = None,
     timer: Callable[[], float] = time.perf_counter,
+    scenarios: Sequence[Scenario] | None = None,
 ) -> GoldenBuild:
     """Replay every scenario of ``suite`` without its judge checks and build the items.
+
+    ``scenarios`` replaces the suite's own list (same defaults and checks), for
+    example the suite's scenarios pointed at new recordings of the same tasks.
 
     ``labelled_at`` on an objective label is the recording time of the scenario's
     cassette unless ``clock`` is given, so rebuilding from the same cassettes
@@ -100,7 +104,7 @@ def golden_from_suite(
     verdicts: dict[str, Label] = {}
     conflicts: list[str] = []
     skipped: list[SkippedScenario] = []
-    for scenario in loaded.scenario:
+    for scenario in loaded.scenario if scenarios is None else scenarios:
         max_chars = _max_chars(scenario, loaded.defaults.checks)
         stripped = scenario.model_copy(update={"checks": _without_judge(scenario.checks)})
         report, result = run_scenario(
