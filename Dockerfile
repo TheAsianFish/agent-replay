@@ -23,7 +23,7 @@ COPY agent_replay/ agent_replay/
 RUN uv sync --locked --no-dev --extra server --extra postgres
 COPY --from=ui /src/agent_replay/server/static/ agent_replay/server/static/
 COPY examples/ examples/
-COPY eval/results/judge_smoke.json eval/results/judge_smoke.json
+COPY eval/golden/retail/ eval/golden/retail/
 RUN useradd --create-home --uid 10001 replay && chown -R replay /app
 USER replay
 ENV REPLAY_LOG_FORMAT=json

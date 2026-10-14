@@ -1,8 +1,7 @@
-"""The dashboard's demo seed: real replay commands into a store, and the demo calibration."""
+"""The dashboard's demo seed: real replay commands into a store."""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -11,17 +10,17 @@ from agent_replay.store import Store
 from examples import demo_data
 
 
-def test_the_demo_calibration_compares_judge_and_deterministic_verdicts():
-    report = demo_data.calibration_from_judge_smoke()
-    rows = json.loads(demo_data.JUDGE_SMOKE.read_text(encoding="utf-8"))
-    assert report.n_items == len(rows) == 24
-    assert "not human labels" in report.method
-    assert report.judge_id == "anthropic:claude-opus-5-5:effort=low"
-    resolved = report.criteria["resolved"]
-    agree = sum((r["criteria"]["resolved"] == "pass") == r["deterministic_pass"] for r in rows)
-    assert resolved.agreement == agree / 24
-    assert -1 <= resolved.ci_low <= resolved.ci_high <= 1
-    assert "raw agreement in the kappa column" in report.method  # baseline statistics
+def test_the_demo_calibrations_are_real_replay_calibrate_runs():
+    plan = [args for args, _ in demo_data.invocations("sqlite://")]
+    calibrations = [a for a in plan if a[0] == "calibrate"]
+
+    assert len(calibrations) == 2
+    assert all(a[a.index("--reference") + 1] == "objective" for a in calibrations)
+    real, fake = calibrations
+    assert "--offline" in real
+    assert "--provider" not in real
+    assert fake[fake.index("--provider") + 1] == demo_data.FAKE_JUDGE
+    assert demo_data.FAKE_JUDGE_CACHE not in real
 
 
 def test_a_small_seed_fills_every_page(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -36,7 +35,7 @@ def test_a_small_seed_fills_every_page(tmp_path: Path, monkeypatch: pytest.Monke
         assert len(suites) == 8  # 4 passing ci, 2 regressions, 2 flake
         assert store.count_runs(passed=False) > 0
         assert len(store.list_flake_reports()) == 2
-        assert len(store.list_calibrations()) == 1
+        assert len(store.list_calibrations()) == 2
         total = store.count_runs()
     assert demo_data.main(["--db", db, "--if-empty"]) == 0
     with Store.open(db) as store:
