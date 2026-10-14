@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -11,7 +12,7 @@ import pytest
 from typer.testing import CliRunner
 
 from agent_replay.calibrate import commands_golden
-from agent_replay.calibrate.build import OBJECTIVE_LABELLER, golden_from_suite
+from agent_replay.calibrate.build import OBJECTIVE_LABELLER, golden_from_suite, objective_label
 from agent_replay.calibrate.golden import (
     ITEMS_FILE,
     LABELS_FILE,
@@ -22,10 +23,13 @@ from agent_replay.calibrate.golden import (
     Label,
     reference_labels,
 )
+from agent_replay.cassette import Cassette
+from agent_replay.checks.base import CheckResult
 from agent_replay.cli import app
 from agent_replay.errors import ConfigError
 from agent_replay.judge.rubric import Rubric
 from agent_replay.judge.transcript import JudgeInput, ToolCallRecord
+from agent_replay.runner import load_agent, replay
 
 ROOT = Path(__file__).parents[1]
 SUITE = Path("examples/retail_agent/replay.toml")
@@ -104,6 +108,26 @@ def test_round_trip(tmp_path: Path) -> None:
     assert loaded.items == (item,)
     assert loaded.labels == (label,)
     assert loaded.items[0].transcript.fingerprint == transcript().fingerprint
+
+
+def test_transcripts_with_unicode_line_separators_round_trip(tmp_path: Path) -> None:
+    """U+2028 and friends are not escaped in the JSON; a reader that split on them would
+    find half a record on the next "line"."""
+    odd = JudgeInput(
+        task="Line one\u2028line two\u0085three\x0cfour",
+        output="Done.\u2029",
+        tool_calls=(ToolCallRecord(name="cancel", input={"order": "#W1"}, result="a\u2028b"),),
+        model_call_count=1,
+        tool_call_count=1,
+    )
+    item = GoldenItem.from_transcript(odd, GoldenSource(scenario="s", variant="agent"))
+    golden, _ = GoldenSet.load(tmp_path, must_exist=False).add_items([item])
+    golden.append_labels([human(item.id, "resolved", "pass", "ann", "sha256:x")])
+
+    loaded = GoldenSet.load(tmp_path)
+
+    assert loaded.items == (item,)
+    assert [lb.item for lb in loaded.labels] == [item.id]
 
 
 def test_items_dedupe_by_transcript(tmp_path: Path) -> None:
@@ -294,6 +318,89 @@ def test_golden_add_with_a_mutant_merges_and_labels(built: Path) -> None:
     assert {lb.label for lb in objective.values()} == {"pass", "fail"}
 
 
+def test_the_objective_label_ignores_budget_checks() -> None:
+    """A dearer run is not a wrong one: cost is nothing the judge can see in a transcript."""
+    cassette = Cassette.load(
+        ROOT / "examples/retail_agent/cassettes/lookup_latest_order_total.jsonl"
+    )
+    finished = replay(cassette, load_agent("examples.retail_agent.agent:run"))
+    assert finished.ok
+    budget_only = (CheckResult(check="budget", passed=False, message="26% over baseline"),)
+    behaviour = (*budget_only, CheckResult(check="tool_sequence", passed=False, message="differs"))
+
+    assert objective_label("0" * 16, finished, budget_only, T0).label == "pass"
+    label = objective_label("0" * 16, finished, behaviour, T0)
+    assert label.label == "fail"
+    assert label.note == "failed: tool_sequence"  # the budget check is not even listed
+
+
+def test_golden_add_is_idempotent_from_another_working_directory(
+    golden_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    before = (golden_dir / ITEMS_FILE).read_bytes()
+    monkeypatch.chdir(ROOT / "examples")
+
+    result = invoke("golden", "add", "retail_agent/replay.toml", "--out", str(golden_dir))
+
+    assert result.exit_code == 0, result.output
+    assert "0 new, 0 existing gained a source" in result.output
+    assert (golden_dir / ITEMS_FILE).read_bytes() == before
+    monkeypatch.chdir("/")
+    result = invoke("golden", "add", str(ROOT / SUITE), "--out", str(golden_dir))
+    assert result.exit_code == 0, result.output
+    assert (golden_dir / ITEMS_FILE).read_bytes() == before
+
+
+def test_runs_of_one_transcript_with_different_verdicts_are_left_out(tmp_path: Path) -> None:
+    cassette = (ROOT / "examples/retail_agent/cassettes/lookup_latest_order_total.jsonl").as_posix()
+    suite = tmp_path / "suite.toml"
+    suite.write_text(
+        "[defaults]\n"
+        'agent = "examples.retail_agent.agent:run"\n'
+        f'[[scenario]]\nname = "plain"\ncassette = "{cassette}"\n'
+        f'[[scenario]]\nname = "stricter"\ncassette = "{cassette}"\n'
+        'checks = [ { type = "required_tools", tools = ["cancel_pending_order"] } ]\n',
+        encoding="utf-8",
+    )
+    out = tmp_path / "set"
+
+    build = golden_from_suite(suite)
+    result = invoke("golden", "add", str(suite), "--out", str(out))
+
+    assert len(build.conflicts) == 1
+    assert build.items == ()
+    assert build.labels == ()
+    assert result.exit_code == 0, result.output
+    assert "got different check verdicts; it was left out" in result.output
+    assert GoldenSet.load(out).items == ()
+    # Adding the plain scenario alone later is a fresh, consistent item.
+    suite.write_text(
+        '[defaults]\nagent = "examples.retail_agent.agent:run"\n'
+        f'[[scenario]]\nname = "plain"\ncassette = "{cassette}"\n',
+        encoding="utf-8",
+    )
+    assert invoke("golden", "add", str(suite), "--out", str(out)).exit_code == 0
+    assert len(GoldenSet.load(out).items) == 1
+
+
+def test_a_run_that_disagrees_with_the_stored_label_is_not_added_as_a_source(
+    golden_dir: Path,
+) -> None:
+    build = golden_from_suite(SUITE)
+    first = build.labels[0]
+    golden = GoldenSet.load(golden_dir)
+    sources_before = golden.item(first.item).sources
+    golden.append_labels([first.model_copy(update={"label": "fail"})])
+
+    result = invoke("golden", "add", str(SUITE), "--out", str(golden_dir), "--variant", "other")
+
+    assert result.exit_code == 0, result.output
+    assert "this run was not added as a source" in result.output
+    after = GoldenSet.load(golden_dir).item(first.item).sources
+    assert after == sources_before
+    assert "other" not in {s.variant for s in after}
+
+
 def test_golden_add_reports_a_verdict_that_differs_from_an_earlier_build(golden_dir: Path) -> None:
     build = golden_from_suite(SUITE)
     first = build.labels[0]
@@ -473,7 +580,33 @@ def test_label_resumes_and_relabels(golden_dir: Path) -> None:
     assert after == first
 
     output, _ = label(golden_dir, "--criterion", "resolved", "--relabel", "--limit", "1", input="")
-    assert "item 1/1" in output
+    assert re.search(r"item 1/1\b", output)  # not "item 1/10"
+
+
+def test_label_asks_again_after_a_criterion_was_edited(golden_dir: Path, tmp_path: Path) -> None:
+    n = len(GoldenSet.load(golden_dir).items)
+    _, first = label(golden_dir, "--criterion", "resolved", "--limit", "1", input="p\n")
+    assert len(first) == 1
+    output, _ = label(golden_dir, "--criterion", "resolved", input="")
+    assert f"item 1/{n - 1}" in output  # the answered item is not asked again
+
+    text = RUBRIC.read_text(encoding="utf-8")
+    edited = tmp_path / "rubric.yaml"
+    assert "Did the agent do what the user asked, as far as the policy allows?" in text
+    edited.write_text(
+        text.replace(
+            "Did the agent do what the user asked, as far as the policy allows?",
+            "Did the agent do what the user asked, within the policy?",
+        ),
+        encoding="utf-8",
+    )
+    result = invoke(
+        "label", str(golden_dir), "--rubric", str(edited), "--labeller", "ann",
+        "--criterion", "resolved", input="",
+    )  # fmt: skip
+
+    assert result.exit_code == 0, result.output
+    assert f"item 1/{n}" in result.output  # the edited question is asked for every item again
 
 
 def test_label_nothing_left(golden_dir: Path) -> None:

@@ -62,8 +62,10 @@ class GoldenBuild:
 
     ``items`` are in suite order, one per distinct transcript (scenarios whose
     transcripts coincide share an item with several sources). ``labels`` hold
-    one objective label per item, except for ``conflicts``: items whose runs got
-    different deterministic verdicts, which no single label can describe.
+    one objective label per item. ``conflicts`` are transcripts whose runs got
+    different deterministic verdicts, which no single label can describe: they
+    are left out of ``items`` and ``labels`` both, so a set never holds an item
+    whose sources disagree with its label.
     """
 
     items: tuple[GoldenItem, ...]
@@ -140,17 +142,25 @@ def golden_from_suite(
         elif previous.label != label.label and key not in conflicts:
             conflicts.append(key)
         log.info("golden.scenario", scenario=scenario.name, item=key, label=label.label)
+    kept = tuple(item for key, item in items.items() if key not in conflicts)
     labels = tuple(lb for key, lb in verdicts.items() if key not in conflicts)
-    return GoldenBuild(tuple(items.values()), labels, tuple(skipped), tuple(conflicts))
+    return GoldenBuild(kept, labels, tuple(skipped), tuple(conflicts))
+
+
+NOT_OBJECTIVE = frozenset({"budget"})
+"""Check types left out of the objective label. A ``budget`` check compares cost, tokens,
+latency or the number of model calls with a baseline: nothing a transcript shows, so a
+correct run that happened to be dearer must not count as a failed one."""
 
 
 def objective_label(
     item: str, result: RunResult, checks: tuple[CheckResult, ...], labelled_at: datetime
 ) -> Label:
-    """Pass iff the run finished and every check passed, advisory ones included: the judge
-    is measured on the run, not on what the suite chose to gate. ``checks`` exclude the
-    judge (:func:`golden_from_suite` drops it)."""
-    failed = [c.check for c in checks if not c.passed]
+    """Pass iff the run finished and every check of the run's behaviour passed, advisory
+    ones included: the judge is measured on the run, not on what the suite chose to gate.
+    ``checks`` exclude the judge (:func:`golden_from_suite` drops it); the types in
+    :data:`NOT_OBJECTIVE` are skipped here."""
+    failed = [c.check for c in checks if not c.passed and c.check not in NOT_OBJECTIVE]
     problems = ([f"agent error {result.error.type}"] if result.error is not None else []) + failed
     return Label(
         item=item,

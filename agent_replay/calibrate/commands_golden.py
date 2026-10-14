@@ -85,9 +85,10 @@ def add_cmd(
 
     Runs of one transcript with different verdicts are a conflict and get no new
     label, whether they come from one call or from two: within one call the
-    item gets no objective label; when an item already has one and a later call
-    disagrees, the earlier label stands and the conflict is reported. Exit 2
-    when a scenario could not run (the others are still added).
+    item is left out altogether; when an item already has a label and a later
+    call disagrees, the earlier label stands and the new run is not added as a
+    source, so an item's sources never disagree with its label. Both are
+    reported. Exit 2 when a scenario could not run (the others are still added).
     """
     try:
         golden = GoldenSet.load(out, must_exist=False)
@@ -97,13 +98,6 @@ def add_cmd(
             agent=agent,
             mode=mode.value if mode else None,
             client=client,
-        )
-        before = {i.id: i for i in golden.items}
-        golden, added = golden.add_items(build.items)
-        gained = sum(
-            1
-            for i in build.items
-            if i.id in before and golden.item(i.id).sources != before[i.id].sources
         )
         current = golden.current(source="objective", labeller=OBJECTIVE_LABELLER)
         fresh: list[Label] = []
@@ -116,6 +110,14 @@ def add_cmd(
             if old is not None and old.note == label.note:
                 continue
             fresh.append(label)
+        disagreeing = {old.item for old, _ in disagree}
+        before = {i.id: i for i in golden.items}
+        golden, added = golden.add_items([i for i in build.items if i.id not in disagreeing])
+        gained = sum(
+            1
+            for i in build.items
+            if i.id in before and golden.item(i.id).sources != before[i.id].sources
+        )
         golden.append_labels(fresh)
     except ReplayError as exc:
         raise fail(str(exc)) from exc
@@ -130,18 +132,19 @@ def add_cmd(
     console.print(
         f"{len(build.items)} item(s) from {escape(str(suite_path))} ({escape(variant)}): "
         f"{added} new, {gained} existing gained a source, "
-        f"{len(build.items) - added - gained} unchanged; {len(fresh)} objective label(s) written"
+        f"{len(build.items) - added - gained - len(disagreeing)} unchanged; {len(fresh)} "
+        "objective label(s) written"
     )
     for key in build.conflicts:
         console.print(
             f"[yellow]item {key}: runs with this transcript got different check verdicts; "
-            "no objective label written for it[/]"
+            "it was left out (no item, no objective label)[/]"
         )
     for old, new in disagree:
         console.print(
             f"[yellow]item {old.item}: conflict, this run's checks say {new.label} "
             f"({escape(variant)}) but its objective label says {old.label}; the earlier "
-            "label stands and nothing was written for it[/]"
+            "label stands and this run was not added as a source[/]"
         )
     if build.skipped:
         for s in build.skipped:

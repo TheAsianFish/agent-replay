@@ -375,8 +375,10 @@ the rule above. `make golden` rebuilds the retail set (21 items from 24 runs).
   to that criterion's fingerprint, so editing one criterion invalidates only
   its labels (`replay golden show --rubric` counts the stale ones). Each item
   also gets an objective whole-run label (`_overall`) from the suite's
-  non-judge checks. `replay golden add` is idempotent and reports a transcript
-  whose runs got different verdicts as a conflict.
+  checks of the run's behaviour (`judge` and `budget` checks excluded: cost is
+  not something a transcript shows). `replay golden add` is idempotent from any
+  working directory and reports a transcript whose runs got different verdicts
+  as a conflict, leaving it out rather than guessing.
 - **Labelling.** `replay label` shows the transcript and one criterion.
   It never shows the judge's verdict, the objective label, other labellers'
   answers or which agent variant produced the run. Keys: `p` pass, `f` fail,

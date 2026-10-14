@@ -104,11 +104,21 @@ def item_id(transcript: JudgeInput) -> str:
     return transcript.fingerprint.removeprefix("sha256:")[:16]
 
 
+PROJECT_MARKERS = ("pyproject.toml", ".git")
+
+
 def portable(path: Path) -> str:
-    """``path`` relative to the working directory when it is inside it, else as given (POSIX
-    separators), so a relative and an absolute spelling of one path record the same text."""
+    """``path`` as text that does not depend on where the command ran (POSIX separators):
+    relative to the project it is in (the nearest ancestor holding one of
+    :data:`PROJECT_MARKERS`), else to the working directory when inside it, else as given.
+    So the same suite spelled from the repository root, from a subdirectory or by an
+    absolute path records the same source, and ``golden add`` stays idempotent."""
+    resolved = path.resolve()
+    for ancestor in (resolved, *resolved.parents):
+        if any((ancestor / marker).exists() for marker in PROJECT_MARKERS):
+            return resolved.relative_to(ancestor).as_posix()
     try:
-        return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+        return resolved.relative_to(Path.cwd().resolve()).as_posix()
     except ValueError:
         return path.as_posix()
 
@@ -121,7 +131,9 @@ def _read_jsonl[M: BaseModel](path: Path, model: type[M]) -> list[M]:
     except (OSError, UnicodeDecodeError) as exc:
         raise ConfigError(f"cannot read {str(path)!r}: {exc}") from exc
     rows: list[M] = []
-    for number, line in enumerate(text.splitlines(), start=1):
+    # Lines end in "\n" only: str.splitlines would also break on U+2028, U+0085 and the like,
+    # which a transcript may contain unescaped.
+    for number, line in enumerate(text.split("\n"), start=1):
         if not line.strip():
             continue
         try:
