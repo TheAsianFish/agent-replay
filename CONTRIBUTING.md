@@ -49,6 +49,17 @@ make flake-demo   replay flake offline: the fake model passes; a seeded flaky mo
 make eval-judge-smoke  judge vs deterministic checks on 24 retail runs, from the committed verdict cache
 make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in five replay
                        configurations; detection per check type and mode (offline, byte-stable JSON)
+make golden       rebuild eval/golden/retail from the live recordings and mutants (offline; 21 items from 24 runs)
+make record-golden  D1: 120 model-live retail runs (Opus and Haiku) into eval/golden/retail-d1
+                  (needs ANTHROPIC_API_KEY; ~$2.19 estimated)
+make eval-judge   replay calibrate vs human labels on the retail golden set: kappa, self-consistency,
+                  probes (needs a key and `replay label` answers; prints its estimate first, ~$1.30)
+make eval-judge-objective  the judge vs the golden set's objective labels, offline from the committed
+                  cache (informative; such a report never gates)
+make data-llmbar  re-download LLMBar at the pinned commit into eval/data/llmbar
+make eval-llmbar  the real judge on LLMBar (needs a key; 838 calls, ~$12.73 dry-run estimate)
+make eval-llmbar-dry  the calls eval-llmbar still needs and their estimated cost (offline)
+make eval-llmbar-heuristics  LLMBar floors: first / longer / shorter-output judges (offline)
 make demo-data    real replay ci / replay flake runs of the retail example into .replay/demo.db
 make openapi      regenerate dashboard/openapi.json (then `npm run gen:types` in dashboard/)
 make ui           npm ci + build the dashboard into agent_replay/server/static
@@ -67,8 +78,7 @@ A new store column or table needs an Alembic revision in `agent_replay/migration
 disagree.
 
 Planned with later milestones (not in the Makefile yet): `make eval`, `make bench`,
-`make eval-judge`, `make eval-llmbar`, `make bench-flake` (key-requiring ones print a
-cost estimate first).
+`make bench-flake` (key-requiring ones print a cost estimate first).
 
 Until a target exists, say so in the PR rather than inventing it.
 
@@ -88,7 +98,7 @@ Until a target exists, say so in the PR rather than inventing it.
   requiring measurements go under "To measure" with the exact command.
 - No secrets, no personal data, no resume content. Config via env vars with the
   `REPLAY_` prefix (`REPLAY_JUDGE_PROVIDER`, `REPLAY_JUDGE_MODEL`,
-  `REPLAY_JUDGE_MIN_KAPPA`, `REPLAY_DB_URL`, `REPLAY_STATS_IMPL`, …),
+  `REPLAY_JUDGE_MIN_KAPPA`, `REPLAY_JUDGE_MIN_ITEMS`, `REPLAY_DB_URL`, `REPLAY_STATS_IMPL`, …),
   documented in README.
 - Structured logging (structlog) in the server and CLI; clear error messages
   that name the fix.
