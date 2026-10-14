@@ -106,6 +106,13 @@ class BudgetExceeded(Exception):
     """The run spent more than ``--max-cost-usd``."""
 
 
+GIVE_UP_AFTER = 3
+"""Provider calls that all fail, from the first on, before the run stops: a judge that never
+answers (no credentials, a wrong model name) would otherwise be asked about every pair, only
+to write a results file full of errors. Later failures cost one trial each. Offline cache
+misses are counted errors, not a broken judge, so they never trigger this."""
+
+
 @dataclass(frozen=True)
 class Instance:
     subset: str
@@ -237,12 +244,14 @@ def run(
 
     Raises:
         BudgetExceeded: the spend passed ``max_cost_usd``; everything judged so far is cached.
+        JudgeError: the first :data:`GIVE_UP_AFTER` provider calls all failed.
     """
     if concurrency < 1:
         raise ConfigError(f"--concurrency must be at least 1, got {concurrency}")
     todo = trials(instances)
     results: dict[Trial, TrialResult] = {}
     spent = 0.0
+    calls = failures = 0
     with ThreadPoolExecutor(max_workers=concurrency) as pool:
         for start in range(0, len(todo), concurrency):
             batch = todo[start : start + concurrency]
@@ -252,6 +261,14 @@ def run(
                 results[trial] = result
                 if not result.cached:
                     spent += result.cost_usd or 0.0
+                    calls += 1
+                    failures += result.error is not None
+            if not cache.offline and failures == calls >= GIVE_UP_AFTER:
+                last = next(r.error for r in reversed(results.values()) if r.error is not None)
+                raise JudgeError(
+                    f"the first {calls} judge calls all failed, so the run stopped (last error: "
+                    f"{last}); fix the judge and rerun (cached verdicts are kept)"
+                )
             if max_cost_usd is not None and spent > max_cost_usd:
                 raise BudgetExceeded(
                     f"spent ${spent:.4f}, more than --max-cost-usd {max_cost_usd}, after "
@@ -669,7 +686,7 @@ def main(argv: list[str] | None = None) -> int:
             concurrency=args.concurrency,
             max_cost_usd=args.max_cost_usd,
         )
-    except (BudgetExceeded, ConfigError) as exc:
+    except (BudgetExceeded, ConfigError, JudgeError) as exc:
         print(f"llmbar: {exc}", file=sys.stderr)
         return 2
     rows = rows_of(instances, results)

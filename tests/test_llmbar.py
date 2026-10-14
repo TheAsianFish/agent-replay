@@ -216,6 +216,39 @@ def test_judge_errors_are_counted_not_fatal(data, tmp_path):
     assert "- 2 x synthetic judge failure" in text
 
 
+def _broken(instruction: str, _a: str, _b: str) -> PairwiseDecision:
+    raise JudgeError(f"synthetic: no credentials for {instruction}")
+
+
+def broken_judge() -> FakePairwiseJudge:
+    """A judge that never answers, as one without credentials or with a wrong model name."""
+    return FakePairwiseJudge(_broken, name="broken")
+
+
+def test_a_judge_that_never_answers_stops_the_run_after_the_first_calls(data, tmp_path):
+    instances = load(data)
+    judge = broken_judge()
+
+    with pytest.raises(JudgeError, match="first 3 judge calls all failed"):
+        run(instances, judge, PairwiseCache(tmp_path / "cache", offline=False))
+
+    assert judge.calls == llmbar.GIVE_UP_AFTER  # not one per trial
+
+
+def test_a_judge_that_never_answers_exits_2_without_writing_results(data, tmp_path, capsys):
+    out_path = tmp_path / "result.json"
+    code, _, err = main_out(
+        capsys,
+        *("--data", str(data), "--cache-dir", str(tmp_path / "cache"), "--out", str(out_path)),
+        *("--provider", "tests.test_llmbar:broken_judge"),
+    )
+
+    assert code == 2
+    assert "judge calls all failed, so the run stopped" in err
+    assert "synthetic: no credentials" in err
+    assert not out_path.exists()
+
+
 def test_concurrency_does_not_change_the_result(data, tmp_path):
     def mixed(instruction: str, a: str, b: str) -> PairwiseDecision:
         return first(instruction, a, b) if "Natural" in instruction else oracle(instruction, a, b)
@@ -345,6 +378,19 @@ def test_spending_past_the_budget_stops_the_run_and_keeps_what_was_judged(data, 
     assert sum(r.cached for r in results.values()) == 2
 
 
+def test_the_budget_counts_only_new_verdicts_when_resuming(data, tmp_path):
+    instances = load(data)
+    cache = PairwiseCache(tmp_path / "cache", offline=False)
+    judge = PaidJudge()
+    run(instances, judge, cache)  # 24 verdicts at a cent each, all now cached
+    assert judge.calls == 2 * N_BALANCED
+
+    results = run(instances, judge, cache, max_cost_usd=0.015)  # well under what was spent
+
+    assert judge.calls == 2 * N_BALANCED  # nothing new was asked for
+    assert all(r.cached for r in results.values())
+
+
 def test_offline_misses_are_counted_errors(data, tmp_path, capsys):
     out_path = tmp_path / "result.json"
     code, out, _ = main_out(
@@ -465,3 +511,19 @@ def test_the_vendored_files_match_the_pinned_hashes():
     assert (
         (llmbar.DATA_DIR / "LICENSE-LLMBar").read_text(encoding="utf-8").startswith("MIT License")
     )
+
+
+@pytest.mark.parametrize("judge", ["first", "longer", "shorter"])
+def test_the_committed_heuristic_floors_reproduce_byte_for_byte(judge, tmp_path, capsys):
+    """What ``make eval-llmbar-heuristics`` writes, on the vendored data: the numbers in
+    RESULTS.md, including the length-tie rule that decides the 0.5% position bias."""
+    out_path = tmp_path / f"{judge}.json"
+    code, _, _ = main_out(
+        capsys,
+        *("--provider", f"fake-{judge}", "--cache-dir", str(tmp_path / "cache")),
+        *("--out", str(out_path)),
+    )
+
+    assert code == 0
+    committed = llmbar.ROOT / "eval" / "results" / f"llmbar_heuristic_{judge}.json"
+    assert out_path.read_bytes() == committed.read_bytes()

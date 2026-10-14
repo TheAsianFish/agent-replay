@@ -79,7 +79,9 @@ def test_the_request_shape():
     assert fmt["schema"]["additionalProperties"] is False
     [system] = request["system"]
     assert system["cache_control"] == {"type": "ephemeral"}
-    assert system["text"] == PAIRWISE_INSTRUCTIONS  # stable across pairs, so it caches
+    # Stable across pairs, so the prefix can be cached (whether it is long enough to be is a
+    # live-run question: check usage.cache_read_input_tokens there).
+    assert system["text"] == PAIRWISE_INSTRUCTIONS
     assert request["messages"] == [
         {"role": "user", "content": render_pair("Say hi.", "Hello there, friend!", "hi")}
     ]

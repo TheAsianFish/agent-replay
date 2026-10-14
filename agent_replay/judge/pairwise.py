@@ -12,7 +12,8 @@ that the wrong one looks more polished.
 - :class:`PairwiseJudge` is the protocol: ``compare(instruction, a, b)``.
 - :class:`AnthropicPairwiseJudge` asks ``claude-opus-5-5`` through structured
   outputs, in the same request style as :class:`~agent_replay.judge.providers.AnthropicJudge`.
-- :class:`FakePairwiseJudge` is deterministic and offline, for tests.
+- :class:`FakePairwiseJudge` is deterministic and offline, for tests. There is no
+  Ollama pairwise judge: the rubric judge's offline fallback does not apply here.
 - :class:`PairwiseCache` keeps verdicts on disk, content-addressed, so an
   evaluation can be re-run (or resumed) for free and offline.
 
@@ -48,7 +49,6 @@ from agent_replay.judge.providers import (
     Timer,
     _model,
     _ms,
-    _no_credentials,
     resolve_effort,
 )
 from agent_replay.pricing import cost_usd
@@ -56,6 +56,14 @@ from agent_replay.pricing import cost_usd
 log = structlog.get_logger("agent_replay")
 
 Winner = Literal["a", "b"]
+
+
+def _no_credentials(exc: Exception) -> JudgeError:
+    return JudgeError(
+        f"the Anthropic pairwise judge has no credentials ({exc}); set ANTHROPIC_API_KEY, or "
+        "judge from the cache only with --offline (there is no Ollama pairwise judge)"
+    )
+
 
 PAIRWISE_PROMPT_VERSION = "1"
 """Bump when the instructions or the rendering of a pair change: it is part of the cache key."""
