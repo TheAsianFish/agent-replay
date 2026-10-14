@@ -29,7 +29,7 @@ from agent_replay._cli import EXIT_FAILED, EXIT_OK, EXIT_USAGE, console
 from agent_replay._cli import fail as _fail
 from agent_replay._json import canonical_json, to_jsonable
 from agent_replay._logging import configure_logging
-from agent_replay.calibrate import commands_golden
+from agent_replay.calibrate import commands_calibrate, commands_golden
 from agent_replay.cassette import Cassette, Kind
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
@@ -1043,6 +1043,7 @@ def db_add_calibration_cmd(
 
 
 commands_golden.register(app)
+commands_calibrate.register(app)
 
 
 def main() -> None:
