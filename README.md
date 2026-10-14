@@ -883,6 +883,7 @@ make golden            # rebuild the retail golden set: 21 items from 24 runs (o
 make eval-judge-objective  # judge vs the golden set's objective labels (offline, from the cache)
 make eval-judge        # judge vs human labels, kappa + probes (needs a key and human labels; ~$1.30)
 make record-golden     # D1: 120 model-live runs, Opus and Haiku (needs a key; ~$2.19 estimated)
+make token-rates       # re-derive the calibrate cost estimate's constants (offline)
 make data-llmbar       # fetch LLMBar at the pinned commit into eval/data/llmbar
 make eval-llmbar-heuristics  # LLMBar floors: first / longer / shorter output (offline)
 make eval-llmbar-dry   # calls and estimated cost of the real judge's LLMBar run (offline)

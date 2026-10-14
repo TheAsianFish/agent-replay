@@ -56,6 +56,8 @@ make eval-judge   replay calibrate vs human labels on the retail golden set: kap
                   probes (needs a key and `replay label` answers; prints its estimate first, ~$1.30)
 make eval-judge-objective  the judge vs the golden set's objective labels, offline from the committed
                   cache (informative; such a report never gates)
+make token-rates  re-derive the calibrate cost estimate's constants from the committed verdicts
+                  (offline; exits 1 if they drift)
 make data-llmbar  re-download LLMBar at the pinned commit into eval/data/llmbar
 make eval-llmbar  the real judge on LLMBar (needs a key; 838 calls, ~$12.73 dry-run estimate)
 make eval-llmbar-dry  the calls eval-llmbar still needs and their estimated cost (offline)
