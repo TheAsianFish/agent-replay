@@ -74,7 +74,8 @@ make ui-check     dashboard: check:types, typecheck, lint, vitest
 make serve        replay serve over $REPLAY_DB_URL
 make eval         every offline evaluation (mutations, judge smoke + objective, LLMBar floors, token rates)
 make bench        every offline benchmark (bench-sprt, bench-replay)
-make bench-replay recorder overhead per boundary and full replay vs live duration (timings not byte-stable)
+make bench-replay recorder overhead per boundary and full replay vs live duration (to .replay/; not byte-stable)
+make bench-replay-record  the same, rewriting the committed eval/results/bench_replay.json that RESULTS.md quotes
 make dist         dashboard + uv build; installs the wheel and sdist in clean venvs and smoke-tests them
 docker compose up --build   PostgreSQL + demo seed + dashboard on :8000
 ```

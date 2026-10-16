@@ -39,11 +39,12 @@ jobs:
         run: make ci-demo
       - name: replay flake offline (fake model passes, seeded flaky model fails the gate)
         run: make flake-demo
-      - name: Mutation study and gate simulation reproduce their committed results
+      - name: Every offline evaluation and benchmark reproduces its committed result
+        # bench-replay writes its machine-dependent timings outside the tree.
         run: |
-          make eval-mutations
-          make bench-sprt
-          git diff --exit-code eval/results/mutations.json eval/results/sprt_sim.json
+          make eval
+          make bench
+          git diff --exit-code eval/results
 
   action:
     name: GitHub Action (dry run on the retail example)

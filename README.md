@@ -116,7 +116,7 @@ the rows still to measure.
 | Judge vs objective labels, 21 golden items | 20 / 21 agree (95%); always-"fail" baseline 71% | `make eval-judge-objective` |
 | LLMBar Adversarial floors (319 instances) | shorter output 82.0%, longer 18.0%, first output 50.0% | `make eval-llmbar-heuristics` |
 | Fixed-sample gate meeting α = β = 0.05 | 24 runs (pass on ≥ 19); a fixed-20 majority gate false-passes 13.4% at p = 0.6 | `make bench-sprt` |
-| Recorder overhead | ~0.7 ms per model call (12.5 KB request), ~0.1 ms per tool call, ~50 µs per clock read | `make bench-replay` |
+| Recorder overhead (median) | ~0.7 ms per model call (12.5 KB request), ~0.1 ms per tool call, ~50 µs per clock read | `make bench-replay` |
 | Replay speed | `full` replay of the six live recordings with checks: 222 ms against 51 s spent in live calls (230×) | `make bench-replay` |
 | **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
 
@@ -1031,7 +1031,7 @@ make ui-check          # dashboard: generated types current, tsc, eslint, vitest
 make serve             # replay serve over $REPLAY_DB_URL (or .replay/replay.db)
 make eval              # every offline evaluation (mutations, judge smoke and objective, LLMBar floors, token rates)
 make bench             # every offline benchmark (bench-sprt, bench-replay)
-make bench-replay      # recorder overhead per boundary and full replay vs live duration (~20 s)
+make bench-replay      # recorder overhead per boundary and full replay vs live duration (~20 s, to .replay/)
 make dist              # dashboard + wheel and sdist, each installed and smoke-tested in a clean venv
 make openapi           # regenerate dashboard/openapi.json from the API
 docker compose up --build   # PostgreSQL + demo seed + dashboard on :8000

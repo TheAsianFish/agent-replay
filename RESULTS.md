@@ -947,10 +947,12 @@ live recording takes next to the time the live run spent in its calls.
   `REPLAY_JUDGE_OFFLINE=1`), median of 20 runs after one warm-up. Speedup is
   the recorded live duration over that median.
 - **Machine:** AMD EPYC 7763 64-Core Processor, 4 cores, Linux x86_64, CPython
-  3.12.3, load average 0.66 when the run below started.
+  3.12.3 (the environment block of the JSON).
 - **Date:** 2026-10-16. Raw JSON: `eval/results/bench_replay.json` (not
-  byte-stable: timings depend on the machine, so CI does not diff it).
-- **Command:** `make bench-replay` (= `uv run python eval/bench_replay.py --out eval/results/bench_replay.json`), 17.8 s.
+  byte-stable: timings depend on the machine, so CI runs the benchmark but does
+  not diff it; `make bench-replay` writes to `.replay/`, and
+  `make bench-replay-record` rewrote this committed copy).
+- **Command:** `make bench-replay-record` (= `uv run python eval/bench_replay.py --out eval/results/bench_replay.json`).
 
 ```
 Recorder overhead per boundary (2000 paired calls, 200 warm-up, sessions of 20; microseconds)
@@ -981,18 +983,37 @@ Full replay vs recorded live duration (20 runs per scenario after one warm-up; m
 wrote eval/results/bench_replay.json
 ```
 
-Noise: an earlier run of the same command on the same machine while it was
-shared with other jobs (load average 4.4 to 5.0) measured roughly twice
-these times (model overhead median 1293.89 µs, clock 99.03 µs; suite
-`full replay 338.64 ms (151x), with checks 400.76 ms (127x)`), so read the
-timings as good to about a factor of two. The recorded live durations are
-read from the cassettes and do not vary.
+Repeatability: a second run of the same command on the same machine class
+during review, timed with `/usr/bin/time` (summary lines only):
 
-The benchmark found one fixed cost worth removing: that loaded run put a
-recording session with no calls at a median of 1409.47 µs, almost all of it
-`importlib.metadata.version("agent-replay")`, which every session called to
-fill its cassette header. The version is now looked up once per process; the
-same row above is 14.35 µs, a drop far larger than the factor-of-two noise.
+```
+$ /usr/bin/time -f "%e s wall" uv run python eval/bench_replay.py --out .replay/bench_replay.json
+| model | 12543 | 508.35 | 546.25 | 1175.81 | 1289.01 | 669.93 | 762.91 | 649.53 | 720.89 |
+| tool | 24 | 19.62 | 24.12 | 124.33 | 149.40 | 105.77 | 130.31 | 74.68 | 97.98 |
+| clock | 2 | 0.57 | 0.74 | 46.34 | 64.63 | 45.85 | 63.60 | 40.67 | 58.38 |
+| random | 2 | 0.13 | 0.23 | 42.16 | 57.31 | 42.03 | 57.15 | 39.81 | 55.64 |
+- one recording session with no calls (create, enter, exit, finish; 100 sessions): median 13.88, p95 17.45
+- suite: recorded live 51011.1 ms, full replay 185.41 ms (275x), with checks 217.36 ms (235x); per scenario 248x to 328x
+17.53 s wall
+```
+
+Every median is within 4% of the table above on an idle machine. On a shared
+machine expect worse: these are wall-clock timings on a 4-core runner, so read
+them as orders of magnitude, not as a precise ratio. The recorded live
+durations are read from the cassettes and do not vary.
+
+Writing the benchmark removed one fixed cost. Every recording session read
+the installed package metadata to fill its cassette header, and that lookup
+costs about a millisecond:
+
+```
+$ uv run python -c 'import timeit; from importlib.metadata import version; n = 200; t = timeit.repeat(lambda: version("agent-replay"), number=n, repeat=5); print("median %.1f us per call" % (sorted(t)[2] / n * 1e6))'
+median 865.4 us per call
+```
+
+The version is now looked up once per process (`functools.cache` in
+`agent_replay/session.py`); the no-call session row above is 14.35 µs, so the
+lookup was about 98% of a session's fixed cost.
 
 Reading it: recording adds about 50 µs to a clock read or random draw, about
 0.1 ms to a tool call and about 0.7 ms to a model call with a 12.5 KB request,
@@ -1148,11 +1169,17 @@ repository's own pull requests once a workflow runs without `dry-run`.
 PostgreSQL ("480 runs, 14 suites, 6 flake reports, 2 calibration reports"),
 `/api/runs?limit=1` reported a total of 480 and `/api/health` the
 `postgresql` backend at revision `0002`. The `demo` stage
-(`docker build --target demo`; `docker images` reports 285MB) served the same 480 runs from its baked
+(`docker build --target demo`) served the same 480 runs from its baked
 SQLite store on `PORT=8123`: `/api/health` returned
 `{"status":"ok","version":"1.0.0","backend":"sqlite","revision":"0002"}` and
 the container's health check reported `healthy`. Neither hosted route in
 RELEASE.md was deployed (no account).
+
+```
+$ docker images agent-replay-demo
+REPOSITORY          TAG       IMAGE ID       CREATED         SIZE
+agent-replay-demo   latest    f107e5a97e0d   6 minutes ago   285MB
+```
 
 ## To measure
 

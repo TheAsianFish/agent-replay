@@ -5,7 +5,7 @@
 	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check dist \
 	golden record-golden eval-judge eval-judge-objective token-rates \
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
-	bench-replay eval bench
+	bench-replay bench-replay-record eval bench
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -84,9 +84,15 @@ bench-sprt:
 
 # Recorder overhead per boundary (model, tool, clock, random: paired bare vs recorded calls)
 # and full replay vs the recorded live duration of the six live retail cassettes (offline,
-# 20 to 35 s). Timings depend on the machine, so the JSON is not byte-stable; CI does not diff it.
+# 20 to 35 s). Timings depend on the machine, so the JSON is not byte-stable: a run writes
+# to .replay/ (untracked) and leaves the tree clean; `make bench-replay-record` rewrites the
+# committed copy that RESULTS.md quotes.
+BENCH_REPLAY_OUT ?= .replay/bench_replay.json
 bench-replay:
-	uv run python eval/bench_replay.py --out eval/results/bench_replay.json
+	uv run python eval/bench_replay.py --out $(BENCH_REPLAY_OUT)
+
+bench-replay-record:
+	$(MAKE) bench-replay BENCH_REPLAY_OUT=eval/results/bench_replay.json
 
 # Every offline evaluation: the mutation study, the judge against the checks and against the
 # golden set's objective labels, the LLMBar heuristic floors, the token-rate check. No key.
