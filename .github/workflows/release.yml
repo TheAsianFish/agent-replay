@@ -50,9 +50,11 @@ jobs:
       - name: CHANGELOG.md has dated notes for this version
         # A tag fails here, before anything is published; a dry run only reports it.
         continue-on-error: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           mkdir -p notes
-          python3 scripts/release_notes.py "${{ steps.version.outputs.version }}" --out notes/release-notes.md
+          python3 scripts/release_notes.py "$VERSION" --out notes/release-notes.md
       - name: Build the dashboard into the package
         run: make ui
       - name: Build the wheel and sdist
@@ -111,10 +113,11 @@ jobs:
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
             --repo "$GITHUB_REPOSITORY" --verify-tag \
-            --title "agent-replay ${{ needs.build.outputs.version }}" \
+            --title "agent-replay $VERSION" \
             --notes-file notes/release-notes.md
 
   docker:
