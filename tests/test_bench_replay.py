@@ -139,3 +139,47 @@ def test_main_writes_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     assert json.loads(out.read_text(encoding="utf-8"))["parameters"]["iterations"] == 2
     with pytest.raises(SystemExit):
         bench_replay.main(["--iterations", "0"])
+
+
+def test_sampling_interleaves_bare_and_recorded_calls_in_pairs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The overhead is the median of per-pair differences; that is only fair if every
+    # pair runs back to back with the order alternating, after the warm-up is dropped.
+    order: list[str] = []
+    boundary = next(b for b in bench_replay.boundaries() if b.name == "tool")
+
+    def timed(fn: Any) -> int:
+        order.append(
+            "bare" if fn is boundary.bare else "recorded" if fn is boundary.recorded else "?"
+        )
+        fn()
+        return len(order)
+
+    monkeypatch.setattr(bench_replay, "_time_ns", timed)
+    samples = bench_replay.sample(boundary, iterations=6, batch=4)
+
+    assert len(samples.bare) == len(samples.recorded) == len(samples.served) == 6
+    paired = order[:12]  # the first session's 4 pairs, then the second's 2
+    pairs = [tuple(paired[i : i + 2]) for i in range(0, 12, 2)]
+    assert pairs[:4] == [("bare", "recorded"), ("recorded", "bare")] * 2
+    assert "?" not in order
+    # Each recorded session is replayed in full afterwards: 6 served calls, timed too.
+    assert order.count("recorded") == 12
+    assert order.count("bare") == 6
+
+
+def test_the_overhead_is_the_median_of_pair_differences(monkeypatch: pytest.MonkeyPatch) -> None:
+    # One slow pair (a stall that hit both calls) must not move the overhead: the
+    # per-pair difference stays 50 ns, where a difference of medians would not.
+    bare = [100, 100, 100, 1000]
+    recorded = [150, 160, 170, 1050]
+    boundary = next(b for b in bench_replay.boundaries() if b.name == "tool")
+    monkeypatch.setattr(
+        bench_replay,
+        "sample",
+        lambda *a, **k: bench_replay.Samples(bare, recorded, [1, 2, 3, 4]),
+    )
+    row = bench_replay.measure_boundary(boundary, iterations=4, warmup=0, batch=4)
+    assert row["overhead"] == {"median_us": 0.055, "p95_us": pytest.approx(0.0695, abs=1e-3)}
+    assert row["bare"] == {"median_us": 0.1, "p95_us": pytest.approx(0.865, abs=1e-3)}
