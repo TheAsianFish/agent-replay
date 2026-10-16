@@ -23,7 +23,13 @@ reports its verdict but cannot fail the build. Agents are not deterministic eith
 scenario, estimates its pass probability with an interval, gates on it, and
 tells flaky from failing.
 
-**Status: milestone 6 of 7.** Working today:
+![replay ci passing on the retail suite, then failing on a seeded regression](docs/demo.gif)
+
+<!-- The GIF is scripted: `docs/demo.tape` re-captures it with VHS (`vhs docs/demo.tape`,
+     or the Docker commands in the tape's header). Re-record it after a CLI output change. -->
+
+**Status: 1.0.0, all seven milestones built** (not yet published to PyPI; see
+[RELEASE.md](RELEASE.md)). Working today:
 - recording through the Anthropic SDK (sync, async, streaming,
   `messages.parse`), Ollama, `@tool`, and the clock and random helpers;
 - the three cut-point modes, fingerprint matching and the three
@@ -52,7 +58,11 @@ tells flaky from failing.
   pairwise judge and an LLMBar harness;
 - a dashboard (`replay serve`, or `docker compose up`): runs, a trace viewer,
   the aligned diff, suites, pass-rate trends from `replay flake`, and stored
-  calibration reports.
+  calibration reports;
+- a GitHub Action (`uses: TheAsianFish/agent-replay@v1`) that runs `replay ci`
+  on a PR, keeps one summary comment up to date and fails the check on a
+  regression; a wheel with the dashboard bundled, a guarded release workflow
+  and a container image.
 
 Measured so far ([RESULTS.md](RESULTS.md)):
 - **Mutation study (offline).** Stubbing everything (`full`) caught 7 of
@@ -88,13 +98,46 @@ accuracy. Both need human labels or an API key, and kappa needs the statistics
 core (`agent_replay/stats.py`), which is a specification until it is written.
 Until then no criterion can gate, and the numbers above are the only ones we
 claim (see [Calibrating the judge](#calibrating-the-judge) and
-[Statistics](#statistics)). The GitHub Action is planned (M7), not built. See
-[PLAN.md](PLAN.md).
+[Statistics](#statistics)). See [PLAN.md](PLAN.md).
+
+## Results
+
+Every number here comes from a command in this repo; the dataset, method and
+raw output are in [RESULTS.md](RESULTS.md), which also lists the commands for
+the rows still to measure.
+
+| What | Result | Command |
+|---|---|---|
+| Regressions caught, stub everything (`full`) | 7 / 32 injected mutations; 0 of 12 model and 0 of 8 tool regressions | `make eval-mutations` |
+| Regressions caught, cut-point replay | `model-live` 12 / 12 model regressions; `tools-live` 5 / 8 tool bugs (8 / 8 with `fail_on_approximate`) | `make eval-mutations` |
+| False alarms on benign refactors | 0 / 5 (1 / 5 with `fail_on_approximate` in `tools-live`) | `make eval-mutations` |
+| Live flakiness, retail agent | `claude-haiku-5-5` 119 / 120 runs passed; `claude-opus-5-5` 30 / 30 at 41× Haiku's cost per run | `replay flake` (RESULTS.md, M4) |
+| Cost gate, live `model-live` | unchanged agent within 5% of baseline; prompt caching removed: 6 / 6 tasks failed the 25% limit (+76% to +155%) | `replay ci --baseline` (RESULTS.md, M3) |
+| Judge vs objective labels, 21 golden items | 20 / 21 agree (95%); always-"fail" baseline 71% | `make eval-judge-objective` |
+| LLMBar Adversarial floors (319 instances) | shorter output 82.0%, longer 18.0%, first output 50.0% | `make eval-llmbar-heuristics` |
+| Fixed-sample gate meeting α = β = 0.05 | 24 runs (pass on ≥ 19); a fixed-20 majority gate false-passes 13.4% at p = 0.6 | `make bench-sprt` |
+| Recorder overhead | ~0.7 ms per model call (12.5 KB request), ~0.1 ms per tool call, ~50 µs per clock read | `make bench-replay` |
+| Replay speed | `full` replay of the six live recordings with checks: 222 ms against 51 s spent in live calls (230×) | `make bench-replay` |
+| **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
+
+## Install
+
+```bash
+pip install agent-replay                  # SDK and CLI, once 1.0.0 is on PyPI
+pip install 'agent-replay[server]'        # + replay serve and the bundled dashboard
+pip install 'agent-replay[postgres]'      # + the PostgreSQL run store
+pip install 'agent-replay[ollama]'        # + the Ollama adapter and judge
+```
+
+Until the first PyPI release, install from GitHub:
+`pip install 'agent-replay[server] @ git+https://github.com/TheAsianFish/agent-replay'`
+(the dashboard is bundled only in release wheels; `make ui` builds it in a
+checkout). Python 3.12 or newer.
 
 ## Quickstart
 
-Requires Python 3.12 and [uv](https://docs.astral.sh/uv/). Not on PyPI yet, so
-install from source:
+Requires Python 3.12 and [uv](https://docs.astral.sh/uv/). To run the
+examples, work from a clone:
 
 ```bash
 git clone https://github.com/TheAsianFish/agent-replay && cd agent-replay
@@ -520,6 +563,61 @@ tool instead. Set `fail_on_approximate = true` (or pass `--strict` to `replay
 run`) when a wrong answer there would make the rest of the run meaningless;
 leave it off when the drift is in free text, such as a summary argument.
 
+## GitHub Action
+
+`action.yml` is a composite action that runs `replay ci` on a pull request:
+
+```yaml
+# .github/workflows/replay.yml in the repository that holds your agent
+on: pull_request
+permissions:
+  contents: read
+  pull-requests: write          # the summary comment
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python -m pip install -e .          # your agent must be importable
+      - uses: TheAsianFish/agent-replay@v1
+        with:
+          suite: replay.toml
+          args: --no-store
+```
+
+The full example, with comments, is
+[`examples/github-workflow/replay.yml`](examples/github-workflow/replay.yml).
+The Action:
+- runs in the workflow's own Python, because the agent under test must import
+  there, so it does not set Python up itself;
+- installs agent-replay from the ref you pinned (`install: action`, the
+  default), so `@v1` and the code it runs always agree. Set `install:
+  agent-replay==1.0.0` for a PyPI pin, or `install: skip` when your project
+  already depends on it (with `replay-command: uv run replay` for a uv
+  project);
+- keeps **one** comment per suite on the PR (found by a hidden marker and
+  updated on every push) holding `replay ci`'s Markdown summary and a link to
+  the run. On a fork's PR the token is read-only, so it warns instead of
+  failing;
+- uploads the JSON and Markdown reports as an artifact (`artifact-name`; give
+  each matrix leg its own);
+- fails the job with `replay ci`'s exit code: 1 for a regression, 2 for a
+  broken suite.
+
+`mode`, `policy`, `agent`, `client`, `baseline` and `cassette-dir` pass
+through to `replay ci`, and `args` appends anything else. A `model-live` suite
+needs `ANTHROPIC_API_KEY` in the step's `env`. With `dry-run: true` it runs,
+uploads and prints the comment, but neither posts it nor fails. Outputs:
+`exit-code`, `passed`, `scenarios`, `failed`, `report-json`, `report-markdown`,
+`comment-body` and `comment-url`.
+
+Every input reaches the shell through `env:`, never as `${{ }}` in a script,
+so a suite path or argument cannot inject shell code. This repository is its
+own first consumer: the `action` CI job runs `uses: ./` in dry-run mode on the
+retail suite and asserts that it passes and that a seeded mutant fails.
+
 ## `replay flake`
 
 ```bash
@@ -580,6 +678,11 @@ make ui                          # build the React app into agent_replay/server/
 uv run replay serve              # http://127.0.0.1:8000 (API docs at /docs)
 make demo-data && make serve REPLAY_DB_URL=sqlite:///.replay/demo.db   # the demo data instead
 ```
+
+A pip install with the `server` extra serves the dashboard bundled in the
+wheel (`replay serve`). For a single container holding only the demo data (the
+optional hosted demo in [RELEASE.md](RELEASE.md)):
+`docker build --target demo -t agent-replay-demo . && docker run --rm -p 8000:8000 agent-replay-demo`.
 
 The dashboard is read-only and has no authentication: run it on a trusted
 network. It has six pages:
@@ -759,10 +862,18 @@ because a kappa interval from a handful of runs, or raw agreement standing in
 for kappa, would let an unmeasured judge fail builds. What the code can
 compute offline is measured (the judge against the deterministic checks, the
 LLMBar heuristic floors); the judge-human kappa waits for labels and a key.
-The remaining work is M7, the GitHub Action and release. PLAN.md has the full
-component map.
 
-## Design decisions so far
+M7 packages it for other repositories. The Action runs in the consumer's own
+Python, since only there does the agent under test import, and installs
+agent-replay from the ref the workflow pinned, so `@v1` works without PyPI and
+never runs different code from the tag. It updates one marked comment instead
+of adding one per push, and treats a failed comment as a warning: the replay
+verdict is what gates, and a fork's read-only token must not turn a passing
+suite red. The wheel bundles the dashboard build, which is gitignored, and CI
+installs it in a clean venv outside the repo, so a packaging mistake fails
+there instead of on a user's machine. PLAN.md has the full component map.
+
+## Design decisions
 
 - **Intercept at the SDK, not HTTP.** `anthropic` 1.x runs on `httpx2`, so
   HTTP-level recorders built for `httpx` never see its traffic. Wrapping the
@@ -865,6 +976,21 @@ component map.
 - **Committed cassettes are regenerated, not hand-edited.** Drift tests
   re-record the toy and retail cassettes and fail if they changed (`make
   cassettes`, `make retail-cassettes`).
+- **The Action installs from its own ref, not PyPI.** `install: action`
+  pip-installs the checkout GitHub made of the pinned ref, so a consumer on
+  `@v1` gets exactly that code, and the Action worked before any PyPI release.
+  The cost is a source build per run (8 to 10 s for the install,
+  dependencies included, measured in a fresh venv); `install:
+  agent-replay==X.Y.Z` uses the wheel instead.
+- **A composite action, not a Docker or JavaScript one.** A Docker action
+  would run in its own image, where the consumer's agent and its dependencies
+  are not installed; a JavaScript action would need a bundled Node build. The
+  logic that is more than a few lines (outputs, the comment) is a stdlib-only
+  Python script with tests.
+- **Trusted publishing, no tokens.** PyPI accepts the release workflow's OIDC
+  identity for one repository, workflow and environment, so no upload token
+  exists to leak, and every publishing job is guarded to tag pushes on this
+  repository.
 
 ## Development
 
@@ -892,6 +1018,10 @@ make demo-data         # fill .replay/demo.db with real replay runs for the dash
 make ui                # npm ci + build the dashboard into agent_replay/server/static
 make ui-check          # dashboard: generated types current, tsc, eslint, vitest
 make serve             # replay serve over $REPLAY_DB_URL (or .replay/replay.db)
+make eval              # every offline evaluation (mutations, judge smoke and objective, LLMBar floors, token rates)
+make bench             # every offline benchmark (bench-sprt, bench-replay)
+make bench-replay      # recorder overhead per boundary and full replay vs live duration (~20 s)
+make dist              # dashboard + wheel and sdist, each installed and smoke-tested in a clean venv
 make openapi           # regenerate dashboard/openapi.json from the API
 docker compose up --build   # PostgreSQL + demo seed + dashboard on :8000
 ```
@@ -901,8 +1031,9 @@ PostgreSQL tests run when `REPLAY_TEST_PG_URL` points at a disposable database
 The Playwright smoke test runs against a served build (`npm run e2e` in
 `dashboard/`, with `DASHBOARD_URL` if it is not on :8000).
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions and [RESULTS.md](RESULTS.md)
-for every measured number.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions, [RESULTS.md](RESULTS.md)
+for every measured number, [RELEASE.md](RELEASE.md) for the release steps and
+[CHANGELOG.md](CHANGELOG.md) for what each version changed.
 
 ## Roadmap
 
@@ -920,7 +1051,13 @@ for every measured number.
    LLMBar)~~ (built and tested offline; the judge-human kappa, the LLMBar run
    and `agent_replay/stats.py` are still to do: they need human labels, an API
    key and the implementation, see [RESULTS.md](RESULTS.md) "To measure")
-7. GitHub Action, PyPI release
+7. ~~GitHub Action, PyPI packaging with the dashboard bundled, guarded release
+   workflow, container image~~ (built; publishing is the maintainer steps in
+   [RELEASE.md](RELEASE.md))
+
+Next, in order: implement `agent_replay/stats.py` so kappa and the SPRT run
+for real; label the retail golden set and record D1 to measure judge-human
+kappa; the real judge on LLMBar; `make bench-flake` (D3).
 
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and a tool-result drift check (in `tools-live`, compare each live tool
