@@ -21,7 +21,7 @@ format:
 	uv run ruff format .
 
 type:
-	uv run mypy agent_replay examples eval
+	uv run mypy agent_replay examples eval action
 
 test:
 	uv run pytest -q
