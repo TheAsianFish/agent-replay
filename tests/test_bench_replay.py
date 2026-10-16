@@ -1,0 +1,141 @@
+"""Tests for the recorder overhead and replay speed benchmark (``eval/bench_replay.py``)."""
+
+from __future__ import annotations
+
+import json
+import math
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from agent_replay._logging import configure_logging
+from agent_replay.cassette import Cassette
+from agent_replay.ci import load_suite
+from eval import bench_replay
+
+LIVE_SUITE = bench_replay.LIVE_SUITE
+
+
+@pytest.fixture(scope="module")
+def report() -> dict[str, Any]:
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("REPLAY_JUDGE_OFFLINE", "1")
+        mp.setenv("REPLAY_LOG_LEVEL", "ERROR")
+        configure_logging()
+        result = bench_replay.run(iterations=6, warmup=2, batch=4, repeats=1)
+    configure_logging()
+    # Through JSON, as the script writes it.
+    loaded: dict[str, Any] = json.loads(json.dumps(result))
+    return loaded
+
+
+def _finite(value: object) -> bool:
+    return isinstance(value, int | float) and math.isfinite(value)
+
+
+def test_shape(report: dict[str, Any]) -> None:
+    assert set(report) >= {
+        "method",
+        "command",
+        "parameters",
+        "datasets",
+        "environment",
+        "boundaries",
+        "session",
+        "scenarios",
+        "summary",
+    }
+    assert report["command"] == bench_replay.COMMAND
+    assert report["parameters"] == {
+        "iterations": 6,
+        "warmup": 2,
+        "batch": 4,
+        "repeats": 1,
+        "seed": 0,
+    }
+    assert set(report["environment"]) == {
+        "python",
+        "implementation",
+        "system",
+        "machine",
+        "cpu_model",
+        "cpu_count",
+    }
+    assert [r["boundary"] for r in report["boundaries"]] == list(bench_replay.BOUNDARIES)
+    names = [s.name for s in load_suite(LIVE_SUITE).scenario]
+    assert [r["scenario"] for r in report["scenarios"]] == names
+
+
+def test_timings_are_finite_and_non_negative_where_they_must_be(
+    report: dict[str, Any],
+) -> None:
+    for row in report["boundaries"]:
+        assert row["iterations"] == 6
+        assert row["request_bytes"] > 0
+        for group in ("bare", "recorded", "overhead", "replay_served"):
+            for key in ("median_us", "p95_us"):
+                assert _finite(row[group][key])
+        # A paired difference can be negative on one noisy pair; the absolute times cannot.
+        for group in ("bare", "recorded", "replay_served"):
+            assert row[group]["median_us"] >= 0
+            assert row[group]["p95_us"] >= row[group]["median_us"]
+    assert report["session"]["median_us"] > 0
+    for row in report["scenarios"]:
+        for key in ("replay_median_ms", "replay_and_checks_median_ms"):
+            assert _finite(row[key])
+            assert row[key] > 0
+        assert row["speedup_replay"] > 0
+    summary = report["summary"]
+    assert set(summary["overhead_median_us"]) == set(bench_replay.BOUNDARIES)
+    assert all(_finite(v) for v in summary.values() if not isinstance(v, dict))
+
+
+def test_recorded_durations_are_the_cassettes_latencies(report: dict[str, Any]) -> None:
+    for row in report["scenarios"]:
+        path = LIVE_SUITE.parent / row["cassette"]
+        lines = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+        envelopes = [line for line in lines if line["type"] == "envelope"]
+        assert row["envelopes"] == len(envelopes)
+        assert row["recorded_live_ms"] == round(math.fsum(e["latency_ms"] for e in envelopes), 3)
+        model = [e["latency_ms"] for e in envelopes if e["kind"] == "model"]
+        assert row["model_calls"] == len(model)
+        assert row["recorded_model_ms"] == round(math.fsum(model), 3)
+        assert row["recorded_live_ms"] > 1000  # live recordings: seconds, not microseconds
+    total = math.fsum(r["recorded_live_ms"] for r in report["scenarios"])
+    assert report["summary"]["recorded_live_ms_total"] == round(total, 3)
+
+
+def test_recorded_duration_sums_every_envelope() -> None:
+    cassette = Cassette.load(LIVE_SUITE.parent / "cassettes/live/cancel_pending_laptop.jsonl")
+    d = bench_replay.recorded_duration(cassette)
+    assert (d.envelopes, d.model_calls, d.tool_calls) == (11, 5, 6)
+    assert d.total_ms == 8592.176
+    assert d.total_ms == pytest.approx(d.model_ms + d.tool_ms, abs=1e-3)
+
+
+def test_percentile_interpolates_between_ranks() -> None:
+    assert bench_replay.percentile([1.0], 95) == 1.0
+    assert bench_replay.percentile([4.0, 1.0, 3.0, 2.0], 50) == 2.5
+    assert bench_replay.percentile(list(range(101)), 95) == 95
+    with pytest.raises(ValueError, match="no values"):
+        bench_replay.percentile([], 50)
+
+
+def test_text_report_names_every_row(report: dict[str, Any]) -> None:
+    text = bench_replay.to_text(report)
+    for row in report["boundaries"]:
+        assert f"| {row['boundary']} |" in text
+    for row in report["scenarios"]:
+        assert f"| {row['scenario']} |" in text
+
+
+def test_main_writes_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REPLAY_LOG_LEVEL", "ERROR")
+    monkeypatch.setenv("REPLAY_JUDGE_OFFLINE", "1")
+    out = tmp_path / "bench.json"
+    args = ["--iterations", "2", "--warmup", "0", "--batch", "2", "--repeats", "1"]
+    assert bench_replay.main([*args, "--out", str(out)]) == 0
+    assert json.loads(out.read_text(encoding="utf-8"))["parameters"]["iterations"] == 2
+    with pytest.raises(SystemExit):
+        bench_replay.main(["--iterations", "0"])

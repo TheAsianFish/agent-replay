@@ -4,7 +4,8 @@
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
 	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check dist \
 	golden record-golden eval-judge eval-judge-objective token-rates \
-	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics
+	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
+	bench-replay eval bench
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -80,6 +81,19 @@ flake-demo:
 # Simulate the sequential CI gate over a grid of true pass rates (offline, ~seconds).
 bench-sprt:
 	uv run python eval/sprt_sim.py --out eval/results/sprt_sim.json
+
+# Recorder overhead per boundary (model, tool, clock, random: paired bare vs recorded calls)
+# and full replay vs the recorded live duration of the six live retail cassettes (offline,
+# 20 to 35 s). Timings depend on the machine, so the JSON is not byte-stable; CI does not diff it.
+bench-replay:
+	uv run python eval/bench_replay.py --out eval/results/bench_replay.json
+
+# Every offline evaluation: the mutation study, the judge against the checks and against the
+# golden set's objective labels, the LLMBar heuristic floors, the token-rate check. No key.
+eval: eval-mutations eval-judge-smoke eval-judge-objective eval-llmbar-heuristics token-rates
+
+# Every offline benchmark: the sequential gate simulation and replay speed. No key.
+bench: bench-sprt bench-replay
 
 # The judge against the deterministic checks on the live retail recordings and the
 # seeded mutants. Offline from the committed verdict cache; drop --offline to judge
