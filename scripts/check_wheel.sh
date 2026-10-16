@@ -4,17 +4,20 @@
 # import, a cassette shown and replayed, the migrations, `replay serve` answering
 # /api/health and /), then the sdist (builds and reports its version).
 #
-#   scripts/check_wheel.sh [--expect-dashboard] [DIST_DIR]    (default DIST_DIR: dist)
+#   scripts/check_wheel.sh [--no-dashboard] [DIST_DIR]    (default DIST_DIR: dist)
 #
+# The wheel must bundle the dashboard (a build from a checkout without `make ui` is
+# valid to pip but serves a 404 at /); --no-dashboard allows such a wheel.
 # PYTHON picks the interpreter (default python3.12). Needs curl; pip fetches the
 # dependencies from the package index.
 set -euo pipefail
 
-expect_dashboard=0
+expect_dashboard=1
 dist=""
 for arg in "$@"; do
     case "$arg" in
         --expect-dashboard) expect_dashboard=1 ;;
+        --no-dashboard) expect_dashboard=0 ;;
         -h | --help) sed -n '2,10p' "$0"; exit 0 ;;
         -*) echo "check_wheel: unknown option $arg" >&2; exit 2 ;;
         *) dist="$arg" ;;

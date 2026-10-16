@@ -15,16 +15,19 @@ What a release ships:
 | The GitHub Action (`uses: TheAsianFish/agent-replay@v1`) | this repository, at the `v1` tag | the moving `v1` tag (step 6) |
 
 Every publishing job is guarded by
-`github.repository == 'TheAsianFish/agent-replay' && startsWith(github.ref, 'refs/tags/v')`,
-so forks and branch pushes never publish. `workflow_dispatch` on `release.yml`
-runs the build job only: a dry run of the release.
+`github.repository == 'TheAsianFish/agent-replay' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')`,
+so forks, branch pushes and manual runs never publish, and the build job refuses
+a tag that is not a final `X.Y.Z` equal to the package version, or that is not
+on `main`. `workflow_dispatch` on `release.yml` runs the build job only: a dry
+run of the release.
 
 ## Secrets and settings the maintainer adds
 
 | What | Where | Needed for |
 |---|---|---|
 | PyPI trusted publisher: project `agent-replay`, owner `TheAsianFish`, repository `agent-replay`, workflow `release.yml`, environment `pypi` | pypi.org → Account settings → Publishing → *Add a new pending publisher* | `publish-pypi` (no API token is stored anywhere) |
-| GitHub environment `pypi` (optionally with yourself as a required reviewer, so every upload waits for a click) | repository Settings → Environments → *New environment* | `publish-pypi` |
+| GitHub environment `pypi` with yourself as a required reviewer, so every upload waits for a click | repository Settings → Environments → *New environment* → *Required reviewers* | `publish-pypi`; anyone with push access can otherwise publish by pushing a tag, since the workflow's own checks only compare the tag with `pyproject.toml` and `main` |
+| Tag ruleset: creation of `v*` tags restricted to maintainers | Settings → Rules → Rulesets → *New tag ruleset*, target `v*`, restrict creations and updates | the same; also keeps the moving `v1` tag (step 6) in maintainers' hands |
 | Repository secret `ANTHROPIC_API_KEY` (a capped key) | Settings → Secrets and variables → Actions | the `live` job in `ci.yml` (it skips without the secret) and any key-requiring eval run in Actions |
 | Workflow permissions: leave the default (read) | Settings → Actions → General | `release.yml` asks for `id-token`, `contents` and `packages` write per job |
 
@@ -37,7 +40,9 @@ the GHCR push.
 The Action can be used by other repositories, and listed on the Marketplace,
 only from a public repository. Settings → General → Danger zone → *Change
 visibility*. Before that, check that nothing private is tracked:
-`git ls-files | grep -Ei 'claude|agent/|\.env'` must print nothing.
+`git ls-files | grep -Ei '(^|/)(CLAUDE\.md|AGENTS\.md|\.claude/|\.agent/|\.env)'`
+must print nothing (`.gitignore` already lists them, so a plain `git add` skips
+them, but a forced add would not).
 
 ## 2. Check that main is releasable
 
@@ -82,8 +87,10 @@ git push origin vX.Y.Z
 
 The tag starts `release.yml`:
 
-1. `build` checks that the tag equals the package version, builds and checks
-   the distributions and extracts the release notes;
+1. `build` checks that the tag is a final `X.Y.Z` (no `-rc1`: the workflow
+   publishes no prereleases) equal to the package version and that it points
+   into `main`, builds and checks the distributions and extracts the release
+   notes;
 2. `publish-pypi` uploads to PyPI through trusted publishing (waits for
    approval if the `pypi` environment has a reviewer);
 3. `github-release` creates the GitHub Release with the distributions attached;
