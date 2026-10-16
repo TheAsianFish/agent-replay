@@ -28,6 +28,30 @@
         "additionalProperties": false,
         "description": "How well one judge agrees with human labels on one rubric version.",
         "properties": {
+          "cached_calls": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached Calls"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -40,9 +64,54 @@
             "title": "Criteria",
             "type": "object"
           },
+          "golden_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Golden Fingerprint"
+          },
+          "golden_set": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Golden Set"
+          },
+          "judge_calls": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Calls"
+          },
           "judge_id": {
             "title": "Judge Id",
             "type": "string"
+          },
+          "labeller": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labeller"
           },
           "method": {
             "title": "Method",
@@ -53,9 +122,32 @@
             "title": "N Items",
             "type": "integer"
           },
+          "probes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProbeResult"
+            },
+            "title": "Probes",
+            "type": "array"
+          },
           "prompt_version": {
             "title": "Prompt Version",
             "type": "string"
+          },
+          "reference": {
+            "default": "human",
+            "enum": [
+              "human",
+              "objective"
+            ],
+            "title": "Reference",
+            "type": "string"
+          },
+          "repeats": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Repeats",
+            "type": "integer"
           },
           "rubric": {
             "title": "Rubric",
@@ -66,10 +158,24 @@
             "type": "string"
           },
           "schema_version": {
-            "const": 1,
-            "default": 1,
+            "default": 2,
+            "enum": [
+              1,
+              2
+            ],
             "title": "Schema Version",
             "type": "integer"
+          },
+          "stats_impl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stats Impl"
           }
         },
         "required": [
@@ -108,6 +214,16 @@
             "title": "Prompt Version",
             "type": "string"
           },
+          "reference": {
+            "default": "human",
+            "title": "Reference",
+            "type": "string"
+          },
+          "repeats": {
+            "default": 1,
+            "title": "Repeats",
+            "type": "integer"
+          },
           "rubric": {
             "title": "Rubric",
             "type": "string"
@@ -115,6 +231,17 @@
           "rubric_fingerprint": {
             "title": "Rubric Fingerprint",
             "type": "string"
+          },
+          "stats_impl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stats Impl"
           },
           "stored_at": {
             "format": "date-time",
@@ -137,12 +264,28 @@
       },
       "CalibrationView": {
         "properties": {
+          "blocked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked"
+          },
           "gates": {
             "additionalProperties": {
               "$ref": "#/components/schemas/CriterionGateView"
             },
             "title": "Gates",
             "type": "object"
+          },
+          "min_items": {
+            "default": 20,
+            "title": "Min Items",
+            "type": "integer"
           },
           "min_kappa": {
             "title": "Min Kappa",
@@ -201,6 +344,40 @@
         "title": "CheckRecord",
         "type": "object"
       },
+      "Confusion": {
+        "additionalProperties": false,
+        "description": "Judge verdicts against the reference labels on the same items.",
+        "properties": {
+          "both_fail": {
+            "minimum": 0.0,
+            "title": "Both Fail",
+            "type": "integer"
+          },
+          "both_pass": {
+            "minimum": 0.0,
+            "title": "Both Pass",
+            "type": "integer"
+          },
+          "judge_fail_reference_pass": {
+            "minimum": 0.0,
+            "title": "Judge Fail Reference Pass",
+            "type": "integer"
+          },
+          "judge_pass_reference_fail": {
+            "minimum": 0.0,
+            "title": "Judge Pass Reference Fail",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "both_pass",
+          "judge_pass_reference_fail",
+          "judge_fail_reference_pass",
+          "both_fail"
+        ],
+        "title": "Confusion",
+        "type": "object"
+      },
       "CriterionCalibration": {
         "additionalProperties": false,
         "properties": {
@@ -211,27 +388,96 @@
             "type": "number"
           },
           "ci_high": {
-            "maximum": 1.0,
-            "minimum": -1.0,
-            "title": "Ci High",
-            "type": "number"
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci High"
           },
           "ci_low": {
-            "maximum": 1.0,
-            "minimum": -1.0,
-            "title": "Ci Low",
-            "type": "number"
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Low"
+          },
+          "confusion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Confusion"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "kappa": {
-            "maximum": 1.0,
-            "minimum": -1.0,
-            "title": "Kappa",
-            "type": "number"
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kappa"
+          },
+          "majority_agreement": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Majority Agreement"
+          },
+          "majority_label": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pass",
+                  "fail"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Majority Label"
           },
           "n": {
             "minimum": 0.0,
             "title": "N",
             "type": "integer"
+          },
+          "self_consistency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SelfConsistency"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -924,6 +1170,144 @@
         "title": "FlakeSettings",
         "type": "object"
       },
+      "FlipStats": {
+        "additionalProperties": false,
+        "description": "How often a perturbation that should not matter changed the judge's verdict.",
+        "properties": {
+          "ci_high": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci High"
+          },
+          "ci_low": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ci Low"
+          },
+          "flips": {
+            "minimum": 0.0,
+            "title": "Flips",
+            "type": "integer"
+          },
+          "n": {
+            "minimum": 0.0,
+            "title": "N",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "to_fail": {
+            "minimum": 0.0,
+            "title": "To Fail",
+            "type": "integer"
+          },
+          "to_pass": {
+            "minimum": 0.0,
+            "title": "To Pass",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n",
+          "flips",
+          "to_pass",
+          "to_fail",
+          "rate"
+        ],
+        "title": "FlipStats",
+        "type": "object"
+      },
+      "GroupStats": {
+        "additionalProperties": false,
+        "description": "Judge leniency on one group of items, measured against the reference labels.",
+        "properties": {
+          "false_pass_rate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "False Pass Rate"
+          },
+          "judge_pass_rate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Pass Rate"
+          },
+          "n": {
+            "minimum": 0.0,
+            "title": "N",
+            "type": "integer"
+          },
+          "reference_fail_n": {
+            "minimum": 0.0,
+            "title": "Reference Fail N",
+            "type": "integer"
+          },
+          "reference_pass_rate": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Pass Rate"
+          }
+        },
+        "required": [
+          "n",
+          "judge_pass_rate",
+          "reference_pass_rate",
+          "false_pass_rate",
+          "reference_fail_n"
+        ],
+        "title": "GroupStats",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -973,6 +1357,73 @@
         "type": "object"
       },
       "JsonValue": {},
+      "ProbeResult": {
+        "additionalProperties": false,
+        "description": "One bias probe. ``flips`` is set for perturbation probes (position, verbosity),\n``groups`` for the self-preference comparison; ``skipped`` says why neither is.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "flips": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/FlipStats"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flips"
+          },
+          "groups": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/GroupStats"
+                  },
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Groups"
+          },
+          "probe": {
+            "enum": [
+              "position",
+              "verbosity",
+              "self_preference"
+            ],
+            "title": "Probe",
+            "type": "string"
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped"
+          }
+        },
+        "required": [
+          "probe",
+          "description"
+        ],
+        "title": "ProbeResult",
+        "type": "object"
+      },
       "RunDiff": {
         "properties": {
           "base": {
@@ -1382,6 +1833,48 @@
           "duration_ms"
         ],
         "title": "RunSummary",
+        "type": "object"
+      },
+      "SelfConsistency": {
+        "additionalProperties": false,
+        "description": "How much the judge agrees with itself over repeated runs on the same items.",
+        "properties": {
+          "mean_pairwise_kappa": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": -1.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Pairwise Kappa"
+          },
+          "n": {
+            "minimum": 0.0,
+            "title": "N",
+            "type": "integer"
+          },
+          "runs": {
+            "minimum": 2.0,
+            "title": "Runs",
+            "type": "integer"
+          },
+          "unanimous": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Unanimous",
+            "type": "number"
+          }
+        },
+        "required": [
+          "runs",
+          "n",
+          "unanimous"
+        ],
+        "title": "SelfConsistency",
         "type": "object"
       },
       "StepRecord": {

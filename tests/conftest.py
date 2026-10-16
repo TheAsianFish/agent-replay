@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import os
 import socket
-from collections.abc import Callable
-from typing import Any
+import warnings
+from collections.abc import Callable, Sequence
+from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from sqlalchemy.engine import make_url
@@ -63,3 +65,28 @@ def _no_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(socket.socket, "connect_ex", _blocked)
     monkeypatch.setattr(socket, "create_connection", _blocked)
     monkeypatch.setattr(socket, "getaddrinfo", _blocked)
+
+
+def _sk_kappa(a: Sequence[int], b: Sequence[int], *, weights: Any = None) -> float:
+    from sklearn.metrics import cohen_kappa_score  # noqa: PLC0415 - dev dependency, oracle only
+
+    with warnings.catch_warnings():  # undefined kappa warns, and returns NaN as wanted
+        warnings.simplefilter("ignore")
+        return float(cohen_kappa_score(list(a), list(b), labels=[0, 1], weights=weights))
+
+
+@pytest.fixture
+def core_shim(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``REPLAY_STATS_IMPL=core`` with a real kappa (scikit-learn's) until ``stats.py`` is
+    written; the interval and gate come from the baseline. Lets a test reach a report that
+    may gate, which a ``baseline`` report never does."""
+    from agent_replay import stats_baseline, stats_impl  # noqa: PLC0415
+
+    shim = SimpleNamespace(
+        cohens_kappa=_sk_kappa,
+        bootstrap_ci=stats_baseline.bootstrap_ci,
+        wilson_interval=stats_baseline.wilson_interval,
+        SequentialGate=stats_baseline.SequentialGate,
+    )
+    monkeypatch.setitem(stats_impl._MODULES, "core", cast(Any, shim))
+    monkeypatch.setenv("REPLAY_STATS_IMPL", "core")

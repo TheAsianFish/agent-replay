@@ -31,18 +31,39 @@ log = structlog.get_logger("agent_replay")
 _REASON_CHARS = 160
 
 
+_ADVISORY_BECAUSE = {
+    "kappa lower bound": "calibrated below the kappa threshold",
+    "kappa is undefined": "kappa undefined on the labels",
+    "only ": "too few labelled items",
+    "the calibration report": "not calibrated for this rubric, judge and prompt version",
+}
+
+
 def _gate_summary(gates: dict[str, CriterionGate], *, report: CalibrationReport | None) -> str:
     gated = [i for i, g in gates.items() if g.gating]
     advisory = [i for i, g in gates.items() if not g.gating]
-    if not gated:
-        if report is None:
-            return "advisory: uncalibrated"
-        if all(g.reason.startswith("kappa lower bound") for g in gates.values()):
-            return "advisory: calibrated below the kappa threshold"
-        return "advisory: not calibrated for this rubric, judge and prompt version"
-    if not advisory:
-        return "calibrated"
-    return f"gating: {', '.join(gated)}; advisory: {', '.join(advisory)}"
+    if gated:
+        return (
+            f"gating: {', '.join(gated)}; advisory: {', '.join(advisory)}"
+            if advisory
+            else "calibrated"
+        )
+    if report is None:
+        why = "uncalibrated"
+    elif report.reference != "human":
+        why = f"calibrated against {report.reference} labels, not human ones"
+    elif report.stats_impl != "core":
+        why = "calibrated without the core statistics (no kappa to trust)"
+    else:
+        why = next(
+            (
+                summary
+                for prefix, summary in _ADVISORY_BECAUSE.items()
+                if all(g.reason.startswith(prefix) for g in gates.values())
+            ),
+            "no criterion meets the gate (see each criterion's reason)",
+        )
+    return f"advisory: {why}"
 
 
 def _short(text: str) -> str:

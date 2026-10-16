@@ -74,6 +74,7 @@ def _fill(db: str) -> None:
                 created_at=T0,
                 n_items=24,
                 method="test",
+                stats_impl="core",
                 criteria={
                     "resolved": CriterionCalibration(
                         kappa=0.8, ci_low=0.65, ci_high=0.95, agreement=0.92, n=24
@@ -225,10 +226,41 @@ def test_calibration_view_marks_which_criteria_gate(
     assert view["min_kappa"] == 0.6
     assert view["gates"] == {"resolved": {"gating": True}, "policy": {"gating": False}}
     assert view["record"]["report"]["criteria"]["resolved"]["kappa"] == 0.8
+    assert view["blocked"] is None
     monkeypatch.setenv("REPLAY_JUDGE_MIN_KAPPA", "0.7")
     assert get(client, f"/api/calibration/{summary['id']}")["gates"]["resolved"] == {
         "gating": False
     }
+
+
+def test_a_report_that_cannot_gate_says_why(tmp_path: Path):
+    report = CalibrationReport(
+        rubric="retail",
+        rubric_fingerprint="f" * 16,
+        judge_id="fake:default",
+        prompt_version="1",
+        created_at=T0,
+        n_items=24,
+        method="test",
+        reference="objective",
+        criteria={
+            "resolved": CriterionCalibration(
+                kappa=0.9, ci_low=0.8, ci_high=1.0, agreement=0.95, n=24
+            ),
+            "_overall": CriterionCalibration(
+                kappa=None, ci_low=None, ci_high=None, agreement=1.0, n=24
+            ),
+        },
+    )
+    db = f"sqlite:///{tmp_path / 'r.db'}"
+    with Store.open(db) as store:
+        report_id = store.save_calibration(report)
+    with TestClient(create_app(db_url=db)) as client:
+        view = get(client, f"/api/calibration/{report_id}")
+
+    assert view["gates"] == {"resolved": {"gating": False}, "_overall": {"gating": False}}
+    assert "objective labels, not human ones" in view["blocked"]
+    assert view["record"]["report"]["criteria"]["_overall"]["kappa"] is None
 
 
 def test_each_request_is_logged_once_with_its_request_id(

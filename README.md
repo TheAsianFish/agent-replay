@@ -18,12 +18,12 @@ on what the agent did:
 budget and LLM-judge checks, and fails the build on a regression.
 
 Judges are not oracles, so a judge check is *advisory* until the judge has
-been calibrated against human labels: it reports its verdict but cannot fail
-the build. Agents are not deterministic either, so `replay flake` re-runs a
+been calibrated against human labels (`replay label`, `replay calibrate`): it
+reports its verdict but cannot fail the build. Agents are not deterministic either, so `replay flake` re-runs a
 scenario, estimates its pass probability with an interval, gates on it, and
 tells flaky from failing.
 
-**Status: milestone 5 of 7.** Working today:
+**Status: milestone 6 of 7.** Working today:
 - recording through the Anthropic SDK (sync, async, streaming,
   `messages.parse`), Ollama, `@tool`, and the clock and random helpers;
 - the three cut-point modes, fingerprint matching and the three
@@ -45,6 +45,11 @@ tells flaky from failing.
   in every mode, with and without failing on `approximate` steps;
 - an aligned trace diff (`replay diff`): two runs lined up by sequence
   alignment, so an inserted call reads as one added step;
+- judge calibration: golden sets (`replay golden`), a blind labelling TUI
+  (`replay label`), `replay calibrate` (kappa with a bootstrap interval per
+  criterion, a majority baseline, self-consistency, three bias probes) and the
+  gate that lets only a human-calibrated criterion fail a build, plus a
+  pairwise judge and an LLMBar harness;
 - a dashboard (`replay serve`, or `docker compose up`): runs, a trace viewer,
   the aligned diff, suites, pass-rate trends from `replay flake`, and stored
   calibration reports.
@@ -61,6 +66,15 @@ Measured so far ([RESULTS.md](RESULTS.md)):
   on `claude-haiku-5-5` passed 119 of 120 runs. The one failure was a refund
   to the wrong payment method, a policy breach. On `claude-opus-5-5` it
   passed 30 of 30 (5 per task), at 41× Haiku's cost per run.
+- **Judge against the deterministic checks (offline).** Through the
+  calibration pipeline on the 21 distinct runs of the retail golden set, the
+  judge agreed with the checks' verdict on 20 (95%), against 71% for a judge
+  that always says "fail". The one disagreement is a false pass. This is
+  raw agreement with objective labels, not a calibration, and it cannot gate.
+- **LLMBar floors (offline).** On the 319 Adversarial instances, always
+  choosing the shorter output is right 82.0% of the time and the longer one
+  18.0%; always choosing the first output is right 50.0% with a position bias
+  of 100%. A real judge's score means little until read against these.
 
 Earlier milestones: on a live `model-live` run, a
 25% relative cost limit passed the unchanged agent (within 5% of baseline)
@@ -69,9 +83,13 @@ and failed all six tasks of a variant with prompt caching removed (+76% to
 deterministic checks on 23 of 24 runs; that is a wiring test, not a
 calibration.
 
-Judge calibration and the GitHub Action are planned, not built, and the statistics core (`agent_replay/stats.py`) is a specification
-until it is written; until then the gate runs the naive baseline (see
-[Statistics](#statistics)). See [PLAN.md](PLAN.md).
+**Not measured yet:** judge-human agreement (kappa) and the real judge's LLMBar
+accuracy. Both need human labels or an API key, and kappa needs the statistics
+core (`agent_replay/stats.py`), which is a specification until it is written.
+Until then no criterion can gate, and the numbers above are the only ones we
+claim (see [Calibrating the judge](#calibrating-the-judge) and
+[Statistics](#statistics)). The GitHub Action is planned (M7), not built. See
+[PLAN.md](PLAN.md).
 
 ## Quickstart
 
@@ -319,15 +337,92 @@ checks = [{ type = "judge", rubric = "rubric.yaml", cache_dir = "judge-cache" }]
   so judge it live. The retail live
   suite does exactly that (`examples/retail_agent/judge-cache/`).
 - **Advisory until calibrated.** A criterion can fail the build only if a
-  calibration report exists for this exact rubric fingerprint, judge id and
-  judge prompt version,
-  and that criterion's kappa lower bound is at least
+  calibration report exists whose rubric fingerprint, judge id and judge
+  prompt version match this judge, it compares with *human* labels, it was
+  computed with `REPLAY_STATS_IMPL=core`, it has at least
+  `REPLAY_JUDGE_MIN_ITEMS` (20) labelled items for the criterion, and the
+  lower bound of that criterion's kappa interval is at least
   `REPLAY_JUDGE_MIN_KAPPA` (0.6). Otherwise its failure is reported as
   advisory (`ADVISORY FAIL` in the CLI, an "Advisory" list in the Markdown
-  summary). If the judge cannot answer, an uncalibrated judge stays advisory
-  and a calibrated one fails closed. The report format and the gate exist;
-  the command that produces reports from human labels comes with the
-  calibration milestone.
+  summary), and the summary says why. If the judge cannot answer, an
+  uncalibrated judge stays advisory and a calibrated one fails closed. Point
+  the check at a report with `calibration = "report.json"`; see
+  [Calibrating the judge](#calibrating-the-judge).
+
+## Calibrating the judge
+
+Calibration measures the judge against people, then lets only the criteria
+that pass a threshold gate.
+
+```bash
+# 1. a golden set: judge transcripts from replaying a suite (offline, no judge calls)
+uv run replay golden add examples/retail_agent/replay-live.toml --out eval/golden/retail
+uv run replay golden show eval/golden/retail --rubric examples/retail_agent/rubric.yaml
+# 2. label it by hand, one criterion at a time (blind)
+uv run replay label eval/golden/retail --rubric examples/retail_agent/rubric.yaml --labeller NAME
+# 3. measure the judge: prints its call count and cost estimate first
+REPLAY_STATS_IMPL=core uv run replay calibrate eval/golden/retail \
+    --rubric examples/retail_agent/rubric.yaml --repeats 3 -o report.json
+```
+
+then name the report in the suite, `{ type = "judge", rubric = "rubric.yaml",
+calibration = "report.json" }`, and each criterion gates or stays advisory by
+the rule above. `make golden` rebuilds the retail set (21 items from 24 runs).
+
+- **Golden set.** A directory with `items.jsonl` (judge transcripts keyed by
+  fingerprint, so runs the judge would see identically are one item) and an
+  append-only `labels.jsonl`. A human label answers one criterion and is tied
+  to that criterion's fingerprint, so editing one criterion invalidates only
+  its labels (`replay golden show --rubric` counts the stale ones). Each item
+  also gets an objective whole-run label (`_overall`) from the suite's
+  checks of the run's behaviour (`judge` and `budget` checks excluded: cost is
+  not something a transcript shows). `replay golden add` is idempotent from any
+  working directory and reports a transcript whose runs got different verdicts
+  as a conflict, leaving it out rather than guessing.
+- **Labelling.** `replay label` shows the transcript and one criterion.
+  It never shows the judge's verdict, the objective label, other labellers'
+  answers or which agent variant produced the run. Keys: `p` pass, `f` fail,
+  `s` skip, `n` note, `b` back, `q` quit. Each answer is appended at once,
+  so quitting loses nothing and rerunning resumes. The labeller comes from
+  `--labeller` or `$REPLAY_LABELLER`.
+- **`replay calibrate`.** Prints the estimated judge calls and cost, then
+  (`--dry-run` stops there; `--max-cost-usd` aborts above a cap) reports, per
+  criterion, kappa with a bootstrap interval, raw agreement, the majority-label
+  baseline, the confusion matrix with false passes highlighted, and
+  self-consistency over `--repeats` verdicts. Reports are schema 2. The bias
+  probes (`--probe` to pick one, `--no-probes` to skip) are:
+  - *position*: the criteria are presented in reverse order and the verdicts
+    compared (pairwise position bias is measured on LLMBar);
+  - *verbosity*: a content-free paragraph is appended to the final output;
+    flips to pass are the bias;
+  - *self-preference*: leniency on runs driven by the judge's own model
+    against runs from other models.
+
+  `--reference human` (default) may gate; `--reference objective` compares
+  with the suite's checks and never does. `--offline` / `--online` choose
+  whether cache misses are filled, `--store` / `--no-store` whether the
+  dashboard sees the report, `-o` writes JSON.
+
+Sample, from [RESULTS.md](RESULTS.md) (`make eval-judge-objective`, the real
+judge's committed verdicts against the objective labels, offline):
+
+```console
+criterion  kappa* [95% CI]    agreement  majority    pass/pass, false pass, false fail, fail/fail  n   gates
+_overall   0.95 [0.86, 1.00]  95%        71% (fail)  6, 1, 0, 14                                   21  -
+no criterion gates: the calibration report compares the judge with objective labels, not human ones; ...
+```
+
+The `*` marks raw agreement: the statistics are the `baseline` implementation,
+which is also why that report cannot gate. The judge-versus-human run is
+`make eval-judge` (84 calls, about $1.30 estimated; needs a key and the human
+labels). `make record-golden` records the larger set D1 (120 `model-live`
+runs with Opus and Haiku, about $2.19 estimated).
+
+The LLMBar harness (`eval/llmbar.py`, `agent_replay/judge/pairwise.py`) tests
+the judge's robustness on pairs of outputs, each judged in both orders:
+`make eval-llmbar` (a key; 838 calls, about $12.73 by the dry-run estimate),
+`make eval-llmbar-dry` (the estimate), `make eval-llmbar-heuristics` (the
+offline floors above) and `make data-llmbar` (fetch the pinned dataset).
 
 ## Baselines and cost gating
 
@@ -499,7 +594,10 @@ network. It has six pages:
 - **Flakiness**: each scenario's pass rate over successive `replay flake`
   reports, with its interval as a band, and the latest classification.
 - **Calibration**: stored calibration reports. Each criterion shows kappa with
-  its interval against `REPLAY_JUDGE_MIN_KAPPA`, and whether it would gate.
+  its interval against `REPLAY_JUDGE_MIN_KAPPA`, badges for whether it would
+  gate, the confusion matrix, the majority baseline, self-consistency and the
+  bias probes. A banner says why a report is blocked from gating (objective
+  reference, `baseline` statistics, too few items).
 
 | Page | | |
 |---|---|---|
@@ -508,10 +606,12 @@ network. It has six pages:
 
 `make demo-data` fills a store with about 480 real runs: `replay ci` on the
 retail suite in every mode, on the live `claude-opus-5-5` recordings and
-against each seeded regression, plus six `replay flake` reports. The demo
-calibration report compares the judge with the suite's deterministic verdicts,
-not with human labels, and its `method` says so; human-label calibration
-arrives with `replay calibrate` (M6).
+against each seeded regression, plus six `replay flake` reports and two real
+`replay calibrate` reports. Both compare a judge with the suite's
+deterministic verdicts (`--reference objective`), not with human labels, so
+the page shows the blocked banner; one is the real judge from the committed
+cache, the other a fake judge with repeats and every probe, so each part of
+the page has data.
 
 The API is plain JSON under `/api` (OpenAPI at `/docs`). The dashboard's
 TypeScript types are generated from that schema (`make openapi`, then `npm run
@@ -546,6 +646,10 @@ back. Stores created before migrations are adopted in place.
 | `replay diff BASE HEAD [--json FILE] [--markdown FILE] [--db URL]` | Align two runs (each a cassette or a stored run id) step by step: same, changed (with the differing request keys), added, removed. Always exits 0 once the diff is produced |
 | `replay show CASSETTE` | Print a cassette's header, envelopes and outcome |
 | `replay serve [--host H] [--port P] [--db URL] [--dashboard DIR]` | Serve the dashboard and its read-only API (needs the `server` extra) |
+| `replay golden add SUITE --out DIR [--variant NAME] [--agent] [--mode] [--client]` | Replay a suite without its judge checks and add each run to the golden set at `DIR`, with an objective label; exit 2 if a scenario could not run |
+| `replay golden show DIR [--rubric FILE]` | Summarise a golden set: items, labels per source, labeller and criterion; with `--rubric`, also stale and missing human labels |
+| `replay label DIR --rubric FILE [--labeller NAME] [--criterion ID] [--relabel] [--shuffle/--no-shuffle] [--seed N] [--limit N]` | Blind labelling TUI (`p` `f` `s` `n` `b` `q`); never shows the judge's or the objective verdicts; answers are saved as given |
+| `replay calibrate GOLDEN_DIR --rubric FILE [--provider] [--model] [--effort] [--reference human\|objective] [--labeller] [--repeats N] [--probe position\|verbosity\|self-preference \| --no-probes] [--offline\|--online] [--cache-dir DIR] [--dry-run] [--max-cost-usd X] [--min-kappa K] [--resamples N] [--seed S] [--store\|--no-store] [--db URL] [-o FILE]` | Print the call and cost estimate, then measure the judge against the golden set's labels: per-criterion kappa and interval, majority baseline, confusion matrix, self-consistency, bias probes, and which criteria would gate |
 | `replay db upgrade [--db URL]` | Create the run store or migrate it to the newest revision |
 | `replay db add-calibration REPORT [--db URL]` | Store a calibration report for the dashboard |
 
@@ -566,6 +670,8 @@ credentials).
 | `REPLAY_JUDGE_MODEL` | `claude-opus-5-5` (`qwen3:8b` for Ollama) | Judge model |
 | `REPLAY_JUDGE_EFFORT` | `low` | Anthropic effort for the judge: `low`, `medium`, `high`, `xhigh`, `max` |
 | `REPLAY_JUDGE_MIN_KAPPA` | `0.6` | Kappa lower bound (0 to 1) a calibrated criterion needs before it may gate |
+| `REPLAY_JUDGE_MIN_ITEMS` | `20` | Labelled items (a whole number, at least 1) a criterion needs in a calibration report before it may gate |
+| `REPLAY_LABELLER` | — | Who is labelling, for `replay label` when `--labeller` is not given (one of the two is required) |
 | `REPLAY_JUDGE_CACHE` | `.replay/judge-cache` | Verdict cache directory when a judge check sets no `cache_dir` |
 | `REPLAY_JUDGE_OFFLINE` | off | `1` / `true`: judge from the cache only; a miss breaks the scenario (exit 2) |
 | `REPLAY_PRICES_FILE` | — | JSON `{"model": {"input", "output", "cache_read", "cache_write"}}` in USD per MTok, extending or overriding the built-in price table |
@@ -644,8 +750,17 @@ the diff reads "one call added, one argument changed". The store is now shared
 by CI jobs, `replay flake` threads and the dashboard. Migrations run on open
 under a database lock, inside one transaction.
 
-The remaining hard part is M6: a judge measured against humans before it may
-fail a build. PLAN.md has the full component map.
+M6's hard part is a judge measured against humans before it may fail a build,
+without the measurement flattering the judge. Labelling is blind, so the
+labeller is not anchored by the judge's verdict; labels are tied to each
+criterion's fingerprint, so a reworded criterion cannot inherit old labels;
+and the gate demands human labels, the `core` statistics and enough items,
+because a kappa interval from a handful of runs, or raw agreement standing in
+for kappa, would let an unmeasured judge fail builds. What the code can
+compute offline is measured (the judge against the deterministic checks, the
+LLMBar heuristic floors); the judge-human kappa waits for labels and a key.
+The remaining work is M7, the GitHub Action and release. PLAN.md has the full
+component map.
 
 ## Design decisions so far
 
@@ -679,6 +794,24 @@ fail a build. PLAN.md has the full component map.
   rubric fingerprint, judge id and judge prompt version it measured (editing
   the rubric, the judge prompt, the model or the effort voids it). The alternative, trusting the judge, is what
   this project exists to avoid.
+- **Labelling is blind.** `replay label` never shows the judge's verdict, the
+  objective label or the agent variant, because seeing them anchors the answer
+  and inflates the agreement being measured. Answers are appended as given, so
+  an interrupted session loses nothing.
+- **Labels are tied to criterion fingerprints.** A human label answers one
+  criterion as worded when it was given. Editing a criterion invalidates only
+  its labels (the others stay valid), and `replay golden show --rubric` counts
+  the stale ones; the alternative, tying labels to the whole rubric, would
+  throw away every label on a typo fix.
+- **A criterion gates only on human labels, `core` statistics and enough
+  items.** Objective labels come from the same checks the judge is meant to
+  complement, so agreement with them does not show agreement with people. The
+  `baseline` implementation puts raw agreement where kappa belongs, and raw
+  agreement is high whenever one label dominates, so a report that does not
+  name its statistics, or names `baseline`, does not gate. With fewer than
+  `REPLAY_JUDGE_MIN_ITEMS` items a bootstrap interval says little (two agreeing
+  items give [1, 1]). The `_overall` row is not a rubric criterion and never
+  gates.
 - **Structured outputs through `messages.create`.** The judge sends the
   same JSON-schema `output_config` that `messages.parse` would, but reads
   `stop_reason` itself. In SDK 1.12, `parse` raises a validation error on a
@@ -746,6 +879,15 @@ make bench-sprt        # simulate the sequential gate over true pass rates (offl
 make flake-demo        # replay flake offline: fake model passes, seeded flaky model fails
 make eval-mutations    # the mutation study: 32 mutations + 5 benign refactors, 5 configurations (~25 s)
 make eval-judge-smoke  # judge vs deterministic checks on 24 retail runs (offline, from the cache)
+make golden            # rebuild the retail golden set: 21 items from 24 runs (offline)
+make eval-judge-objective  # judge vs the golden set's objective labels (offline, from the cache)
+make eval-judge        # judge vs human labels, kappa + probes (needs a key and human labels; ~$1.30)
+make record-golden     # D1: 120 model-live runs, Opus and Haiku (needs a key; ~$2.19 estimated)
+make token-rates       # re-derive the calibrate cost estimate's constants (offline)
+make data-llmbar       # fetch LLMBar at the pinned commit into eval/data/llmbar
+make eval-llmbar-heuristics  # LLMBar floors: first / longer / shorter output (offline)
+make eval-llmbar-dry   # calls and estimated cost of the real judge's LLMBar run (offline)
+make eval-llmbar       # the real judge on LLMBar (needs a key; 838 calls, ~$12.73 estimated)
 make demo-data         # fill .replay/demo.db with real replay runs for the dashboard (~25 s)
 make ui                # npm ci + build the dashboard into agent_replay/server/static
 make ui-check          # dashboard: generated types current, tsc, eslint, vitest
@@ -773,9 +915,12 @@ for every measured number.
 4. ~~Flakiness engine (`replay flake`, Wilson and SPRT gates through the stats
    interface) and a mutation study~~
 5. ~~FastAPI + React dashboard with aligned trace diffs, PostgreSQL and
-   migrations, Docker Compose~~ (this milestone)
-6. Judge calibration against human labels (kappa, bootstrap CI, bias probes, LLMBar)
-7. GitHub Action, PyPI release, Docker Compose
+   migrations, Docker Compose~~
+6. ~~Judge calibration against human labels (kappa, bootstrap CI, bias probes,
+   LLMBar)~~ (built and tested offline; the judge-human kappa, the LLMBar run
+   and `agent_replay/stats.py` are still to do: they need human labels, an API
+   key and the implementation, see [RESULTS.md](RESULTS.md) "To measure")
+7. GitHub Action, PyPI release
 
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and a tool-result drift check (in `tools-live`, compare each live tool

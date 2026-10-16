@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "rubric": "retail-resolution",
+  "rubric_fingerprint": "sha256:cd25d82a9bc4d0eac38920f8bd39fda73029b08cb70c1970b01b901b0eb19fc9",
+  "judge_id": "anthropic:claude-opus-5-5:effort=low",
+  "prompt_version": "1",
+  "created_at": "2026-10-09T15:07:43.942271Z",
+  "n_items": 21,
+  "method": "The judge's first verdict per item against objective labels by checks (1 = pass, 0 = fail): raw agreement in the kappa column (REPLAY_STATS_IMPL=baseline; set it to core for Cohen's kappa), with a normal-approximation bootstrap CI (2000 resamples, seed 0, clamped to [-1, 1]).",
+  "criteria": {
+    "_overall": {
+      "kappa": 0.9523809523809523,
+      "ci_low": 0.8635518683615966,
+      "ci_high": 1.0,
+      "agreement": 0.9523809523809523,
+      "n": 21,
+      "confusion": {
+        "both_pass": 6,
+        "judge_pass_reference_fail": 1,
+        "judge_fail_reference_pass": 0,
+        "both_fail": 14
+      },
+      "majority_label": "fail",
+      "majority_agreement": 0.7142857142857143,
+      "self_consistency": null
+    }
+  },
+  "reference": "objective",
+  "labeller": "checks",
+  "stats_impl": "baseline",
+  "golden_set": "eval/golden/retail",
+  "golden_fingerprint": "sha256:311cde8e7e5cade63c0d0a2c08354c890517e7e68a22e28b693a6d838cd191ce",
+  "repeats": 1,
+  "probes": [],
+  "judge_calls": 0,
+  "cached_calls": 21,
+  "cost_usd": 0.0
+}

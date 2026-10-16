@@ -89,13 +89,17 @@ export function OpBadge({ op }: { op: DiffOp }) {
   );
 }
 
-export function GateBadge({ gating }: { gating: boolean | undefined }) {
+export function GateBadge({ gating, blocked = false }: { gating: boolean | undefined; blocked?: boolean }) {
   return gating ? (
     <Badge tone="green" icon="●" title="ci_low reaches min_kappa: this criterion can fail a build">
       gating
     </Badge>
   ) : (
-    <Badge tone="slate" icon="○" title="ci_low is below min_kappa: verdicts are advisory">
+    <Badge
+      tone="slate"
+      icon="○"
+      title={blocked ? "this report cannot gate whatever its numbers: verdicts are advisory" : "ci_low is below min_kappa (or kappa is undefined): verdicts are advisory"}
+    >
       advisory
     </Badge>
   );

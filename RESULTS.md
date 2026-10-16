@@ -712,7 +712,7 @@ Each run gets a seed derived from the scenario and run index, and outcomes are
 fed to the gate in run order, so the result is the same at any
 `--concurrency` (asserted in `tests/test_flake.py`).
 
-## Dashboard demo data and `docker compose up` (M5, offline)
+## Dashboard demo data and `docker compose up` (M5, updated in M6; offline)
 
 Not a quality measurement. It records where the dashboard's demo numbers come
 from and that the Compose stack serves them. No API calls: the live retail runs
@@ -722,20 +722,21 @@ verdict cache.
 - **Dataset:** the retail example: `examples/retail_agent/replay.toml` (fake-model
   cassettes) and `replay-live.toml` (six live Opus recordings), three seeded
   regressions, and the seeded flaky model at seeds 0 to 4.
-- **Method:** `examples/demo_data.py` runs `replay ci` and `replay flake` in-process,
-  exactly as on the command line, into one store. The demo calibration report
-  compares the judge's per-criterion verdicts with the suite's deterministic verdict
-  on the 24 runs of the judge smoke test above. Under `REPLAY_STATS_IMPL=baseline` its
-  kappa column holds raw agreement, and its `method` field says so. It is not a
-  calibration against human labels.
-- **Date:** 2026-10-10.
+- **Method:** `examples/demo_data.py` runs `replay ci`, `replay flake` and (since
+  M6) `replay calibrate` in-process, exactly as on the command line, into one
+  store. The two calibration reports are on the retail golden set against its
+  objective labels: the real judge from the committed verdict cache (the section
+  below), and the deterministic fake judge with three repeats and every probe,
+  so each part of the calibration page has data. Neither is a calibration
+  against human labels, and neither can gate: the page says why.
+- **Date:** 2026-10-10; re-run 2026-10-14 for M6.
 - **Commands:** `make demo-data` (SQLite), then `docker compose up --build --detach
   --wait app` (PostgreSQL 16).
 
-Raw output (`make demo-data`, last line; about 25 s, a 39 MB SQLite file):
+Raw output (`make demo-data`, last line; about 26 s, a 39 MB SQLite file):
 
 ```
-demo store ready: 480 runs, 14 suites, 6 flake reports, 1 calibration report
+demo store ready: 480 runs, 14 suites, 6 flake reports, 2 calibration reports
 ```
 
 Raw output (Compose; `curl` against the running stack):
@@ -745,22 +746,141 @@ $ curl -sf 'http://localhost:8000/api/runs?limit=1' | jq .total
 480
 $ curl -sf http://localhost:8000/api/health
 {"status":"ok","version":"0.1.0","backend":"postgresql","revision":"0002"}
-seed-1  | demo store ready: 480 runs, 14 suites, 6 flake reports, 1 calibration report
+seed-1  | demo store ready: 480 runs, 14 suites, 6 flake reports, 2 calibration reports
 # second `docker compose up`:
 seed-1  | the store already holds 480 runs; left as it is
 ```
 
 The Playwright smoke test (`npm run e2e` in `dashboard/`) passed against both the
-SQLite demo store and the Compose stack (`2 passed`).
+SQLite demo store and the Compose stack (`2 passed`) in M5, and against the
+Compose stack again in M6 (`2 passed`), when the screenshots were recaptured.
 
-Demo calibration report (baseline statistics: raw agreement, normal-approximation
-bootstrap interval, n = 24):
+The M5 version of this store held a calibration report computed by hand
+whose `policy_followed` row "gated" at 0.6 on raw agreement. Since M6 a report
+gates only with human labels and kappa from the `core` statistics, so that
+row could no longer gate; the reports above come from `replay calibrate`
+itself.
 
-| Criterion | Agreement | Interval | Gates at 0.6 |
-|---|---|---|---|
-| resolved | 0.54 | [0.34, 0.74] | no |
-| policy_followed | 0.88 | [0.74, 1.00] | yes (on raw agreement; not meaningful until `core`) |
-| accurate_report | 0.42 | [0.22, 0.61] | no |
+## Judge calibration pipeline on the retail golden set (M6, offline)
+
+What `replay calibrate` measures today without a key or human labels: the
+real judge's committed verdicts against the suite's deterministic verdicts.
+This is the M3 smoke test re-run through the calibration pipeline, not a
+calibration. The reference is the suite's rules (`--reference objective`), so
+the report says it may not gate, and the statistics are the `baseline`
+implementation, so the "kappa" column holds raw agreement.
+
+- **Dataset:** `eval/golden/retail` (`make golden`): the six live retail
+  recordings replayed with the real agent and the three M2 mutants, 24 runs.
+  Golden items are keyed by the judge's transcript, so the two
+  `wrong_write_argument` runs whose transcripts equal the real agent's are one
+  item each: 21 items, 6 objective passes and 15 fails.
+- **Judge:** `claude-opus-5-5`, effort `low`, rubric version 1, from the
+  verdicts committed in `examples/retail_agent/judge-cache/` (M3; no new
+  calls, $0). One verdict per item, so no self-consistency or probes.
+- **Date:** 2026-10-14. Raw JSON: `eval/results/calibration_objective.json`
+  (byte-stable: `created_at` is the newest cached verdict used).
+
+**Command:** `make eval-judge-objective`
+
+```
+estimate: 0 judge call(s) to make, 21 cached (of 21 verdicts); estimated cost $0.0000
+criterion  kappa* [95% CI]    agreement  majority    pass/pass, false pass, false fail, fail/fail  self-consistency  n   gates
+_overall   0.95 [0.86, 1.00]  95%        71% (fail)  6, 1, 0, 14                                   -                 21  -
+The judge's first verdict per item against objective labels by checks (1 = pass, 0 = fail): raw agreement in the kappa column (REPLAY_STATS_IMPL=baseline; set
+it to core for Cohen's kappa), with a normal-approximation bootstrap CI (2000 resamples, seed 0, clamped to [-1, 1]).
+no criterion gates: the calibration report compares the judge with objective labels, not human ones; label the golden set with `replay label` and recalibrate
+21 item(s), 0 judge call(s), 21 cached; cost $0.0000
+```
+
+Reading it: the judge agrees with the deterministic verdict on 20 of 21
+distinct runs (95%), against 71% for a judge that always answers "fail".
+The one disagreement is a false pass, the `first_tool_only` run on
+`cancel_pending_laptop` discussed in the M3 section. Objective labels exist
+only for the whole run (`_overall`): a deterministic check does not answer
+one rubric question, so per-criterion agreement needs human labels.
+
+## LLMBar heuristic baselines (M6, offline)
+
+The floor a real judge's LLMBar numbers must be read against. Three
+deterministic "judges" pick the first output, the longer one or the shorter
+one, on every LLMBar instance in both orders. No model is called.
+
+- **Dataset:** LLMBar (Zeng et al., ICLR 2024, MIT), vendored in
+  `eval/data/llmbar` at `princeton-nlp/LLMBar@900616bff90b` with sha256 sums:
+  Natural (100) and Adversarial Neighbor (134), GPTInst (92), GPTOut (47) and
+  Manual (46), 419 instances.
+- **Method:** each instance judged in its original order and swapped (838
+  verdicts per judge). Accuracy per order and averaged; "consistent-correct"
+  is right in both orders; position bias is the share of instances whose
+  chosen output changes with the order. Intervals come from
+  `REPLAY_STATS_IMPL=baseline`, so they are Wald intervals, which collapse to
+  a point at 0% and 100%; the averaged accuracy's interval treats the two
+  orders of one instance as independent, so it is too narrow.
+- **Date:** 2026-10-14. Raw JSON: `eval/results/llmbar_heuristic_{first,longer,shorter}.json`.
+
+**Command:** `make eval-llmbar-heuristics`, which runs, for each judge,
+`uv run python eval/llmbar.py --provider fake-<judge> --cache-dir <scratch> --out eval/results/llmbar_heuristic_<judge>.json`.
+The tables below are those runs' standard output.
+
+**Always the first output** (`fake:first`):
+
+```
+LLMBar (princeton-nlp/LLMBar@900616bff90b), judge `fake:first`, pairwise prompt v1. Intervals: 95% Wald (`REPLAY_STATS_IMPL=baseline`); the averaged accuracy's interval treats the two orders of an instance as independent trials, so it is too narrow.
+
+| Group | n | Acc. original | Acc. swapped | Acc. average | Consistent-correct | Position bias | Flips to first | Errors |
+|---|---|---|---|---|---|---|---|---|
+| Natural | 100 | 42.0% [32.3%, 51.7%] | 58.0% [48.3%, 67.7%] | 50.0% [43.1%, 56.9%] | 0.0% [0.0%, 0.0%] | 100.0% [100.0%, 100.0%] | 100/100 | 0 |
+| Adversarial/Neighbor | 134 | 56.0% [47.6%, 64.4%] | 44.0% [35.6%, 52.4%] | 50.0% [44.0%, 56.0%] | 0.0% [0.0%, 0.0%] | 100.0% [100.0%, 100.0%] | 134/134 | 0 |
+| Adversarial/GPTInst | 92 | 48.9% [38.7%, 59.1%] | 51.1% [40.9%, 61.3%] | 50.0% [42.8%, 57.2%] | 0.0% [0.0%, 0.0%] | 100.0% [100.0%, 100.0%] | 92/92 | 0 |
+| Adversarial/GPTOut | 47 | 46.8% [32.5%, 61.1%] | 53.2% [38.9%, 67.5%] | 50.0% [39.9%, 60.1%] | 0.0% [0.0%, 0.0%] | 100.0% [100.0%, 100.0%] | 47/47 | 0 |
+| Adversarial/Manual | 46 | 47.8% [33.4%, 62.3%] | 52.2% [37.7%, 66.6%] | 50.0% [39.8%, 60.2%] | 0.0% [0.0%, 0.0%] | 100.0% [100.0%, 100.0%] | 46/46 | 0 |
+| Adversarial (pooled) | 319 | 51.4% [45.9%, 56.9%] | 48.6% [43.1%, 54.1%] | 50.0% [46.1%, 53.9%] | 0.0% [0.0%, 0.0%] | 100.0% [100.0%, 100.0%] | 319/319 | 0 |
+| Overall | 419 | 49.2% [44.4%, 54.0%] | 50.8% [46.0%, 55.6%] | 50.0% [46.6%, 53.4%] | 0.0% [0.0%, 0.0%] | 100.0% [100.0%, 100.0%] | 419/419 | 0 |
+```
+
+**The longer output** (`fake:longer`):
+
+```
+LLMBar (princeton-nlp/LLMBar@900616bff90b), judge `fake:longer`, pairwise prompt v1. Intervals: 95% Wald (`REPLAY_STATS_IMPL=baseline`); the averaged accuracy's interval treats the two orders of an instance as independent trials, so it is too narrow.
+
+| Group | n | Acc. original | Acc. swapped | Acc. average | Consistent-correct | Position bias | Flips to first | Errors |
+|---|---|---|---|---|---|---|---|---|
+| Natural | 100 | 57.0% [47.3%, 66.7%] | 56.0% [46.3%, 65.7%] | 56.5% [49.6%, 63.4%] | 56.0% [46.3%, 65.7%] | 1.0% [0.0%, 3.0%] | 1/1 | 0 |
+| Adversarial/Neighbor | 134 | 11.9% [6.5%, 17.4%] | 11.9% [6.5%, 17.4%] | 11.9% [8.1%, 15.8%] | 11.9% [6.5%, 17.4%] | 0.0% [0.0%, 0.0%] | 0/0 | 0 |
+| Adversarial/GPTInst | 92 | 13.0% [6.2%, 19.9%] | 13.0% [6.2%, 19.9%] | 13.0% [8.2%, 17.9%] | 13.0% [6.2%, 19.9%] | 0.0% [0.0%, 0.0%] | 0/0 | 0 |
+| Adversarial/GPTOut | 47 | 44.7% [30.5%, 58.9%] | 44.7% [30.5%, 58.9%] | 44.7% [34.6%, 54.7%] | 44.7% [30.5%, 58.9%] | 0.0% [0.0%, 0.0%] | 0/0 | 0 |
+| Adversarial/Manual | 46 | 19.6% [8.1%, 31.0%] | 17.4% [6.4%, 28.3%] | 18.5% [10.5%, 26.4%] | 17.4% [6.4%, 28.3%] | 2.2% [0.0%, 6.4%] | 1/1 | 0 |
+| Adversarial (pooled) | 319 | 18.2% [13.9%, 22.4%] | 17.9% [13.7%, 22.1%] | 18.0% [15.0%, 21.0%] | 17.9% [13.7%, 22.1%] | 0.3% [0.0%, 0.9%] | 1/1 | 0 |
+| Overall | 419 | 27.4% [23.2%, 31.7%] | 27.0% [22.7%, 31.2%] | 27.2% [24.2%, 30.2%] | 27.0% [22.7%, 31.2%] | 0.5% [0.0%, 1.1%] | 2/2 | 0 |
+```
+
+**The shorter output** (`fake:shorter`):
+
+```
+LLMBar (princeton-nlp/LLMBar@900616bff90b), judge `fake:shorter`, pairwise prompt v1. Intervals: 95% Wald (`REPLAY_STATS_IMPL=baseline`); the averaged accuracy's interval treats the two orders of an instance as independent trials, so it is too narrow.
+
+| Group | n | Acc. original | Acc. swapped | Acc. average | Consistent-correct | Position bias | Flips to first | Errors |
+|---|---|---|---|---|---|---|---|---|
+| Natural | 100 | 44.0% [34.3%, 53.7%] | 43.0% [33.3%, 52.7%] | 43.5% [36.6%, 50.4%] | 43.0% [33.3%, 52.7%] | 1.0% [0.0%, 3.0%] | 1/1 | 0 |
+| Adversarial/Neighbor | 134 | 88.1% [82.6%, 93.5%] | 88.1% [82.6%, 93.5%] | 88.1% [84.2%, 91.9%] | 88.1% [82.6%, 93.5%] | 0.0% [0.0%, 0.0%] | 0/0 | 0 |
+| Adversarial/GPTInst | 92 | 87.0% [80.1%, 93.8%] | 87.0% [80.1%, 93.8%] | 87.0% [82.1%, 91.8%] | 87.0% [80.1%, 93.8%] | 0.0% [0.0%, 0.0%] | 0/0 | 0 |
+| Adversarial/GPTOut | 47 | 55.3% [41.1%, 69.5%] | 55.3% [41.1%, 69.5%] | 55.3% [45.3%, 65.4%] | 55.3% [41.1%, 69.5%] | 0.0% [0.0%, 0.0%] | 0/0 | 0 |
+| Adversarial/Manual | 46 | 82.6% [71.7%, 93.6%] | 80.4% [69.0%, 91.9%] | 81.5% [73.6%, 89.5%] | 80.4% [69.0%, 91.9%] | 2.2% [0.0%, 6.4%] | 1/1 | 0 |
+| Adversarial (pooled) | 319 | 82.1% [77.9%, 86.3%] | 81.8% [77.6%, 86.1%] | 82.0% [79.0%, 85.0%] | 81.8% [77.6%, 86.1%] | 0.3% [0.0%, 0.9%] | 1/1 | 0 |
+| Overall | 419 | 73.0% [68.8%, 77.3%] | 72.6% [68.3%, 76.8%] | 72.8% [69.8%, 75.8%] | 72.6% [68.3%, 76.8%] | 0.5% [0.0%, 1.1%] | 2/2 | 0 |
+```
+
+Reading it: on the Adversarial subsets, picking the *shorter* output is right
+82.0% of the time and picking the longer one 18.0%. Those subsets were built
+so that the wrong output looks better on the surface (longer, more fluent,
+more "helpful"), so a judge that rewards length or polish scores well below
+chance there, and an Adversarial accuracy near 82% says nothing until it is
+compared with this floor. On Natural the same heuristics are near chance
+(56.5% and 43.5%). The always-first judge scores exactly 50% averaged over
+both orders with a position-bias rate of 100%, the reason every instance is
+judged in both orders. A length tie flips with the order, which gives the
+0.5% position bias of the length judges.
 
 ## To measure
 
@@ -774,9 +894,39 @@ bootstrap interval, n = 24):
 - **D3, the full flake benchmark** (30 scenarios × 20 runs in `model-live`)
   needs a larger golden set (M6). At the measured cost per run that is about
   $21 with Opus 5.5 or $0.52 with Haiku 5.5.
-- **Judge-human agreement (kappa with bootstrap CI)** needs the golden set
-  (D1) and `replay calibrate` (M6). The judge, its rubric and the calibration
-  report format exist; the report that would let a criterion gate does not.
+- **Judge-human agreement (kappa with bootstrap CI, self-consistency, bias
+  probes)** needs human labels and a key. Label the retail golden set
+  (`uv run replay label eval/golden/retail --rubric examples/retail_agent/rubric.yaml --labeller NAME`,
+  21 items × 3 criteria, about 20 minutes), then run
+  `REPLAY_STATS_IMPL=core make eval-judge`: 84 calls to `claude-opus-5-5`
+  (3 verdicts per item plus the position and verbosity probes; the first
+  verdicts are already cached), estimated at $1.30 by `replay calibrate
+  --dry-run` from the measured tokens of the committed verdicts (`make
+  token-rates` re-derives them: 2.3 characters per input token and 289
+  output tokens a call, medians over the 21 verdicts; the estimator gives
+  $0.3274 for calls that really cost $0.3302) (about
+  $0.015 a call: $0.0153 for a main verdict, a little more for a position-probe
+  call, whose reversed rubric is a fresh prompt-cache write). A gating report
+  also needs kappa from `stats.py`
+  and at least 20 labelled items per criterion (`REPLAY_JUDGE_MIN_ITEMS`);
+  21 items barely clear that floor and give a wide interval, so the gating
+  report is meant to come from D1.
+- **D1, the larger golden set.** `make record-golden` records 10
+  `model-live` runs per retail task with Opus 5.5 and 10 with Haiku 5.5 (120
+  runs), estimated at $2.19 from the M4 cost per run; then label it with
+  `replay label eval/golden/retail-d1 ...` and calibrate it with the
+  `eval-judge` command pointed at `eval/golden/retail-d1`, at about $0.077 a
+  distinct item (5 verdicts at about $0.015).
+- **LLMBar accuracy and position bias for the real judge.** `make
+  eval-llmbar`: 838 calls to `claude-opus-5-5` at effort `low`, estimated at
+  $12.73 by `make eval-llmbar-dry` (characters / 4 for input, an assumed 600
+  output tokens a call; output is about 80% of the estimate). `--limit N
+  --seed S` runs a stratified sample for less. Compare with the heuristic
+  baselines above. Commit `eval/llmbar-cache/` with the result, as the retail
+  judge cache is, so `uv run python eval/llmbar.py --offline --out
+  eval/results/llmbar.json` reproduces it without a key; under the default
+  `baseline` statistics the intervals are Wald, so prefer
+  `REPLAY_STATS_IMPL=core make eval-llmbar` once `stats.py` exists.
 - The M2 live smoke test above can be re-run with the two commands in its
   section (about $0.30 each with `claude-opus-5-5` and a cold prompt cache);
   the M3 cost-gate run with the two commands in its section (about $1.00);
@@ -795,3 +945,9 @@ API spend in M4: $1.213 (Opus flake runs $1.06960, Haiku flake runs
 $0.10453 and the Haiku repeat $0.03786, all in their committed JSON reports;
 one Haiku smoke run $0.00137, from the session log; sum $1.21336). Project
 total: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213).
+
+API spend in M5: $0 (the demo data comes from offline replays and the
+committed verdict cache).
+
+API spend in M6: $0 (every judge verdict used came from the committed cache;
+the new calls are under "To measure"). Project total: $3.326.

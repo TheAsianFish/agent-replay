@@ -50,7 +50,7 @@ from agent_replay.judge import (
     make_provider,
 )
 from agent_replay.judge.cache import cache_key
-from agent_replay.judge.calibration import resolve_min_kappa
+from agent_replay.judge.calibration import criterion_gates, report_blocker, resolve_min_kappa
 from agent_replay.judge.transcript import clip
 from agent_replay.pricing import cost_usd
 from examples.retail_agent import agent as retail_agent
@@ -749,6 +749,7 @@ def calibration(
             "created_at": "2026-10-09T00:00:00Z",
             "n_items": 120,
             "method": "Cohen's kappa, 95% bootstrap CI (2000 resamples)",
+            "stats_impl": "core",
             "criteria": {
                 i: {
                     "kappa": min(1.0, low + 0.05),
@@ -814,6 +815,107 @@ def test_mixed_gating_and_advisory_criteria():
     assert "not in the calibration report" in gates["policy"].reason
 
 
+def test_reports_against_objective_labels_or_baseline_statistics_never_gate():
+    rubric = make_rubric()
+    objective = calibration().model_copy(update={"reference": "objective"})
+    baseline = calibration().model_copy(update={"stats_impl": "baseline"})
+    core = calibration().model_copy(update={"stats_impl": "core"})
+
+    for report, words in ((objective, "objective labels"), (baseline, "REPLAY_STATS_IMPL=core")):
+        gates = gating(report, rubric, FAKE_ID, 0.6)
+        assert not any(g.gating for g in gates.values())
+        assert words in gates["resolved"].reason
+        assert criterion_gates(report, 0.6) == {"resolved": False, "policy": False}
+    assert report_blocker(core) is None
+    assert all(g.gating for g in gating(core, rubric, FAKE_ID, 0.6).values())
+    assert criterion_gates(core, 0.6) == {"resolved": True, "policy": True}
+
+
+def test_an_undefined_kappa_never_gates():
+    report = calibration()
+    undefined = report.criteria["resolved"].model_copy(
+        update={"kappa": None, "ci_low": None, "ci_high": None}
+    )
+    report = report.model_copy(update={"criteria": {**report.criteria, "resolved": undefined}})
+
+    gates = gating(report, make_rubric(), FAKE_ID, 0.0)
+
+    assert gates["resolved"].gating is False
+    assert "kappa is undefined (n=120)" in gates["resolved"].reason
+    assert gates["policy"].gating is True
+    assert criterion_gates(report, 0.0) == {"resolved": False, "policy": True}
+
+
+def test_a_criterion_needs_enough_labelled_items_to_gate(monkeypatch: pytest.MonkeyPatch):
+    report = calibration()
+    few = report.criteria["resolved"].model_copy(update={"n": 19})
+    report = report.model_copy(update={"criteria": {**report.criteria, "resolved": few}})
+
+    gates = gating(report, make_rubric(), FAKE_ID, 0.6)
+
+    assert gates["resolved"].gating is False
+    assert (
+        "only 19 labelled items, fewer than 20 (REPLAY_JUDGE_MIN_ITEMS)" in gates["resolved"].reason
+    )
+    assert gates["policy"].gating is True
+    assert criterion_gates(report, 0.6) == {"resolved": False, "policy": True}
+    monkeypatch.setenv("REPLAY_JUDGE_MIN_ITEMS", "19")
+    assert gating(report, make_rubric(), FAKE_ID, 0.6)["resolved"].gating is True
+    assert gating(report, make_rubric(), FAKE_ID, 0.6, min_items=50)["resolved"].gating is False
+    monkeypatch.setenv("REPLAY_JUDGE_MIN_ITEMS", "many")
+    with pytest.raises(ConfigError, match="REPLAY_JUDGE_MIN_ITEMS='many' is not a whole number"):
+        gating(report, make_rubric(), FAKE_ID, 0.6)
+
+
+def test_the_whole_run_entry_never_gates():
+    report = calibration()
+    report = report.model_copy(
+        update={"criteria": {**report.criteria, "_overall": report.criteria["resolved"]}}
+    )
+    assert criterion_gates(report, 0.6) == {"resolved": True, "policy": True, "_overall": False}
+
+
+def test_a_schema_1_report_still_loads_as_human_labels(tmp_path: Path):
+    data = json.loads(calibration().model_dump_json())
+    for added in (
+        "reference",
+        "labeller",
+        "stats_impl",
+        "golden_set",
+        "golden_fingerprint",
+        "repeats",
+        "probes",
+        "judge_calls",
+        "cached_calls",
+        "cost_usd",
+    ):
+        del data[added]
+    data["schema_version"] = 1
+    path = tmp_path / "v1.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    report = CalibrationReport.load(path)
+
+    assert report.schema_version == 1
+    assert report.reference == "human"
+    assert report.stats_impl is None
+    gates = gating(report, make_rubric(), FAKE_ID, 0.6)
+    assert not any(g.gating for g in gates.values())  # nothing says its kappa is kappa
+    assert "statistics that it does not name" in gates["resolved"].reason
+
+
+def test_a_criterion_fingerprint_changes_only_with_that_criterion():
+    rubric = make_rubric()
+    data = rubric.model_dump(mode="json")
+    data["criteria"][1]["question"] = "Was every policy rule followed?"
+    data["instructions"] = "Other guidance."
+    edited = Rubric.model_validate(data)
+
+    assert edited.criteria[0].fingerprint == rubric.criteria[0].fingerprint
+    assert edited.criteria[1].fingerprint != rubric.criteria[1].fingerprint
+    assert edited.fingerprint != rubric.fingerprint
+
+
 def test_calibration_reports_load_and_validate(tmp_path: Path):
     report = calibration()
     path = write_calibration(tmp_path, report)
@@ -822,7 +924,7 @@ def test_calibration_reports_load_and_validate(tmp_path: Path):
     with pytest.raises(ConfigError, match="does not exist"):
         CalibrationReport.load(tmp_path / "missing.json")
     data = json.loads(path.read_text(encoding="utf-8"))
-    data["schema_version"] = 2
+    data["schema_version"] = 3
     data["criteria"]["resolved"]["ci_low"] = 1.5
     path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(ConfigError) as info:
@@ -939,6 +1041,35 @@ def test_the_summary_says_why_a_report_does_not_gate():
         "judge: 1/2 criteria passed (advisory: not calibrated for this rubric, judge and "
         "prompt version)"
     )
+
+    few = calibration()
+    few = few.model_copy(
+        update={"criteria": {i: c.model_copy(update={"n": 5}) for i, c in few.criteria.items()}}
+    )
+    result = run_check(deciding(True, False), few)
+    assert result.message.startswith("judge: 1/2 criteria passed (advisory: too few labelled")
+    mixed = calibration(ci_low={"resolved": 0.3, "policy": 0.9})
+    mixed = mixed.model_copy(
+        update={
+            "criteria": {
+                **mixed.criteria,
+                "policy": mixed.criteria["policy"].model_copy(update={"n": 5}),
+            }
+        }
+    )
+    result = run_check(deciding(True, False), mixed)
+    assert result.message.startswith(
+        "judge: 1/2 criteria passed (advisory: no criterion meets the gate"
+    )
+
+    for update, summary in (
+        ({"reference": "objective"}, "calibrated against objective labels, not human ones"),
+        ({"stats_impl": "baseline"}, "calibrated without the core statistics"),
+        ({"stats_impl": None}, "calibrated without the core statistics"),
+    ):
+        result = run_check(deciding(True, False), calibration().model_copy(update=update))
+        assert result.advisory is True
+        assert result.message.startswith(f"judge: 1/2 criteria passed (advisory: {summary}")
 
 
 def test_failed_criteria_are_named_with_their_reasoning():

@@ -52,6 +52,13 @@ class Criterion(_Strict):
     pass_when: _Text | None = None
     fail_when: _Text | None = None
 
+    @property
+    def fingerprint(self) -> str:
+        """sha256 over this criterion alone: a human label answers this question, so editing
+        another criterion, or the rubric's guidance, leaves labels for this one valid."""
+        payload = canonical_json(self.model_dump(mode="json"))
+        return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
 
 class Rubric(_Strict):
     name: Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9_.-]*$", max_length=100)]

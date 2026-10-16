@@ -8,6 +8,11 @@ cache directory and CI can judge offline (``REPLAY_JUDGE_OFFLINE=1``): a miss
 then raises :class:`JudgeCacheMiss` instead of calling the provider, and
 ``replay ci`` exits 2 so a stale committed cache cannot pass unnoticed.
 
+Repeated verdicts on the same transcript (``replay calibrate --repeats``
+measures the judge's self-consistency) are told apart by a ``sample`` number.
+Sample 0 is the verdict a ``judge`` check uses and its key leaves ``sample``
+out, so caches written before samples existed keep hitting.
+
 Layout: ``<directory>/<key[:2]>/<key>.json``, one verdict per file, written
 atomically. A corrupt file counts as a miss.
 """
@@ -22,7 +27,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import structlog
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agent_replay._json import canonical_json
 from agent_replay.cassette import Usage
@@ -63,16 +68,25 @@ def _file_mode() -> int:
     return 0o666 & ~mask
 
 
-def cache_key(judge_id: str, rubric: Rubric, judge_input: JudgeInput) -> str:
-    payload = canonical_json(
-        {
-            "judge_id": judge_id,
-            "rubric": rubric.fingerprint,
-            "input": judge_input.fingerprint,
-            "prompt_version": PROMPT_VERSION,
-        }
-    )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+def _check_sample(sample: int) -> None:
+    if sample < 0:
+        raise ValueError(f"sample must be >= 0, got {sample}")
+
+
+def cache_key(judge_id: str, rubric: Rubric, judge_input: JudgeInput, sample: int = 0) -> str:
+    """The cache key of one verdict. ``sample`` numbers repeated verdicts on the same
+    transcript; it enters the hash only when above 0, so sample 0 has the key every
+    verdict had before samples existed."""
+    _check_sample(sample)
+    fields: dict[str, str | int] = {
+        "judge_id": judge_id,
+        "rubric": rubric.fingerprint,
+        "input": judge_input.fingerprint,
+        "prompt_version": PROMPT_VERSION,
+    }
+    if sample > 0:
+        fields["sample"] = sample
+    return hashlib.sha256(canonical_json(fields).encode("utf-8")).hexdigest()
 
 
 class CacheEntry(BaseModel):
@@ -86,6 +100,8 @@ class CacheEntry(BaseModel):
     rubric_fingerprint: str
     input_fingerprint: str
     prompt_version: str
+    sample: int = Field(default=0, ge=0)
+    """Which repeated verdict on this transcript (0: the one a ``judge`` check uses)."""
     verdicts: tuple[CriterionVerdict, ...]
     usage: Usage | None = None
     cost_usd: float | None = None
@@ -144,18 +160,19 @@ class JudgeCache:
         return entry
 
     def _matching(
-        self, key: str, judge_id: str, rubric: Rubric, judge_input: JudgeInput
+        self, key: str, judge_id: str, rubric: Rubric, judge_input: JudgeInput, sample: int = 0
     ) -> CacheEntry | None:
-        """The entry for ``key`` if its own fields describe this judge, rubric, transcript and
-        prompt version; an entry copied under another key counts as corrupt."""
+        """The entry for ``key`` if its own fields describe this judge, rubric, transcript,
+        prompt version and sample; an entry copied under another key counts as corrupt."""
         entry = self.get(key)
         if entry is None:
             return None
-        expected = {
+        expected: dict[str, str | int] = {
             "judge_id": judge_id,
             "rubric_fingerprint": rubric.fingerprint,
             "input_fingerprint": judge_input.fingerprint,
             "prompt_version": PROMPT_VERSION,
+            "sample": sample,
         }
         wrong = [f for f, v in expected.items() if getattr(entry, f) != v]
         if wrong:
@@ -174,6 +191,8 @@ class JudgeCache:
         rubric: Rubric,
         judge_input: JudgeInput,
         response: JudgeResponse,
+        *,
+        sample: int = 0,
     ) -> CacheEntry:
         entry = CacheEntry(
             key=key,
@@ -182,6 +201,7 @@ class JudgeCache:
             rubric_fingerprint=rubric.fingerprint,
             input_fingerprint=judge_input.fingerprint,
             prompt_version=PROMPT_VERSION,
+            sample=sample,
             verdicts=response.verdicts,
             usage=response.usage,
             cost_usd=response.cost_usd,
@@ -204,19 +224,32 @@ class JudgeCache:
                 Path(tmp_name).unlink(missing_ok=True)
         return entry
 
+    def lookup(
+        self, judge_id: str, rubric: Rubric, judge_input: JudgeInput, *, sample: int = 0
+    ) -> CacheEntry | None:
+        """The usable cached entry for this verdict (verdicts in rubric order), or ``None``.
+        Never calls a provider, so it can count what a run would cost."""
+        key = cache_key(judge_id, rubric, judge_input, sample)
+        entry = self._matching(key, judge_id, rubric, judge_input, sample)
+        if entry is None:
+            return None
+        try:
+            verdicts = validated(rubric, JudgeOutput(criteria=list(entry.verdicts)))
+        except JudgeError as exc:  # a hand-edited entry
+            log.warning("judge.cache_corrupt", path=str(self.path(key)), error=str(exc))
+            return None
+        return entry.model_copy(update={"verdicts": verdicts})
+
     def verdict(
-        self, provider: JudgeProvider, rubric: Rubric, judge_input: JudgeInput
+        self, provider: JudgeProvider, rubric: Rubric, judge_input: JudgeInput, *, sample: int = 0
     ) -> tuple[JudgeResponse, bool]:
-        """The cached verdict, else the provider's (then cached). Returns ``(response, hit)``."""
-        key = cache_key(provider.judge_id, rubric, judge_input)
-        entry = self._matching(key, provider.judge_id, rubric, judge_input)
+        """The cached verdict, else the provider's (then cached). Returns ``(response, hit)``.
+
+        ``sample`` > 0 asks for another, independently cached verdict on the same
+        transcript (the provider is called again on a miss)."""
+        entry = self.lookup(provider.judge_id, rubric, judge_input, sample=sample)
         if entry is not None:
-            try:
-                verdicts = validated(rubric, JudgeOutput(criteria=list(entry.verdicts)))
-            except JudgeError as exc:  # a hand-edited entry
-                log.warning("judge.cache_corrupt", path=str(self.path(key)), error=str(exc))
-            else:
-                return entry.response().model_copy(update={"verdicts": verdicts}), True
+            return entry.response(), True
         if self.offline:
             raise JudgeCacheMiss(
                 f"this run's verdict is not in the judge cache {str(self.directory)!r} (judge "
@@ -224,5 +257,6 @@ class JudgeCache:
                 "with the provider available, or commit the cache directory"
             )
         response = provider.evaluate(rubric, judge_input)
-        self.put(key, provider.judge_id, rubric, judge_input, response)
+        key = cache_key(provider.judge_id, rubric, judge_input, sample)
+        self.put(key, provider.judge_id, rubric, judge_input, response, sample=sample)
         return response, False

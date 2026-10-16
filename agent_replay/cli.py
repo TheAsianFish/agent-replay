@@ -19,14 +19,17 @@ from typing import Annotated, Any
 
 import typer
 from pydantic import JsonValue, ValidationError
-from rich.console import Console
 from rich.markup import escape
 from rich.table import Table
 from sqlalchemy.exc import SQLAlchemyError
 
 from agent_replay import __version__
+from agent_replay._cli import DB_OPTION as _DB_OPTION
+from agent_replay._cli import EXIT_FAILED, EXIT_OK, EXIT_USAGE, console
+from agent_replay._cli import fail as _fail
 from agent_replay._json import canonical_json, to_jsonable
 from agent_replay._logging import configure_logging
+from agent_replay.calibrate import commands_calibrate, commands_golden
 from agent_replay.cassette import Cassette, Kind
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
@@ -70,8 +73,6 @@ from agent_replay.session import ReplayMode
 from agent_replay.store import Store
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
-EXIT_OK, EXIT_FAILED, EXIT_USAGE = 0, 1, 2
-
 app = typer.Typer(
     name="replay",
     help="Record an LLM agent's run into a cassette and replay it as a regression test.",
@@ -79,8 +80,6 @@ app = typer.Typer(
     add_completion=False,
     pretty_exceptions_enable=False,
 )
-console = Console(highlight=False)
-
 _STATUS_STYLE = {
     StepStatus.LIVE: "cyan",
     StepStatus.EXACT: "green",
@@ -106,11 +105,6 @@ class Policy(StrEnum):
 class SeqMode(StrEnum):
     exact = "exact"
     in_order = "in_order"
-
-
-def _fail(message: str) -> typer.Exit:
-    console.print(f"[bold red]error:[/] {escape(message)}")
-    return typer.Exit(EXIT_USAGE)
 
 
 def _version(value: bool) -> None:
@@ -1012,8 +1006,6 @@ def serve_cmd(
 db_app = typer.Typer(help="Manage the run store.", no_args_is_help=True)
 app.add_typer(db_app, name="db")
 
-_DB_OPTION = typer.Option(help="Run store URL; defaults to $REPLAY_DB_URL or .replay/replay.db.")
-
 
 @db_app.command("upgrade")
 def db_upgrade_cmd(db: Annotated[str | None, _DB_OPTION] = None) -> None:
@@ -1048,6 +1040,10 @@ def db_add_calibration_cmd(
         f"stored calibration report {report_id[:12]} for rubric {escape(report.rubric)} "
         f"({report.n_items} items, judge {escape(report.judge_id)})"
     )
+
+
+commands_golden.register(app)
+commands_calibrate.register(app)
 
 
 def main() -> None:
