@@ -15,6 +15,7 @@ context into its workers, which keeps their spans nested too.
 
 from __future__ import annotations
 
+import functools
 import platform
 import threading
 import time
@@ -540,11 +541,17 @@ class Session:
 
 
 def _recorder_info() -> dict[str, str]:
+    return {"agent_replay": _package_version(), "python": platform.python_version()}
+
+
+@functools.cache
+def _package_version() -> str:
+    # Reading the installed metadata takes about a millisecond: once per process, not
+    # once per session (`make bench-replay` measures the fixed cost of a session).
     try:
-        pkg = version("agent-replay")
+        return version("agent-replay")
     except PackageNotFoundError:  # pragma: no cover - running from a source tree
-        pkg = "unknown"
-    return {"agent_replay": pkg, "python": platform.python_version()}
+        return "unknown"
 
 
 def _servable(

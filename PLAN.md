@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-14 (M6).
+definition of done is met and CI is green. Last updated: 2026-10-16 (M7).
 
 ## Goal
 
@@ -158,8 +158,9 @@ flowchart LR
 
 ## Evaluation
 
-All numbers in README.md come from `make eval` / `make bench` and are recorded in
-RESULTS.md with dataset, method, command and raw output. Anything needing an
+All numbers in README.md come from a command in this repo (`make eval` /
+`make bench` for the offline ones) and are recorded in RESULTS.md with dataset,
+method, command and raw output. Anything needing an
 API key is built, run on what the runner can do, and listed under "To measure"
 with the exact command.
 
@@ -182,7 +183,7 @@ with the exact command.
 | Replay catches regressions | Mutation detection rate per check type and per mode; false-alarm rate on 5 benign refactors | D4, offline | `make eval-mutations` | no |
 | Flakiness is quantified | Per-scenario pass rate with Wilson 95% interval; suite flake rate; single-run false-pass and false-fail rates relative to the 20-run estimate | D3 | `make bench-flake` | yes |
 | Sequential testing saves calls | Model calls used by SPRT gate vs fixed k=20 at the same error targets (alpha=beta=0.05), on D3 and on a simulated Bernoulli grid (offline) | D3 for the real number; simulation offline | `make bench-sprt` | partial |
-| Recording is cheap, replay is fast | Recorder overhead per boundary (µs, median and p95) and wall-clock full replay vs recorded live duration | D5 and D1 | `make bench-replay` | no |
+| Recording is cheap, replay is fast | Recorder overhead per boundary (µs, median and p95) and wall-clock full replay vs recorded live duration | D5-style synthetic calls and the six live retail recordings (D1 proper once recorded) | `make bench-replay` | no |
 | Stats are correct | Property tests: `stats.cohens_kappa` matches scikit-learn `cohen_kappa_score` and `wilson_interval` matches statsmodels on random inputs (dev deps only) | Hypothesis | `make test` | no |
 
 Baselines kept in the repo: raw agreement (vs kappa), fixed-k majority vote
@@ -601,4 +602,70 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     takes one labeller. The verbosity probe has one perturbation. On the
     21 retail items a criterion clears the 20-item floor only if at most one
     item is skipped, and the interval is wide; D1 is the set meant to gate.
-- [ ] M7: GitHub Action and release readiness — `action.yml` composite action with PR comment and artifact upload, example consumer workflow, `v1` tag procedure; PyPI build and guarded trusted-publishing workflow; Dockerfile and Compose finalised; RELEASE.md with every step and secret the maintainer must add; README complete (what/why, demo GIF placeholder with capture instructions, quickstart, Mermaid architecture, design decisions, results table from RESULTS.md, roadmap); CHANGELOG. Done when `uv build` produces a wheel that installs in a clean venv, the Action runs against the example repo workflow in CI (dry mode), and RESULTS.md is complete with every measured and to-measure number.
+- [x] M7: GitHub Action and release readiness — `action.yml` composite action with PR comment and artifact upload, example consumer workflow, `v1` tag procedure; PyPI build and guarded trusted-publishing workflow; Dockerfile and Compose finalised; RELEASE.md with every step and secret the maintainer must add; README complete (what/why, demo GIF placeholder with capture instructions, quickstart, Mermaid architecture, design decisions, results table from RESULTS.md, roadmap); CHANGELOG. Done when `uv build` produces a wheel that installs in a clean venv, the Action runs against the example repo workflow in CI (dry mode), and RESULTS.md is complete with every measured and to-measure number.
+  - *M7 notes (2026-10-16).* Built as planned, with these changes and refinements:
+    (a) **The Action** (`action.yml`, logic in the stdlib-only
+    `action/replay_action.py`) is composite and runs in the consumer's own
+    Python, because the agent under test imports only there. `install: action`
+    (the default) pip-installs the Action's own checkout, so `@v1` runs exactly
+    the tagged code and works before any PyPI release; a pip spec or `skip` are
+    the alternatives. One sticky comment per suite, found by a hidden marker
+    that must start the body (paged through all comments); a failure to comment
+    is a warning, since a fork's token is read-only and the replay verdict is
+    what gates. Inputs reach the shell only through `env:`. `dry-run` prints the
+    comment and never fails; the `action` CI job runs `uses: ./` that way on the
+    retail suite and on a mutant and asserts the outputs. The "example repo" is
+    this repository acting as the consumer, with the copyable workflow in
+    `examples/github-workflow/replay.yml`; a separate example repository would
+    have needed a second repo to keep in sync.
+    (b) **Packaging.** Version 1.0.0, set only in `pyproject.toml`
+    (`__version__` reads the installed metadata). The wheel bundles the
+    gitignored dashboard build as a hatch artifact; the sdist holds only the
+    package (327 KB, was the whole 1.99 MB repo). The PyPI description rewrites the
+    README's relative links. `make dist` and the `package` CI job install the
+    wheel and the sdist in fresh venvs outside the repo and smoke-test them.
+    (c) **Release workflow** (`release.yml`): the tag must equal the package
+    version and CHANGELOG.md must have a dated section for it, both checked
+    before anything publishes; PyPI by trusted publishing, the GitHub Release,
+    and the GHCR image, each guarded to tag pushes on this repository.
+    (d) **Plan change: the hosted demo is one container.** The Dockerfile's
+    `demo` stage bakes the demo data into SQLite at build time and listens on
+    `$PORT`, so Fly.io (`deploy/fly.toml`) or Render needs no database service.
+    Not deployed (no account).
+    (e) **Plan change: `make bench-replay` lands here.** It was in the
+    Evaluation table with no milestone. Recorder overhead from paired bare and
+    recorded calls; `full` replay against the live recordings' call time.
+    Writing it showed that every recording session read the package metadata
+    (about 0.9 ms a lookup, measured); now once per process (14 µs per
+    session). A run writes to `.replay/`; `make bench-replay-record` rewrites
+    the committed JSON. `make eval` and `make bench` run every offline
+    evaluation and benchmark, and CI diffs every committed result but this one.
+    (f) **Docs.** README: results table, install, the Action, design decisions
+    for M7, the demo GIF (scripted, `docs/demo.tape`); RELEASE.md with every
+    step and setting; CHANGELOG.md; RESULTS.md gains an index of every claim
+    and its status.
+    (g) **Verified:** the `action` job with act 0.2.89 (job succeeded; pass exit
+    0, mutant exit 1 with 5 of 6 failed), `make dist`, `docker compose up`, the
+    demo stage, actionlint on both workflows. GitHub's own first run of the new
+    `action` and `package` jobs is on the PR.
+    (h) **Not done, and why:** a real PR comment through the API (no token for a
+    real pull request here; covered against a fake HTTP layer), publishing to
+    PyPI, the `v1` tag and the hosted demo (maintainer steps in RELEASE.md),
+    `make bench-flake` (D3; needs a key and the larger golden set). M7 API spend
+    $0.
+    (i) **Review fixes,** each with a test that fails on the old code: a
+    `replay-command` that exited 0 without writing a report passed the check
+    (`passed` now needs a readable report and the verdict exits 2 without one);
+    the summarize, comment and verdict steps ran outside `working-directory`,
+    so a relative `python` broke after `replay ci` had run; an unexpected API
+    response failed the comment step instead of warning; the release trigger
+    accepted `v1.0.0-rc1` and would have published it as final and `latest`
+    (now only a final `X.Y.Z` on `main`); a wheel built without the dashboard
+    passed `check_wheel.sh` unless a flag was given (now the default check);
+    the Markdown summary's diff fence could be closed by three backticks in a
+    tool argument; `make bench` rewrote the committed timings; and four numbers
+    in RESULTS.md (load average, duration, the loaded-run and before-the-fix
+    timings) had no raw output and were replaced by measured ones. RELEASE.md's
+    private-file check matched every example agent and now matches only the
+    files it means; it also lists the `pypi` reviewer and a tag ruleset as the
+    settings that keep a bare tag push from publishing.

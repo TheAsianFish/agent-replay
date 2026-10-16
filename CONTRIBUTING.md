@@ -11,7 +11,7 @@ the trajectory, gate CI statistically on flakiness, and calibrate the LLM judge
 against human labels. Python SDK + CLI (`replay`), GitHub Action, FastAPI +
 React dashboard. See PLAN.md "Architecture" for the component map.
 
-## Layout (target)
+## Layout
 
 ```
 agent_replay/        Python package (record, cassette, replay, checks, judge,
@@ -23,8 +23,13 @@ dashboard/           React 19 + TypeScript strict (Vite, TanStack Query, Tailwin
 examples/            retail_agent (τ-bench retail subset, MIT, attributed) and a toy agent
 eval/                datasets, mutation suite, SPRT simulation, eval scripts
 tests/               offline, deterministic; no network ever
-docs/                screenshots, architecture notes, RELEASE.md
-action.yml           composite GitHub Action
+docs/                screenshots, the demo GIF and its VHS tape (docs/demo.tape)
+action.yml           composite GitHub Action; its logic in action/replay_action.py (stdlib)
+examples/github-workflow/  the consumer workflow users copy
+scripts/             check_wheel.sh (clean-venv install check), release_notes.py
+deploy/              fly.toml for the optional hosted demo (Dockerfile target `demo`)
+RELEASE.md           every release step and the settings the maintainer adds
+CHANGELOG.md         Keep a Changelog; the release build needs a dated section
 ```
 
 ## Commands
@@ -35,7 +40,7 @@ Python is managed with `uv` (Python 3.12). Node 22 for the dashboard.
 make setup        uv sync --all-extras
 make lint         ruff check . && ruff format --check .
 make format       ruff check --fix . && ruff format .
-make type         mypy --strict agent_replay examples eval
+make type         mypy --strict agent_replay examples eval action
 make test         pytest -q (offline; sockets blocked; fake model + committed cassettes)
 make test-live    pytest -m live (needs ANTHROPIC_API_KEY; records with claude-opus-5-5)
 make check        lint + type + test (what CI runs)
@@ -67,6 +72,11 @@ make openapi      regenerate dashboard/openapi.json (then `npm run gen:types` in
 make ui           npm ci + build the dashboard into agent_replay/server/static
 make ui-check     dashboard: check:types, typecheck, lint, vitest
 make serve        replay serve over $REPLAY_DB_URL
+make eval         every offline evaluation (mutations, judge smoke + objective, LLMBar floors, token rates)
+make bench        every offline benchmark (bench-sprt, bench-replay)
+make bench-replay recorder overhead per boundary and full replay vs live duration (to .replay/; not byte-stable)
+make bench-replay-record  the same, rewriting the committed eval/results/bench_replay.json that RESULTS.md quotes
+make dist         dashboard + uv build; installs the wheel and sdist in clean venvs and smoke-tests them
 docker compose up --build   PostgreSQL + demo seed + dashboard on :8000
 ```
 
@@ -79,8 +89,14 @@ A new store column or table needs an Alembic revision in `agent_replay/migration
 (hand-written, both backends); `tests/test_migrations.py` fails if models and migrations
 disagree.
 
-Planned with later milestones (not in the Makefile yet): `make eval`, `make bench`,
-`make bench-flake` (key-requiring ones print a cost estimate first).
+Planned (not in the Makefile yet): `make bench-flake` (D3; needs a key and prints a cost
+estimate first).
+
+The Action is tested three ways: `tests/test_action.py` (offline, a fake HTTP layer), the
+`action` CI job (`uses: ./`, dry run on the retail suite), and locally with
+[act](https://github.com/nektos/act): `act pull_request -j action -W .github/workflows/ci.yml
+-P ubuntu-latest=catthehacker/ubuntu:act-latest --artifact-server-path /tmp/act-artifacts`.
+Release steps are in RELEASE.md; never publish by hand.
 
 Until a target exists, say so in the PR rather than inventing it.
 

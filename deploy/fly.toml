@@ -1,0 +1,32 @@
+# Fly.io config for the optional hosted demo (RELEASE.md, step 9): the Dockerfile's
+# `demo` stage, a read-only dashboard over demo data baked into the image.
+# From the repository root, which is the image's build context:
+#   fly launch --no-deploy --copy-config --config deploy/fly.toml --name agent-replay-demo
+#   fly deploy . --config deploy/fly.toml --dockerfile Dockerfile
+app = "agent-replay-demo"
+primary_region = "sjc"
+
+# The Dockerfile is passed on the command line (--dockerfile), relative to the root.
+[build]
+  build-target = "demo"
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/api/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "20s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

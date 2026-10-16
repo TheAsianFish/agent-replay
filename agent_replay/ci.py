@@ -25,10 +25,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import time
 import tomllib
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -525,6 +526,17 @@ def _cell(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
 
+def _fence(lines: Sequence[object]) -> str:
+    """A code fence longer than any backtick run in ``lines``, so none of them closes it.
+
+    The diff holds tool names and arguments from the agent's run; a line of three
+    backticks would otherwise end the block and render the rest as Markdown, in a
+    comment the Action posts under its own name.
+    """
+    longest = max((len(run) for line in lines for run in re.findall(r"`+", str(line))), default=0)
+    return "`" * max(3, longest + 1)
+
+
 def _cost(s: ScenarioReport) -> str:
     """The cost cell: ``$0.0461``, with the change against the baseline when there is one."""
     cost = f"${s.cost_usd:.4f}"
@@ -576,7 +588,8 @@ def to_markdown(report: SuiteReport) -> str:
             lines.append(f"- **{c.check}**: {_cell(c.message)}")
             diff = c.details.get("diff")
             if isinstance(diff, list) and diff:
-                lines += ["", "  ```diff", *(f"  {line}" for line in diff), "  ```"]
+                fence = _fence(diff)
+                lines += ["", f"  {fence}diff", *(f"  {line}" for line in diff), f"  {fence}"]
         if s.unconsumed:
             lines.append(f"- recorded but never made: {', '.join(s.unconsumed)}")
     return "\n".join(lines) + "\n"

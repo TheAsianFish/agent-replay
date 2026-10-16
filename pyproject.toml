@@ -1,17 +1,26 @@
 [project]
 name = "agent-replay"
-version = "0.1.0"
+version = "1.0.0"
 description = "Record-and-replay regression testing for LLM agents"
-readme = "README.md"
+dynamic = ["readme"]
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
 authors = [{ name = "TheAsianFish" }]
 keywords = ["llm", "agents", "testing", "evals", "anthropic", "replay"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Framework :: FastAPI",
     "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Quality Assurance",
     "Topic :: Software Development :: Testing",
     "Typing :: Typed",
 ]
@@ -26,6 +35,12 @@ dependencies = [
     "structlog>=24",
     "typer>=0.12",
 ]
+
+[project.urls]
+Homepage = "https://github.com/TheAsianFish/agent-replay"
+Repository = "https://github.com/TheAsianFish/agent-replay"
+Issues = "https://github.com/TheAsianFish/agent-replay/issues"
+Changelog = "https://github.com/TheAsianFish/agent-replay/blob/main/CHANGELOG.md"
 
 [project.scripts]
 replay = "agent_replay.cli:main"
@@ -43,11 +58,45 @@ postgres = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-fancy-pypi-readme"]
 build-backend = "hatchling.build"
 
+# README.md links to repository files (RESULTS.md, docs/screenshots/*.png) by relative
+# path, which PyPI cannot resolve; the published description points them at GitHub.
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '!\[([^\]]*)\]\((?!https?://|#)([^)]+)\)'
+replacement = '![\1](https://raw.githubusercontent.com/TheAsianFish/agent-replay/main/\2)'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?://|#|mailto:)([^)]+)\)'
+replacement = '](https://github.com/TheAsianFish/agent-replay/blob/main/\1)'
+
+# The wheel is the package: its modules, py.typed, the Alembic revisions and template
+# (agent_replay/migrations, read at runtime through "agent_replay:migrations") and, when
+# `make ui` has built it, the dashboard in agent_replay/server/static. That directory is
+# gitignored, which hatch honours, so it is listed as an artifact to be picked up anyway.
 [tool.hatch.build.targets.wheel]
 packages = ["agent_replay"]
+artifacts = ["agent_replay/server/static/**"]
+
+# The sdist holds what building the wheel needs, the dashboard build included when present,
+# and none of the repository's examples, tests, eval data or dashboard sources.
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "agent_replay",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md",
+    "pyproject.toml",
+]
+artifacts = ["agent_replay/server/static/**"]
+exclude = ["__pycache__", "*.py[cod]"]
 
 [dependency-groups]
 dev = [

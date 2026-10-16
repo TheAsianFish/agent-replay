@@ -30,7 +30,7 @@ jobs:
           uv run ruff check --output-format=github .
           uv run ruff format --check .
       - name: Type-check
-        run: uv run mypy agent_replay examples eval
+        run: uv run mypy agent_replay examples eval action
       - name: Test
         run: uv run pytest -q
       - name: Quickstart (replay passes, mutant fails)
@@ -39,11 +39,62 @@ jobs:
         run: make ci-demo
       - name: replay flake offline (fake model passes, seeded flaky model fails the gate)
         run: make flake-demo
-      - name: Mutation study and gate simulation reproduce their committed results
+      - name: Every offline evaluation and benchmark reproduces its committed result
+        # bench-replay writes its machine-dependent timings outside the tree.
         run: |
-          make eval-mutations
-          make bench-sprt
-          git diff --exit-code eval/results/mutations.json eval/results/sprt_sim.json
+          make eval
+          make bench
+          git diff --exit-code eval/results
+
+  action:
+    name: GitHub Action (dry run on the retail example)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # This repository as the Action's consumer: `uses: ./` runs action.yml from the
+    # checkout, `install: action` pip-installs it the way `@v1` does, and dry-run keeps
+    # the expected regression from failing the job (the outputs are asserted instead).
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: The retail suite passes
+        id: pass
+        uses: ./
+        with:
+          suite: examples/retail_agent/replay.toml
+          install: action
+          dry-run: true
+          artifact-name: auto
+      - name: A seeded regression fails it
+        id: mutant
+        uses: ./
+        with:
+          suite: examples/retail_agent/replay.toml
+          agent: examples.retail_agent.mutants:first_tool_only
+          install: skip
+          dry-run: true
+          artifact-name: replay-report-mutant
+      - name: The outputs report both verdicts
+        env:
+          PASS_EXIT: ${{ steps.pass.outputs.exit-code }}
+          PASS_PASSED: ${{ steps.pass.outputs.passed }}
+          PASS_BODY: ${{ steps.pass.outputs.comment-body }}
+          MUTANT_EXIT: ${{ steps.mutant.outputs.exit-code }}
+          MUTANT_PASSED: ${{ steps.mutant.outputs.passed }}
+          MUTANT_FAILED: ${{ steps.mutant.outputs.failed }}
+          MUTANT_BODY: ${{ steps.mutant.outputs.comment-body }}
+        run: |
+          echo "pass: exit $PASS_EXIT, passed $PASS_PASSED"
+          echo "mutant: exit $MUTANT_EXIT, passed $MUTANT_PASSED, failed $MUTANT_FAILED"
+          test "$PASS_EXIT" = 0
+          test "$PASS_PASSED" = true
+          test "$MUTANT_EXIT" = 1
+          test "$MUTANT_PASSED" = false
+          test "$MUTANT_FAILED" -gt 0
+          marker='<!-- agent-replay: examples/retail_agent/replay.toml -->'
+          test "$(head -n 1 "$PASS_BODY")" = "$marker"
+          test "$(head -n 1 "$MUTANT_BODY")" = "$marker"
 
   postgres:
     name: Store and API on PostgreSQL
@@ -93,6 +144,37 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  package:
+    name: Wheel builds and installs in a clean venv
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the dashboard into the package
+        run: make ui
+      - name: Build the wheel and sdist
+        run: uv build
+      - name: Install each in a fresh venv and smoke-test it
+        run: scripts/check_wheel.sh --expect-dashboard dist
+      - name: Metadata renders on PyPI
+        run: uvx twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
 
   e2e:
     name: Dashboard smoke test (Playwright)

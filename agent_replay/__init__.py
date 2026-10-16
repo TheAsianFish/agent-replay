@@ -1,5 +1,8 @@
 """agent-replay: record-and-replay regression testing for LLM agents."""
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _version
+
 from agent_replay import capture
 from agent_replay.capture import choice, now, randint, random, uuid4
 from agent_replay.cassette import Cassette, Envelope, Kind
@@ -25,7 +28,11 @@ from agent_replay.session import (
 from agent_replay.threads import ContextThreadPoolExecutor
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
-__version__ = "0.1.0"
+# The installed distribution's version: pyproject.toml is the one place it is set.
+try:
+    __version__ = _version("agent-replay")
+except PackageNotFoundError:  # pragma: no cover - imported from a tree that was never installed
+    __version__ = "0+unknown"
 
 __all__ = [
     "AgentLoadError",

@@ -1,0 +1,237 @@
+{
+  "method": {
+    "overhead": "per boundary, interleaved pairs of the same call bare and recorded (order alternating within a pair), timed with time.perf_counter_ns; overhead = median and p95 of the paired differences (recorded - bare), next to the median and p95 of each side; calls run in sessions of `batch` calls after `warmup` discarded pairs; GC enabled",
+    "session": "the fixed cost of one recording session with no calls (create, enter, exit, finish), median and p95 over iterations / batch sessions",
+    "replay_served": "each recorded session replayed in full mode; the time of every served call (lookup, fingerprint, decode), median and p95",
+    "recorded_live_ms": "sum of the cassette's envelope latency_ms (the agent calls one boundary at a time); excludes the agent's own code between calls, so it is a lower bound on the live run's wall-clock",
+    "replay_ms": "wall-clock of agent_replay.ci.run_scenario (load cassette and agent, full replay; with or without the suite's checks, judge from its committed cache), median of `repeats` runs after one warm-up; speedup = recorded_live_ms / median"
+  },
+  "command": "uv run python eval/bench_replay.py --out eval/results/bench_replay.json",
+  "parameters": {
+    "iterations": 2000,
+    "warmup": 200,
+    "batch": 20,
+    "repeats": 20,
+    "seed": 0
+  },
+  "datasets": {
+    "overhead": "D5: synthetic calls through the fake model and the retail tools",
+    "replay": "examples/retail_agent/replay-live.toml: six live claude-opus-5-5 recordings (D1-like)"
+  },
+  "environment": {
+    "python": "3.12.3",
+    "implementation": "CPython",
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu_model": "AMD EPYC 7763 64-Core Processor",
+    "cpu_count": 4
+  },
+  "boundaries": [
+    {
+      "boundary": "model",
+      "description": "messages.create on FakeAnthropic with the retail agent's first-turn request; bare: the fake client, recorded: agent_replay.wrap(fake client)",
+      "request_bytes": 12543,
+      "iterations": 2000,
+      "bare": {
+        "median_us": 509.029,
+        "p95_us": 541.75
+      },
+      "recorded": {
+        "median_us": 1189.329,
+        "p95_us": 1306.925
+      },
+      "overhead": {
+        "median_us": 683.976,
+        "p95_us": 788.433
+      },
+      "replay_served": {
+        "median_us": 654.962,
+        "p95_us": 719.883
+      }
+    },
+    {
+      "boundary": "tool",
+      "description": "retail get_order_details; bare: the undecorated function, recorded: the @tool",
+      "request_bytes": 24,
+      "iterations": 2000,
+      "bare": {
+        "median_us": 20.067,
+        "p95_us": 24.297
+      },
+      "recorded": {
+        "median_us": 125.234,
+        "p95_us": 151.325
+      },
+      "overhead": {
+        "median_us": 106.228,
+        "p95_us": 131.641
+      },
+      "replay_served": {
+        "median_us": 74.99,
+        "p95_us": 99.147
+      }
+    },
+    {
+      "boundary": "clock",
+      "description": "bare: datetime.now(UTC), recorded: agent_replay.now()",
+      "request_bytes": 2,
+      "iterations": 2000,
+      "bare": {
+        "median_us": 0.561,
+        "p95_us": 0.731
+      },
+      "recorded": {
+        "median_us": 48.19,
+        "p95_us": 67.617
+      },
+      "overhead": {
+        "median_us": 47.689,
+        "p95_us": 66.834
+      },
+      "replay_served": {
+        "median_us": 42.093,
+        "p95_us": 60.224
+      }
+    },
+    {
+      "boundary": "random",
+      "description": "bare: random.Random.random, recorded: agent_replay.random()",
+      "request_bytes": 2,
+      "iterations": 2000,
+      "bare": {
+        "median_us": 0.14,
+        "p95_us": 0.24
+      },
+      "recorded": {
+        "median_us": 43.691,
+        "p95_us": 63.544
+      },
+      "overhead": {
+        "median_us": 43.551,
+        "p95_us": 63.375
+      },
+      "replay_served": {
+        "median_us": 41.477,
+        "p95_us": 60.178
+      }
+    }
+  ],
+  "session": {
+    "iterations": 100,
+    "median_us": 14.351,
+    "p95_us": 17.17
+  },
+  "scenarios": [
+    {
+      "scenario": "cancel_pending_laptop",
+      "cassette": "cassettes/live/cancel_pending_laptop.jsonl",
+      "envelopes": 11,
+      "model_calls": 5,
+      "tool_calls": 6,
+      "recorded_model_ms": 8591.964,
+      "recorded_tool_ms": 0.212,
+      "recorded_live_ms": 8592.176,
+      "replay_median_ms": 33.209,
+      "replay_p95_ms": 33.79,
+      "speedup_replay": 258.7,
+      "replay_and_checks_median_ms": 39.515,
+      "replay_and_checks_p95_ms": 84.321,
+      "speedup_replay_and_checks": 217.4
+    },
+    {
+      "scenario": "modify_address_suite",
+      "cassette": "cassettes/live/modify_address_suite.jsonl",
+      "envelopes": 6,
+      "model_calls": 3,
+      "tool_calls": 3,
+      "recorded_model_ms": 6564.1,
+      "recorded_tool_ms": 0.123,
+      "recorded_live_ms": 6564.223,
+      "replay_median_ms": 20.18,
+      "replay_p95_ms": 22.679,
+      "speedup_replay": 325.3,
+      "replay_and_checks_median_ms": 24.874,
+      "replay_and_checks_p95_ms": 25.336,
+      "speedup_replay_and_checks": 263.9
+    },
+    {
+      "scenario": "return_damaged_bicycle",
+      "cassette": "cassettes/live/return_damaged_bicycle.jsonl",
+      "envelopes": 12,
+      "model_calls": 5,
+      "tool_calls": 7,
+      "recorded_model_ms": 8752.196,
+      "recorded_tool_ms": 0.275,
+      "recorded_live_ms": 8752.471,
+      "replay_median_ms": 33.918,
+      "replay_p95_ms": 79.4,
+      "speedup_replay": 258.0,
+      "replay_and_checks_median_ms": 40.559,
+      "replay_and_checks_p95_ms": 41.627,
+      "speedup_replay_and_checks": 215.8
+    },
+    {
+      "scenario": "exchange_waterproof_boots",
+      "cassette": "cassettes/live/exchange_waterproof_boots.jsonl",
+      "envelopes": 14,
+      "model_calls": 6,
+      "tool_calls": 8,
+      "recorded_model_ms": 10829.785,
+      "recorded_tool_ms": 0.426,
+      "recorded_live_ms": 10830.211,
+      "replay_median_ms": 41.208,
+      "replay_p95_ms": 45.605,
+      "speedup_replay": 262.8,
+      "replay_and_checks_median_ms": 47.089,
+      "replay_and_checks_p95_ms": 50.342,
+      "speedup_replay_and_checks": 230.0
+    },
+    {
+      "scenario": "lookup_latest_order_total",
+      "cassette": "cassettes/live/lookup_latest_order_total.jsonl",
+      "envelopes": 9,
+      "model_calls": 4,
+      "tool_calls": 5,
+      "recorded_model_ms": 6546.159,
+      "recorded_tool_ms": 0.173,
+      "recorded_live_ms": 6546.332,
+      "replay_median_ms": 26.825,
+      "replay_p95_ms": 31.131,
+      "speedup_replay": 244.0,
+      "replay_and_checks_median_ms": 32.161,
+      "replay_and_checks_p95_ms": 33.245,
+      "speedup_replay_and_checks": 203.5
+    },
+    {
+      "scenario": "transfer_swapped_refunds",
+      "cassette": "cassettes/live/transfer_swapped_refunds.jsonl",
+      "envelopes": 10,
+      "model_calls": 5,
+      "tool_calls": 5,
+      "recorded_model_ms": 9725.476,
+      "recorded_tool_ms": 0.161,
+      "recorded_live_ms": 9725.637,
+      "replay_median_ms": 32.834,
+      "replay_p95_ms": 76.02,
+      "speedup_replay": 296.2,
+      "replay_and_checks_median_ms": 37.628,
+      "replay_and_checks_p95_ms": 38.322,
+      "speedup_replay_and_checks": 258.5
+    }
+  ],
+  "summary": {
+    "overhead_median_us": {
+      "model": 683.976,
+      "tool": 106.228,
+      "clock": 47.689,
+      "random": 43.551
+    },
+    "recorded_live_ms_total": 51011.05,
+    "replay_median_ms_total": 188.174,
+    "replay_and_checks_median_ms_total": 221.826,
+    "speedup_suite": 271.1,
+    "speedup_suite_with_checks": 230.0,
+    "speedup_min": 244.0,
+    "speedup_max": 325.3
+  }
+}

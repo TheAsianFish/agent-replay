@@ -13,7 +13,15 @@ import pytest
 from typer.testing import CliRunner
 
 from agent_replay.checks import CheckResult
-from agent_replay.ci import Overrides, git_sha, load_suite, run_suite, to_json, to_markdown
+from agent_replay.ci import (
+    Overrides,
+    _fence,
+    git_sha,
+    load_suite,
+    run_suite,
+    to_json,
+    to_markdown,
+)
 from agent_replay.cli import app
 from agent_replay.errors import ConfigError
 from agent_replay.store import Store
@@ -170,6 +178,13 @@ def test_markdown_summary_has_a_row_per_scenario_and_failure_details() -> None:
     assert "### ❌ `cancel_pending_laptop`" in markdown
     assert "```diff" in markdown
     assert "- get_order_details" in markdown
+
+
+def test_the_diff_fence_outlasts_backticks_in_agent_output() -> None:
+    assert _fence(["- get_order_details", "+ cancel_order"]) == "```"
+    # A tool name or argument of three backticks would close a three-backtick fence.
+    assert _fence(["- ```", "+ x"]) == "````"
+    assert _fence(["- a `````b"]) == "``````"
 
 
 def test_passing_markdown_has_no_failure_sections() -> None:

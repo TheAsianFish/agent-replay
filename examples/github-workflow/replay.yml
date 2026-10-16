@@ -1,0 +1,41 @@
+# Copy to .github/workflows/replay.yml in the repository that holds your agent.
+# Every pull request replays the suite's recorded runs; a regression fails the
+# check and the summary lands in one PR comment that later pushes update.
+name: Agent replay
+
+on:
+  pull_request:
+  # Not pull_request_target: that event carries a write token, and replay ci imports
+  # the PR's agent code. Fork PRs get the verdict and artifact, and a warning in
+  # place of the comment.
+
+permissions:
+  contents: read
+  # The sticky PR comment. On pull requests from forks GitHub hands out a
+  # read-only token anyway; the Action then warns instead of commenting.
+  pull-requests: write
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      # The Action runs in this Python, where your agent must be importable.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the project
+        run: python -m pip install -e .
+      - uses: TheAsianFish/agent-replay@v1
+        with:
+          suite: replay.toml
+          # Installs agent-replay from the Action's own ref (v1); pin a release
+          # instead with e.g. install: agent-replay==1.0.0, or "skip" if your
+          # project already depends on it.
+          install: action
+          # Full replay needs no API key. A model-live suite would add
+          # mode: model-live and an ANTHROPIC_API_KEY secret in env.
+          mode: full
+          # Runs are recorded in a local store by default; nothing reads it here.
+          args: --no-store

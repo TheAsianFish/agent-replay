@@ -1,0 +1,248 @@
+# The agent-replay GitHub Action: `uses: TheAsianFish/agent-replay@v1`.
+#
+# Runs `replay ci` on a suite in the workflow's own Python environment (the agent
+# under test must be importable there, so this action does not set up Python),
+# upserts one sticky PR comment per suite, uploads the JSON and Markdown reports
+# and fails the job when replay ci does (1 = a regression, 2 = a broken suite).
+#
+# Inputs reach the shell only through `env:`, never as `${{ }}` in `run:` text.
+name: Replay agent regression tests
+description: Replay recorded LLM agent runs with agent-replay, comment the summary on the PR, fail on regressions.
+author: TheAsianFish
+branding:
+  icon: rewind
+  color: purple
+
+inputs:
+  suite:
+    description: Suite file (replay.toml) to run, relative to working-directory.
+    required: true
+  mode:
+    description: Override every scenario's mode (full, model-live, tools-live). Empty keeps the suite's.
+    default: ""
+  policy:
+    description: Override every scenario's matching policy. Empty keeps the suite's.
+    default: ""
+  agent:
+    description: Replay every scenario against this agent (module:function). Empty keeps the suite's.
+    default: ""
+  client:
+    description: Live model client for model-live ('anthropic' or module:factory). Empty keeps the suite's.
+    default: ""
+  baseline:
+    description: Baseline file (from `replay baseline`) for budget checks. Empty keeps the suite's.
+    default: ""
+  cassette-dir:
+    description: Read each scenario's cassette (by file name) from this directory. Empty keeps the suite's.
+    default: ""
+  args:
+    description: Extra arguments appended to `replay ci`, split on whitespace (no shell quoting), e.g. "--no-store".
+    default: ""
+  install:
+    description: >-
+      How to get agent-replay: "action" pip-installs this action's own checkout (the ref
+      you pinned), "skip" uses the one already installed, anything else is a pip
+      requirement such as "agent-replay==1.0.0" or "agent-replay[ollama]".
+    default: action
+  python:
+    description: Interpreter that pip-installs agent-replay (Python 3.12+ with pip) and runs this action's helper script.
+    default: python
+  replay-command:
+    description: Command that runs the replay CLI, split on whitespace, e.g. "uv run replay". Empty runs "<python> -m agent_replay".
+    default: ""
+  comment:
+    description: '"true" upserts one sticky comment per suite on pull_request / pull_request_target events; "false" disables it.'
+    default: "true"
+  github-token:
+    description: Token for the PR comment; needs pull-requests write permission.
+    default: ${{ github.token }}
+  artifact-name:
+    description: >-
+      Name of the uploaded report artifact; names must be unique within a workflow run.
+      "auto" uses replay-report-<job>-<suite>; give matrix legs their own. Empty disables the upload.
+    default: auto
+  dry-run:
+    description: '"true" runs everything but prints the comment instead of posting it and does not fail on a regression.'
+    default: "false"
+  working-directory:
+    description: Directory to install from and run `replay ci` in (agent modules import relative to it).
+    default: .
+
+outputs:
+  exit-code:
+    description: replay ci's exit code (0 passed, 1 regression, 2 broken suite).
+    value: ${{ steps.run.outputs.exit-code }}
+  passed:
+    description: '"true" when every scenario passed, else "false".'
+    value: ${{ steps.summarize.outputs.passed }}
+  scenarios:
+    description: Number of scenarios in the report.
+    value: ${{ steps.summarize.outputs.scenarios }}
+  failed:
+    description: Number of scenarios that failed or could not run.
+    value: ${{ steps.summarize.outputs.failed }}
+  report-json:
+    description: Path of the JSON report (empty when none was written).
+    value: ${{ steps.summarize.outputs.report-json }}
+  report-markdown:
+    description: Path of the Markdown summary (empty when none was written).
+    value: ${{ steps.summarize.outputs.report-markdown }}
+  comment-body:
+    description: Path of the PR comment body that was (or, in a dry run, would be) posted.
+    value: ${{ steps.comment.outputs.comment-body }}
+  comment-url:
+    description: URL of the created or updated PR comment; empty when none was posted.
+    value: ${{ steps.comment.outputs.comment-url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install agent-replay
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        INSTALL: ${{ inputs.install }}
+        PYTHON: ${{ inputs.python }}
+        COMMENT: ${{ inputs.comment }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        for flag in "comment=$COMMENT" "dry-run=$DRY_RUN"; do
+          case "${flag#*=}" in
+            true|false) ;;
+            *) echo "::error::agent-replay: input ${flag%%=*} must be \"true\" or \"false\", got \"${flag#*=}\""; exit 2 ;;
+          esac
+        done
+        if [ "$INSTALL" != skip ] && ! "$PYTHON" -m pip --version > /dev/null 2>&1; then
+          echo "::error::agent-replay: $PYTHON has no pip (a uv venv?); install agent-replay in it yourself and set install: skip (with replay-command: uv run replay for a uv project)"
+          exit 2
+        fi
+        case "$INSTALL" in
+          skip) echo "install: skip; using the agent-replay already installed" ;;
+          action) "$PYTHON" -m pip install --disable-pip-version-check "$GITHUB_ACTION_PATH" ;;
+          *) "$PYTHON" -m pip install --disable-pip-version-check "$INSTALL" ;;
+        esac
+
+    - name: Run replay ci
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PYTHON: ${{ inputs.python }}
+        REPLAY_COMMAND: ${{ inputs.replay-command }}
+        SUITE: ${{ inputs.suite }}
+        MODE: ${{ inputs.mode }}
+        POLICY: ${{ inputs.policy }}
+        AGENT: ${{ inputs.agent }}
+        CLIENT: ${{ inputs.client }}
+        BASELINE: ${{ inputs.baseline }}
+        CASSETTE_DIR: ${{ inputs.cassette-dir }}
+        ARGS: ${{ inputs.args }}
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+      run: |
+        dir=$(mktemp -d "${RUNNER_TEMP:-/tmp}/agent-replay.XXXXXX")
+        artifact=${ARTIFACT_NAME//[$'\r\n']/}  # one output line
+        if [ "$artifact" = auto ]; then
+          # Artifact names allow no / \ : * ? " < > |; keep a portable subset.
+          slug=$(printf '%s' "$SUITE" | tr -c 'A-Za-z0-9._-' '-')
+          artifact="replay-report-$GITHUB_JOB-$slug"
+        fi
+        {
+          echo "dir=$dir"
+          echo "report-json=$dir/report.json"
+          echo "report-markdown=$dir/report.md"
+          echo "artifact=$artifact"
+        } >> "$GITHUB_OUTPUT"
+        if [ -n "$REPLAY_COMMAND" ]; then
+          read -r -d '' -a cmd <<< "$REPLAY_COMMAND" || true
+        else
+          cmd=("$PYTHON" -m agent_replay)
+        fi
+        argv=(ci "$SUITE" --json "$dir/report.json" --markdown "$dir/report.md")
+        if [ -n "$MODE" ]; then argv+=(--mode "$MODE"); fi
+        if [ -n "$POLICY" ]; then argv+=(--policy "$POLICY"); fi
+        if [ -n "$AGENT" ]; then argv+=(--agent "$AGENT"); fi
+        if [ -n "$CLIENT" ]; then argv+=(--client "$CLIENT"); fi
+        if [ -n "$BASELINE" ]; then argv+=(--baseline "$BASELINE"); fi
+        if [ -n "$CASSETTE_DIR" ]; then argv+=(--cassette-dir "$CASSETTE_DIR"); fi
+        if [ -n "$ARGS" ]; then
+          read -r -d '' -a extra <<< "$ARGS" || true
+          argv+=("${extra[@]}")
+        fi
+        set +e
+        "${cmd[@]}" "${argv[@]}"
+        code=$?
+        set -e
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+
+    - name: Summarize the report
+      id: summarize
+      if: always() && steps.run.outputs.exit-code != ''
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PYTHON: ${{ inputs.python }}
+        REPORT_JSON: ${{ steps.run.outputs.report-json }}
+        REPORT_MARKDOWN: ${{ steps.run.outputs.report-markdown }}
+        EXIT_CODE: ${{ steps.run.outputs.exit-code }}
+      run: |
+        "$PYTHON" -I "$GITHUB_ACTION_PATH/action/replay_action.py" summarize \
+          --report-json "$REPORT_JSON" --report-markdown "$REPORT_MARKDOWN" --exit-code "$EXIT_CODE"
+
+    - name: Comment on the pull request
+      id: comment
+      if: always() && steps.run.outputs.exit-code != ''
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PYTHON: ${{ inputs.python }}
+        SUITE: ${{ inputs.suite }}
+        REPORT_MARKDOWN: ${{ steps.run.outputs.report-markdown }}
+        EXIT_CODE: ${{ steps.run.outputs.exit-code }}
+        BODY: ${{ steps.run.outputs.dir }}/comment.md
+        COMMENT: ${{ inputs.comment }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        "$PYTHON" -I "$GITHUB_ACTION_PATH/action/replay_action.py" comment \
+          --suite "$SUITE" --report-markdown "$REPORT_MARKDOWN" --exit-code "$EXIT_CODE" \
+          --body "$BODY" --post "$COMMENT" --dry-run "$DRY_RUN"
+
+    # A failed upload (a name already used in this workflow run) must not fail the job
+    # or skip the verdict: the replay result is what gates.
+    - name: Upload the report
+      if: always() && steps.run.outputs.artifact != '' && steps.run.outputs.dir != ''
+      continue-on-error: true
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.run.outputs.artifact }}
+        path: ${{ steps.run.outputs.dir }}
+        if-no-files-found: ignore
+
+    # The only step that fails: with replay ci's exit code, or 2 when it exited 0
+    # without a report (a replay-command that is not replay ci), never silently green.
+    - name: Verdict
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SUITE: ${{ inputs.suite }}
+        EXIT_CODE: ${{ steps.run.outputs.exit-code }}
+        PASSED: ${{ steps.summarize.outputs.passed }}
+        SCENARIOS: ${{ steps.summarize.outputs.scenarios }}
+        FAILED: ${{ steps.summarize.outputs.failed }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        SUITE=${SUITE//[$'\r\n']/ }  # one annotation line
+        if [ "$EXIT_CODE" = 0 ] && [ "$PASSED" != true ]; then
+          EXIT_CODE=2  # summarize said why: no readable report
+        fi
+        if [ "$DRY_RUN" = "true" ]; then
+          echo "::notice::agent-replay dry run: replay ci exited $EXIT_CODE on $SUITE; not failing the step"
+          exit 0
+        fi
+        case "$EXIT_CODE" in
+          0) exit 0 ;;
+          1) echo "::error::agent-replay: $FAILED of $SCENARIOS scenario(s) in $SUITE regressed" ;;
+          2) echo "::error::agent-replay: replay ci could not run every scenario in $SUITE (exit 2); the summary names the scenario, the log has the error" ;;
+          *) echo "::error::agent-replay: replay ci failed on $SUITE (exit $EXIT_CODE); see its log" ;;
+        esac
+        exit "$EXIT_CODE"

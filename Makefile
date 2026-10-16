@@ -2,9 +2,10 @@
 # are added with the code they run.
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
-	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check \
+	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check dist \
 	golden record-golden eval-judge eval-judge-objective token-rates \
-	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics
+	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
+	bench-replay bench-replay-record eval bench
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -21,7 +22,7 @@ format:
 	uv run ruff format .
 
 type:
-	uv run mypy agent_replay examples eval
+	uv run mypy agent_replay examples eval action
 
 test:
 	uv run pytest -q
@@ -81,6 +82,25 @@ flake-demo:
 bench-sprt:
 	uv run python eval/sprt_sim.py --out eval/results/sprt_sim.json
 
+# Recorder overhead per boundary (model, tool, clock, random: paired bare vs recorded calls)
+# and full replay vs the recorded live duration of the six live retail cassettes (offline,
+# 20 to 35 s). Timings depend on the machine, so the JSON is not byte-stable: a run writes
+# to .replay/ (untracked) and leaves the tree clean; `make bench-replay-record` rewrites the
+# committed copy that RESULTS.md quotes.
+BENCH_REPLAY_OUT ?= .replay/bench_replay.json
+bench-replay:
+	uv run python eval/bench_replay.py --out $(BENCH_REPLAY_OUT)
+
+bench-replay-record:
+	$(MAKE) bench-replay BENCH_REPLAY_OUT=eval/results/bench_replay.json
+
+# Every offline evaluation: the mutation study, the judge against the checks and against the
+# golden set's objective labels, the LLMBar heuristic floors, the token-rate check. No key.
+eval: eval-mutations eval-judge-smoke eval-judge-objective eval-llmbar-heuristics token-rates
+
+# Every offline benchmark: the sequential gate simulation and replay speed. No key.
+bench: bench-sprt bench-replay
+
 # The judge against the deterministic checks on the live retail recordings and the
 # seeded mutants. Offline from the committed verdict cache; drop --offline to judge
 # cache misses with claude-opus-5-5 (needs ANTHROPIC_API_KEY, about $0.015 a run).
@@ -133,6 +153,15 @@ demo-data:
 ui:
 	npm --prefix dashboard ci --no-audit --no-fund
 	npm --prefix dashboard run build
+
+# The release artifacts: the dashboard built into the package, then the wheel and sdist in
+# dist/, each installed in a fresh venv outside the repo and smoke-tested (scripts/check_wheel.sh;
+# needs python3.12 and the package index, ~1 min), then `twine check` on their metadata.
+dist: ui
+	rm -rf dist
+	uv build
+	scripts/check_wheel.sh --expect-dashboard dist
+	uvx twine check --strict dist/*
 
 # Dashboard checks: generated API types current, tsc, eslint, vitest.
 ui-check:

@@ -1,0 +1,165 @@
+name: Release
+
+# A tag vX.Y.Z publishes agent-replay X.Y.Z: the wheel and sdist to PyPI (trusted
+# publishing, no token), a GitHub Release with the CHANGELOG.md section as notes, and
+# the image to ghcr.io/theasianfish/agent-replay. A manual run is a dry run: it builds
+# and checks the distributions and publishes nothing. See RELEASE.md.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and check the distributions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the tag must point into main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # A tag publishes only a final X.Y.Z that equals the package version and is on
+      # main: the `v*.*.*` trigger also matches v1.0.0-rc1, and nothing below marks a
+      # prerelease or keeps it off the `latest` image tag.
+      - name: The tag is a final version on main that matches the package
+        id: version
+        env:
+          IS_TAG: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          version=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          echo "package version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          [ "$IS_TAG" = "true" ] || exit 0
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version $version in pyproject.toml is not a final X.Y.Z; this workflow publishes no prereleases"
+            exit 1
+          fi
+          if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match the package version $version in pyproject.toml; bump [project] version and tag v$version, or delete the tag"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main; tag a commit on main"
+            exit 1
+          fi
+      - name: CHANGELOG.md has dated notes for this version
+        # A tag fails here, before anything is published; a dry run only reports it.
+        continue-on-error: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p notes
+          python3 scripts/release_notes.py "$VERSION" --out notes/release-notes.md
+      - name: Build the dashboard into the package
+        run: make ui
+      - name: Build the wheel and sdist
+        run: uv build
+      - name: Install each in a fresh venv and smoke-test it
+        run: scripts/check_wheel.sh --expect-dashboard dist
+      - name: Metadata renders on PyPI
+        run: uvx twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: notes/release-notes.md
+          if-no-files-found: ignore
+          retention-days: 7
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    if: github.repository == 'TheAsianFish/agent-replay' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/agent-replay/${{ needs.build.outputs.version }}/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub Release
+    needs: [build, publish-pypi]
+    if: github.repository == 'TheAsianFish/agent-replay' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+          path: notes/
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "agent-replay $VERSION" \
+            --notes-file notes/release-notes.md
+
+  docker:
+    name: Push the image to GHCR
+    needs: [build, publish-pypi]
+    if: github.repository == 'TheAsianFish/agent-replay' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: app
+          push: true
+          build-args: |
+            VERSION=${{ needs.build.outputs.version }}
+          tags: |
+            ghcr.io/theasianfish/agent-replay:${{ needs.build.outputs.version }}
+            ghcr.io/theasianfish/agent-replay:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
