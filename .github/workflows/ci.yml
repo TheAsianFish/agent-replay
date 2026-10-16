@@ -64,7 +64,7 @@ jobs:
           suite: examples/retail_agent/replay.toml
           install: action
           dry-run: true
-          artifact-name: replay-report-pass
+          artifact-name: auto
       - name: A seeded regression fails it
         id: mutant
         uses: ./

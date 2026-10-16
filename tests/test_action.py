@@ -45,6 +45,19 @@ def test_action_is_composite_with_marketplace_metadata():
     assert ACTION["inputs"]["suite"]["required"] is True
 
 
+def test_a_failed_upload_cannot_fail_the_job_or_skip_the_verdict():
+    steps = ACTION["runs"]["steps"]
+    upload = next(s for s in steps if str(s.get("uses", "")).startswith("actions/upload-artifact"))
+    assert upload["continue-on-error"] is True
+    assert ACTION["inputs"]["artifact-name"]["default"] == "auto"
+    assert steps[-1]["name"] == "Verdict"
+
+
+def test_install_checks_for_pip_first():
+    install = ACTION["runs"]["steps"][0]["run"]
+    assert install.index("-m pip --version") < install.index('case "$INSTALL"')
+
+
 def test_every_input_is_described_and_every_reference_declared():
     for name, spec in ACTION["inputs"].items():
         assert spec.get("description"), name
@@ -220,6 +233,9 @@ def test_body_without_a_summary_says_the_suite_broke():
 
 def test_marker_cannot_close_the_html_comment():
     assert ra.marker("a-->b\nc").count("-->") == 1
+    assert ra.marker("x--->y").count("-->") == 1
+    for suite in ("x--->y", "x---->y", "--", "a--b--c"):
+        assert "--" not in ra.marker(suite).removeprefix("<!--").removesuffix("-->")
 
 
 def test_long_bodies_are_truncated_below_the_limit_with_fences_closed():
@@ -242,9 +258,15 @@ def test_short_bodies_are_untouched():
 
 
 class FakeGitHub:
-    def __init__(self, pages: list[list[dict[str, Any]]], status: int = 200) -> None:
+    def __init__(
+        self,
+        pages: list[list[dict[str, Any]]],
+        status: int = 200,
+        foreign: frozenset[int] = frozenset(),
+    ) -> None:
         self.pages = pages
         self.status = status
+        self.foreign = foreign  # comments the token may not edit
         self.calls: list[tuple[str, str, dict[str, Any] | None]] = []
 
     def __call__(self, method, url, payload):
@@ -255,6 +277,8 @@ class FakeGitHub:
             page = int(re.search(r"[?&]page=(\d+)", url).group(1))
             return ra.Response(200, self.pages[page - 1] if page <= len(self.pages) else [])
         if method == "PATCH":
+            if int(url.rsplit("/", 1)[1]) in self.foreign:
+                return ra.Response(403, {"message": "Resource not accessible by integration"})
             return ra.Response(200, {"html_url": "https://github.com/c/updated"})
         return ra.Response(201, {"html_url": "https://github.com/c/created"})
 
@@ -310,6 +334,24 @@ def test_updates_the_marker_comment_found_on_page_two(tmp_path, pr_env):
     assert outputs["comment-url"] == "https://github.com/c/updated"
     assert [m for m, _, _ in gh.calls] == ["GET", "GET", "PATCH"]
     assert gh.calls[-1][1] == "https://api.github.com/repos/owner/repo/issues/comments/999"
+
+
+def test_a_foreign_marker_comment_is_skipped_and_a_new_one_created(tmp_path, pr_env):
+    # Someone pasted the marker into their own comment: the token cannot edit it.
+    pasted = {"id": 3, "body": MARKER + "\nmine", "user": {"type": "User"}}
+    gh = FakeGitHub([[pasted]], foreign=frozenset({3}))
+    outputs = _comment(tmp_path, pr_env, gh)
+    assert outputs["comment-url"] == "https://github.com/c/created"
+    assert [m for m, _, _ in gh.calls] == ["GET", "PATCH", "POST"]
+
+
+def test_the_bot_comment_is_updated_before_an_earlier_users_one(tmp_path, pr_env):
+    pasted = {"id": 3, "body": MARKER + "\nmine", "user": {"type": "User"}}
+    ours = {"id": 4, "body": MARKER + "\nold", "user": {"type": "Bot"}}
+    gh = FakeGitHub([[pasted, ours]], foreign=frozenset({3}))
+    outputs = _comment(tmp_path, pr_env, gh)
+    assert outputs["comment-url"] == "https://github.com/c/updated"
+    assert [(m, u.rsplit("/", 1)[1]) for m, u, _ in gh.calls[1:]] == [("PATCH", "4")]
 
 
 def test_forbidden_warns_without_failing_and_hides_the_token(tmp_path, pr_env, capsys):

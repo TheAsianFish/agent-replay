@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import secrets
 import sys
 import urllib.error
@@ -23,8 +24,8 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, NamedTuple
 
-# GitHub rejects comment bodies over 65,536 characters; the margin covers any
-# difference in how it counts them (astral-plane emoji are two UTF-16 units).
+# GitHub rejects comment bodies over 65,536 characters; the body is kept a little
+# under that as a safety margin.
 COMMENT_LIMIT = 65_536
 MAX_BODY = 65_000
 PER_PAGE = 100
@@ -115,7 +116,7 @@ def summarize(report_json: Path, report_markdown: Path, exit_code: int) -> dict[
 
 def marker(suite: str) -> str:
     """The hidden first line that identifies this suite's comment on a pull request."""
-    clean = " ".join(suite.split()).replace("--", "-⁠-")  # never close the HTML comment
+    clean = re.sub(r"-(?=-)", "-\u2060", " ".join(suite.split()))  # never close the comment
     return f"<!-- agent-replay: {clean} -->"
 
 
@@ -182,8 +183,15 @@ def _check(response: Response, what: str) -> Any:
     raise CommentError(f"{what} failed: HTTP {response.status} {detail or ''}".rstrip() + hint)
 
 
-def find_comment(http: Http, api: str, repo: str, number: int, mark: str) -> int | None:
-    """The id of the pull request's comment that starts with ``mark``, paging through all."""
+def find_comments(http: Http, api: str, repo: str, number: int, mark: str) -> list[int]:
+    """Ids of the pull request's comments that start with ``mark``, bots' first.
+
+    Anyone can post a comment that starts with the marker, and the token can edit
+    only its own, so every match is a candidate: a bot (``github-actions[bot]``
+    for the default token) is the likely author, then the rest in posting order.
+    """
+    bots: list[int] = []
+    others: list[int] = []
     for page in range(1, MAX_PAGES + 1):
         url = f"{api}/repos/{repo}/issues/{number}/comments?per_page={PER_PAGE}&page={page}"
         comments = _check(http("GET", url, None), "listing the pull request's comments")
@@ -191,18 +199,26 @@ def find_comment(http: Http, api: str, repo: str, number: int, mark: str) -> int
             raise CommentError("listing the pull request's comments returned no list")
         for comment in comments:
             if str(comment.get("body", "")).startswith(mark):
-                return int(comment["id"])
+                user = comment.get("user") or {}
+                (bots if user.get("type") == "Bot" else others).append(int(comment["id"]))
         if len(comments) < PER_PAGE:
-            return None
-    return None
+            break
+    return bots + others
 
 
 def upsert(http: Http, api: str, repo: str, number: int, mark: str, body: str) -> str:
-    """Update the suite's comment on the pull request, or create it; returns its URL."""
-    existing = find_comment(http, api, repo, number, mark)
-    if existing is not None:
+    """Update the suite's comment on the pull request, or create it; returns its URL.
+
+    A candidate the token may not edit (403 or 404: someone else wrote it) is
+    skipped; when none can be edited, a new comment is created.
+    """
+    for existing in find_comments(http, api, repo, number, mark):
         url = f"{api}/repos/{repo}/issues/comments/{existing}"
-        result = _check(http("PATCH", url, {"body": body}), "updating the comment")
+        response = http("PATCH", url, {"body": body})
+        if response.status in (403, 404):
+            continue
+        result = _check(response, "updating the comment")
+        break
     else:
         url = f"{api}/repos/{repo}/issues/{number}/comments"
         result = _check(http("POST", url, {"body": body}), "creating the comment")

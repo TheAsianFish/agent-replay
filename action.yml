@@ -45,7 +45,7 @@ inputs:
       requirement such as "agent-replay==1.0.0" or "agent-replay[ollama]".
     default: action
   python:
-    description: Interpreter (3.10+) that pip-installs agent-replay and runs this action's helper script.
+    description: Interpreter that pip-installs agent-replay (Python 3.12+ with pip) and runs this action's helper script.
     default: python
   replay-command:
     description: Command that runs the replay CLI, split on whitespace, e.g. "uv run replay". Empty runs "<python> -m agent_replay".
@@ -57,8 +57,10 @@ inputs:
     description: Token for the PR comment; needs pull-requests write permission.
     default: ${{ github.token }}
   artifact-name:
-    description: Name of the uploaded report artifact (unique per workflow run). Empty disables the upload.
-    default: replay-report
+    description: >-
+      Name of the uploaded report artifact; names must be unique within a workflow run.
+      "auto" uses replay-report-<job>-<suite>; give matrix legs their own. Empty disables the upload.
+    default: auto
   dry-run:
     description: '"true" runs everything but prints the comment instead of posting it and does not fail on a regression.'
     default: "false"
@@ -110,6 +112,10 @@ runs:
             *) echo "::error::agent-replay: input ${flag%%=*} must be \"true\" or \"false\", got \"${flag#*=}\""; exit 2 ;;
           esac
         done
+        if [ "$INSTALL" != skip ] && ! "$PYTHON" -m pip --version > /dev/null 2>&1; then
+          echo "::error::agent-replay: $PYTHON has no pip (a uv venv?); install agent-replay in it yourself and set install: skip (with replay-command: uv run replay for a uv project)"
+          exit 2
+        fi
         case "$INSTALL" in
           skip) echo "install: skip; using the agent-replay already installed" ;;
           action) "$PYTHON" -m pip install --disable-pip-version-check "$GITHUB_ACTION_PATH" ;;
@@ -131,12 +137,20 @@ runs:
         BASELINE: ${{ inputs.baseline }}
         CASSETTE_DIR: ${{ inputs.cassette-dir }}
         ARGS: ${{ inputs.args }}
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
       run: |
         dir=$(mktemp -d "${RUNNER_TEMP:-/tmp}/agent-replay.XXXXXX")
+        artifact=$ARTIFACT_NAME
+        if [ "$artifact" = auto ]; then
+          # Artifact names allow no / \ : * ? " < > |; keep a portable subset.
+          slug=$(printf '%s' "$SUITE" | tr -c 'A-Za-z0-9._-' '-')
+          artifact="replay-report-$GITHUB_JOB-$slug"
+        fi
         {
           echo "dir=$dir"
           echo "report-json=$dir/report.json"
           echo "report-markdown=$dir/report.md"
+          echo "artifact=$artifact"
         } >> "$GITHUB_OUTPUT"
         if [ -n "$REPLAY_COMMAND" ]; then
           read -r -d '' -a cmd <<< "$REPLAY_COMMAND" || true
@@ -191,11 +205,14 @@ runs:
           --suite "$SUITE" --report-markdown "$REPORT_MARKDOWN" --exit-code "$EXIT_CODE" \
           --body "$BODY" --post "$COMMENT" --dry-run "$DRY_RUN"
 
+    # A failed upload (a name already used in this workflow run) must not fail the job
+    # or skip the verdict: the replay result is what gates.
     - name: Upload the report
-      if: always() && inputs.artifact-name != '' && steps.run.outputs.dir != ''
+      if: always() && steps.run.outputs.artifact != '' && steps.run.outputs.dir != ''
+      continue-on-error: true
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ inputs.artifact-name }}
+        name: ${{ steps.run.outputs.artifact }}
         path: ${{ steps.run.outputs.dir }}
         if-no-files-found: ignore
 
@@ -208,6 +225,7 @@ runs:
         FAILED: ${{ steps.summarize.outputs.failed }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
+        SUITE=${SUITE//[$'\r\n']/ }  # one annotation line
         if [ "$DRY_RUN" = "true" ]; then
           echo "::notice::agent-replay dry run: replay ci exited $EXIT_CODE on $SUITE; not failing the step"
           exit 0

@@ -599,10 +599,13 @@ The Action:
   project);
 - keeps **one** comment per suite on the PR (found by a hidden marker and
   updated on every push) holding `replay ci`'s Markdown summary and a link to
-  the run. On a fork's PR the token is read-only, so it warns instead of
+  the run. A marker comment the token cannot edit (someone else wrote it) is
+  skipped. On a fork's PR the token is read-only, so it warns instead of
   failing;
-- uploads the JSON and Markdown reports as an artifact (`artifact-name`; give
-  each matrix leg its own);
+- uploads the JSON and Markdown reports as an artifact, named
+  `replay-report-<job>-<suite>` by default (`artifact-name`; artifact names
+  are unique per workflow run, so give matrix legs their own). A failed upload
+  is reported but never fails the job;
 - fails the job with `replay ci`'s exit code: 1 for a regression, 2 for a
   broken suite.
 
