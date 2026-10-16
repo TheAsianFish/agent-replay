@@ -882,6 +882,91 @@ both orders with a position-bias rate of 100%, the reason every instance is
 judged in both orders. A length tie flips with the order, which gives the
 0.5% position bias of the length judges.
 
+## Recorder overhead and replay speed (M7, offline)
+
+What recording costs per intercepted call, and how long a `full` replay of a
+live recording takes next to the time the live run spent in its calls.
+
+- **Datasets:** recorder overhead on D5-style synthetic calls: the fake model
+  (`agent_replay/fake.py`) answering the retail agent's real first-turn request
+  (policy, tool list and task: 12,543 bytes of canonical JSON), the retail
+  `get_order_details` tool, `agent_replay.now()` and `agent_replay.random()`.
+  Replay speed on the six live `claude-opus-5-5` recordings of
+  `examples/retail_agent/replay-live.toml` (recorded 2026-10-09).
+- **Method, overhead:** per boundary, 2000 interleaved pairs of the same call
+  bare (not intercepted) and recorded (inside a `RecordingSession`), the order
+  within a pair alternating, after 200 discarded warm-up pairs, timed with
+  `time.perf_counter_ns`, in sessions of 20 calls, GC enabled. Overhead is the
+  median and p95 of the 2000 paired differences (recorded − bare); pairing
+  keeps machine drift out of the difference. Each recorded session is then
+  replayed in `full` mode and every served call is timed ("replay served").
+  The no-call session row is the fixed cost of creating, entering, exiting
+  and finishing one recording session.
+- **Method, replay vs live:** the recorded live duration is the sum of the
+  cassette's envelope `latency_ms`. The agent makes one call at a time, so this
+  is the time spent inside model and tool calls; the cassette stores no
+  end-of-run time, so the agent's own code between calls is left out and the
+  sum is a lower bound on the live wall-clock. The replay is
+  `agent_replay.ci.run_scenario`, what `replay ci` runs per scenario (load the
+  cassette and the agent, replay in `full` mode), without checks and with the
+  suite's checks (judge read from the committed cache,
+  `REPLAY_JUDGE_OFFLINE=1`), median of 20 runs after one warm-up. Speedup is
+  the recorded live duration over that median.
+- **Machine:** AMD EPYC 7763 64-Core Processor, 4 cores, Linux x86_64, CPython
+  3.12.3, load average 0.66 when the run below started.
+- **Date:** 2026-10-16. Raw JSON: `eval/results/bench_replay.json` (not
+  byte-stable: timings depend on the machine, so CI does not diff it).
+- **Command:** `make bench-replay` (= `uv run python eval/bench_replay.py --out eval/results/bench_replay.json`), 17.8 s.
+
+```
+Recorder overhead per boundary (2000 paired calls, 200 warm-up, sessions of 20; microseconds)
+
+| boundary | request bytes | bare median | bare p95 | recorded median | recorded p95 | overhead median | overhead p95 | replay served median | replay served p95 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| model | 12543 | 509.03 | 541.75 | 1189.33 | 1306.92 | 683.98 | 788.43 | 654.96 | 719.88 |
+| tool | 24 | 20.07 | 24.30 | 125.23 | 151.32 | 106.23 | 131.64 | 74.99 | 99.15 |
+| clock | 2 | 0.56 | 0.73 | 48.19 | 67.62 | 47.69 | 66.83 | 42.09 | 60.22 |
+| random | 2 | 0.14 | 0.24 | 43.69 | 63.54 | 43.55 | 63.38 | 41.48 | 60.18 |
+
+- one recording session with no calls (create, enter, exit, finish; 100 sessions): median 14.35, p95 17.17
+
+Full replay vs recorded live duration (20 runs per scenario after one warm-up; milliseconds)
+
+| scenario | envelopes | recorded live | replay median | replay p95 | speedup | replay+checks median | speedup with checks |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| cancel_pending_laptop | 11 | 8592.2 | 33.21 | 33.79 | 259x | 39.52 | 217x |
+| modify_address_suite | 6 | 6564.2 | 20.18 | 22.68 | 325x | 24.87 | 264x |
+| return_damaged_bicycle | 12 | 8752.5 | 33.92 | 79.40 | 258x | 40.56 | 216x |
+| exchange_waterproof_boots | 14 | 10830.2 | 41.21 | 45.60 | 263x | 47.09 | 230x |
+| lookup_latest_order_total | 9 | 6546.3 | 26.82 | 31.13 | 244x | 32.16 | 204x |
+| transfer_swapped_refunds | 10 | 9725.6 | 32.83 | 76.02 | 296x | 37.63 | 258x |
+
+- suite: recorded live 51011.1 ms, full replay 188.17 ms (271x), with checks 221.83 ms (230x); per scenario 244x to 325x
+- environment: Python 3.12.3 (CPython), Linux x86_64, 4 CPUs, AMD EPYC 7763 64-Core Processor
+
+wrote eval/results/bench_replay.json
+```
+
+Noise: an earlier run of the same command on the same machine while it was
+shared with other jobs (load average 4.4 to 5.0) measured roughly twice
+these times (model overhead median 1293.89 µs, clock 99.03 µs; suite
+`full replay 338.64 ms (151x), with checks 400.76 ms (127x)`), so read the
+timings as good to about a factor of two. The recorded live durations are
+read from the cassettes and do not vary.
+
+The benchmark found one fixed cost worth removing: that loaded run put a
+recording session with no calls at a median of 1409.47 µs, almost all of it
+`importlib.metadata.version("agent-replay")`, which every session called to
+fill its cassette header. The version is now looked up once per process; the
+same row above is 14.35 µs, a drop far larger than the factor-of-two noise.
+
+Reading it: recording adds about 50 µs to a clock read or random draw, about
+0.1 ms to a tool call and about 0.7 ms to a model call with a 12.5 KB request,
+against model calls that took 1.4 to 2.0 s each in the live recordings (the
+first cassette's five calls), so under 0.1% of a call. A `full` replay of a
+live recording, checks included, took 1/204 to 1/264 of the time the live run
+spent in its calls.
+
 ## To measure
 
 - **SPRT savings vs the fixed-sample test.** `make bench-sprt` (offline, about
