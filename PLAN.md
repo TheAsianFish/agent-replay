@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-14 (M6).
+definition of done is met and CI is green. Last updated: 2026-10-16 (M7).
 
 ## Goal
 
@@ -601,4 +601,52 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     takes one labeller. The verbosity probe has one perturbation. On the
     21 retail items a criterion clears the 20-item floor only if at most one
     item is skipped, and the interval is wide; D1 is the set meant to gate.
-- [ ] M7: GitHub Action and release readiness — `action.yml` composite action with PR comment and artifact upload, example consumer workflow, `v1` tag procedure; PyPI build and guarded trusted-publishing workflow; Dockerfile and Compose finalised; RELEASE.md with every step and secret the maintainer must add; README complete (what/why, demo GIF placeholder with capture instructions, quickstart, Mermaid architecture, design decisions, results table from RESULTS.md, roadmap); CHANGELOG. Done when `uv build` produces a wheel that installs in a clean venv, the Action runs against the example repo workflow in CI (dry mode), and RESULTS.md is complete with every measured and to-measure number.
+- [x] M7: GitHub Action and release readiness — `action.yml` composite action with PR comment and artifact upload, example consumer workflow, `v1` tag procedure; PyPI build and guarded trusted-publishing workflow; Dockerfile and Compose finalised; RELEASE.md with every step and secret the maintainer must add; README complete (what/why, demo GIF placeholder with capture instructions, quickstart, Mermaid architecture, design decisions, results table from RESULTS.md, roadmap); CHANGELOG. Done when `uv build` produces a wheel that installs in a clean venv, the Action runs against the example repo workflow in CI (dry mode), and RESULTS.md is complete with every measured and to-measure number.
+  - *M7 notes (2026-10-16).* Built as planned, with these changes and refinements:
+    (a) **The Action** (`action.yml`, logic in the stdlib-only
+    `action/replay_action.py`) is composite and runs in the consumer's own
+    Python, because the agent under test imports only there. `install: action`
+    (the default) pip-installs the Action's own checkout, so `@v1` runs exactly
+    the tagged code and works before any PyPI release; a pip spec or `skip` are
+    the alternatives. One sticky comment per suite, found by a hidden marker
+    that must start the body (paged through all comments); a failure to comment
+    is a warning, since a fork's token is read-only and the replay verdict is
+    what gates. Inputs reach the shell only through `env:`. `dry-run` prints the
+    comment and never fails; the `action` CI job runs `uses: ./` that way on the
+    retail suite and on a mutant and asserts the outputs. The "example repo" is
+    this repository acting as the consumer, with the copyable workflow in
+    `examples/github-workflow/replay.yml`; a separate example repository would
+    have needed a second repo to keep in sync.
+    (b) **Packaging.** Version 1.0.0, set only in `pyproject.toml`
+    (`__version__` reads the installed metadata). The wheel bundles the
+    gitignored dashboard build as a hatch artifact; the sdist holds only the
+    package (322 KB, was the whole 2 MB repo). The PyPI description rewrites the
+    README's relative links. `make dist` and the `package` CI job install the
+    wheel and the sdist in fresh venvs outside the repo and smoke-test them.
+    (c) **Release workflow** (`release.yml`): the tag must equal the package
+    version and CHANGELOG.md must have a dated section for it, both checked
+    before anything publishes; PyPI by trusted publishing, the GitHub Release,
+    and the GHCR image, each guarded to tag pushes on this repository.
+    (d) **Plan change: the hosted demo is one container.** The Dockerfile's
+    `demo` stage bakes the demo data into SQLite at build time and listens on
+    `$PORT`, so Fly.io (`deploy/fly.toml`) or Render needs no database service.
+    Not deployed (no account).
+    (e) **Plan change: `make bench-replay` lands here.** It was in the
+    Evaluation table with no milestone. Recorder overhead from paired bare and
+    recorded calls; `full` replay against the live recordings' call time. It
+    found that every recording session read the package metadata (1.4 ms on a
+    loaded machine); now once per process (14 µs per session). `make eval` and
+    `make bench` run every offline evaluation and benchmark.
+    (f) **Docs.** README: results table, install, the Action, design decisions
+    for M7, the demo GIF (scripted, `docs/demo.tape`); RELEASE.md with every
+    step and setting; CHANGELOG.md; RESULTS.md gains an index of every claim
+    and its status.
+    (g) **Verified:** the `action` job with act 0.2.89 (job succeeded; pass exit
+    0, mutant exit 1 with 5 of 6 failed), `make dist`, `docker compose up`, the
+    demo stage, actionlint on both workflows. GitHub's own first run of the new
+    `action` and `package` jobs is on the PR.
+    (h) **Not done, and why:** a real PR comment through the API (no token for a
+    real pull request here; covered against a fake HTTP layer), publishing to
+    PyPI, the `v1` tag and the hosted demo (maintainer steps in RELEASE.md),
+    `make bench-flake` (D3; needs a key and the larger golden set). M7 API spend
+    $0.

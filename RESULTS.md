@@ -4,6 +4,40 @@ Every number in README.md comes from this file. Each one lists its dataset,
 method, the command that produced it and the raw output. Sections are added as
 the evaluations land. PLAN.md, "Evaluation", lists the full plan.
 
+## Index
+
+Every number this repo claims, where its raw output is, and how to reproduce
+it. "Offline" rows need no key and run in seconds to a minute; CI re-runs the
+byte-stable ones and fails on any change.
+
+| Claim | Number | Section | Command | Status |
+|---|---|---|---|---|
+| Recorder works against the real API, replays exactly | 6 envelopes, all `exact` on replay; $0.0140 | Live recording smoke test (M1) | `make test-live` | measured (key) |
+| Live retail recordings replay and pass | 6/6 in `full`; 6/6 `model-live` twice ($0.10 warm cache, $0.29 cold) | Retail agent (M2) | `replay ci ... --mode model-live --client anthropic` | measured (key) |
+| Seeded regressions fail `replay ci` | 3/3 mutants exit 1 | Seeded regressions (M2) | `make ci-demo` | measured, offline |
+| Cost gate on a live run | unchanged agent within 5%; caching removed: 6/6 fail at +76% to +155% | Cost gate (M3) | commands in that section | measured (key) |
+| Judge vs deterministic checks (wiring) | 23/24 agree | Judge smoke test (M3) | `make eval-judge-smoke` | measured, offline from cache |
+| Fixed-sample gate at α = β = 0.05 | 24 runs (pass on ≥ 19); fixed-20 majority false-passes 13.4% at p = 0.6 | Sequential gate simulation | `make bench-sprt` | measured, offline |
+| SPRT runs saved vs the fixed-sample test | — | Sequential gate simulation | `make bench-sprt` once `stats.py` exists | **to measure** |
+| Mutation detection, per mode | `full` 7/32; `model-live` 12/12 model regressions; `tools-live` 5/8 tool bugs (8/8 with `fail_on_approximate`); false alarms 0/5 (1/5) | Mutation study (M4) | `make eval-mutations` | measured, offline |
+| Live flakiness | Haiku 5.5 119/120; Opus 5.5 30/30 at 41× Haiku's cost per run | `replay flake` on live models (M4) | commands in that section | measured (key) |
+| Wilson intervals for those runs | — | `replay flake` on live models | `REPLAY_STATS_IMPL=core` re-run | **to measure** |
+| Offline flake gate | fake model passes every scenario; seeded flaky model fails the gate | `replay flake` offline (M4) | `make flake-demo` | measured, offline |
+| Dashboard demo data | 480 runs, 14 suites, 6 flake reports, 2 calibration reports | Dashboard demo data (M5) | `make demo-data`, `docker compose up` | measured, offline |
+| Judge vs objective labels | 20/21 (95%); majority baseline 71%; 1 false pass | Judge calibration pipeline (M6) | `make eval-judge-objective` | measured, offline from cache |
+| LLMBar heuristic floors (Adversarial) | shorter 82.0%, longer 18.0%, first 50.0% (position bias 100%) | LLMBar heuristic baselines (M6) | `make eval-llmbar-heuristics` | measured, offline |
+| Recorder overhead | model ~0.7 ms, tool ~0.1 ms, clock / random ~50 µs per call (median) | Recorder overhead and replay speed (M7) | `make bench-replay` | measured, offline (machine-dependent) |
+| Full replay vs live call time | suite 222 ms with checks vs 51.0 s (230×) | Recorder overhead and replay speed (M7) | `make bench-replay` | measured, offline (machine-dependent) |
+| Wheel installs in a clean venv | wheel 342,782 B with the dashboard; sdist 327,427 B; both install and pass the smoke test | Release readiness (M7) | `make dist` | measured |
+| The Action, dry run on the retail suite | pass: exit 0, 0 failed; mutant: exit 1, 5/6 failed | Release readiness (M7) | CI job `action`; locally with `act` | measured |
+| Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
+| D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
+| Real judge on LLMBar | — | To measure | `make eval-llmbar` (~$12.73) | **to measure** |
+| D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
+
+API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
+M7 $0).
+
 ## Live recording smoke test (M1)
 
 Checks that the recorder works against the real Anthropic API and that a
@@ -967,6 +1001,131 @@ first cassette's five calls), so under 0.1% of a call. A `full` replay of a
 live recording, checks included, took 1/204 to 1/264 of the time the live run
 spent in its calls.
 
+## Release readiness (M7)
+
+Whether what a release ships works outside this repository. Nothing was
+published; these are the checks the release workflow runs before it would.
+
+**Wheel and sdist in clean venvs.** `make dist` builds the dashboard into the
+package, runs `uv build`, then `scripts/check_wheel.sh`: for the wheel (with
+the `server` extra) and then the sdist, a fresh `python3.12 -m venv` in a
+temporary directory outside the repo, `pip install`, and checks that
+`agent_replay` imports from that venv (not the checkout), the migrations and
+the dashboard are in the installed package, a new store migrates to head,
+`replay show` and `replay run` work on the toy cassette (only the toy agent's
+three modules are copied next to it), and `replay serve` answers
+`/api/health` and serves the bundled `index.html` at `/`. Then `twine check
+--strict`. Date 2026-10-16; 49 s. Raw output from `scripts/check_wheel.sh`
+on (absolute paths shortened):
+
+```
+scripts/check_wheel.sh --expect-dashboard dist
+wheel: dist/agent_replay-1.0.0-py3-none-any.whl (336 KiB)
+sdist: dist/agent_replay-1.0.0.tar.gz (320 KiB)
+version: 1.0.0
+
+== wheel: fresh venv, pip install 'agent_replay-1.0.0-py3-none-any.whl[server]'
+
+== replay --version
+agent-replay 1.0.0
+
+== import agent_replay from the venv
+agent_replay 1.0.0 from $TMP/venv/lib/python3.12/site-packages/agent_replay
+migrations: 0001_initial.py, 0002_flake_and_calibration.py; dashboard bundled: True
+
+== the run store migrates to head
+run store at schema revision 0002
+
+== replay show and replay run on the toy cassette
+replay show: 14 lines
+Replaying refund_eligible.jsonl (mode full, policy strict) against 
+examples.toy_agent.agent:run
+#  kind   name                       status  request                           
+0  model  anthropic.messages.create  exact   "1 message(s)"                    
+1  tool   lookup_order               exact   {"order_id":"A1001"}              
+2  tool   get_refund_policy          exact   {}                                
+3  model  anthropic.messages.create  exact   "3 message(s)"                    
+4  tool   issue_refund               exact   {"amount":42.5,"order_id":"A1001"}
+5  model  anthropic.messages.create  exact   "5 message(s)"                    
+PASS tool_sequence: 3 tool call(s) match the expected sequence (exact)
+passed
+
+== replay serve
+/api/health: {"status":"ok","version":"1.0.0","backend":"sqlite","revision":"0002"}
+/: the dashboard's index.html
+serving the sqlite run store on http://127.0.0.1:39855 (dashboard: 
+
+== sdist: fresh venv, pip install agent_replay-1.0.0.tar.gz
+agent-replay 1.0.0
+
+check_wheel: OK (1.0.0)
+uvx twine check --strict dist/*
+Checking dist/agent_replay-1.0.0-py3-none-any.whl: PASSED
+Checking dist/agent_replay-1.0.0.tar.gz: PASSED
+
+real	0m49.132s
+user	0m50.139s
+sys	0m8.032s
+```
+
+Sizes: wheel 342,782 bytes (dashboard included: `index.html` and a 416 KB JS
+bundle, 127 KB gzipped), sdist 327,427 bytes. Before M7 the sdist was the
+whole repository (1,992,663 bytes) and the wheel had no dashboard. A
+`pip install` of the source tree, as the Action's `install: action` does,
+took 7.75 s and 9.87 s in two fresh venvs (dependencies included).
+
+**The Action, run as the CI job does.** The `action` job in
+`.github/workflows/ci.yml` is this repository as the Action's consumer:
+`uses: ./` on the retail suite with `install: action` (a real `pip install` of
+the checkout) and `dry-run: true`, then again with the `first_tool_only`
+mutant, then a step asserting the outputs. Run locally with act 0.2.89 on the
+`catthehacker/ubuntu:act-latest` image and a pull-request event:
+
+```
+act pull_request -e event.json -j action -W .github/workflows/ci.yml \
+  -P ubuntu-latest=catthehacker/ubuntu:act-latest --artifact-server-path /tmp/act-artifacts --pull=false
+```
+
+Lines from its output (prefixes stripped):
+
+```
+| Successfully installed agent-replay-1.0.0
+| 6/6 scenario(s) passed: passed
+⚙  ::set-output:: exit-code=0
+⚙  ::set-output:: passed=true
+⚙  ::set-output:: scenarios=6
+⚙  ::set-output:: failed=0
+❓  ::group::PR comment for #7: dry run, not posted
+| Artifact replay-report-pass has been successfully uploaded! Final size is 3015 bytes.
+| 1/6 scenario(s) passed: failed
+⚙  ::set-output:: exit-code=1
+⚙  ::set-output:: passed=false
+⚙  ::set-output:: scenarios=6
+⚙  ::set-output:: failed=5
+❓  ::group::PR comment for #7: dry run, not posted
+| Artifact replay-report-mutant has been successfully uploaded! Final size is 4178 bytes.
+| pass: exit 0, passed true
+| mutant: exit 1, passed false, failed 5
+[CI/GitHub Action (dry run on the retail example)] 🏁  Job succeeded
+```
+
+Posting a real comment through the GitHub API was not exercised here (no
+token for a real pull request in this environment); `tests/test_action.py`
+covers create, update (including a marker comment on the second page), a 403
+from a fork's read-only token (a warning, not a failure) and non-PR events
+against a fake HTTP layer. The first real comment will be on this
+repository's own pull requests once a workflow runs without `dry-run`.
+
+**Containers.** `docker compose up --build --detach --wait app` seeded
+PostgreSQL ("480 runs, 14 suites, 6 flake reports, 2 calibration reports"),
+`/api/runs?limit=1` reported a total of 480 and `/api/health` the
+`postgresql` backend at revision `0002`. The `demo` stage
+(`docker build --target demo`, 285 MB) served the same 480 runs from its baked
+SQLite store on `PORT=8123`: `/api/health` returned
+`{"status":"ok","version":"1.0.0","backend":"sqlite","revision":"0002"}` and
+the container's health check reported `healthy`. Neither hosted route in
+RELEASE.md was deployed (no account).
+
 ## To measure
 
 - **SPRT savings vs the fixed-sample test.** `make bench-sprt` (offline, about
@@ -1036,3 +1195,6 @@ committed verdict cache).
 
 API spend in M6: $0 (every judge verdict used came from the committed cache;
 the new calls are under "To measure"). Project total: $3.326.
+
+API spend in M7: $0 (packaging, the Action and the benchmark are offline).
+Project total: $3.326.
