@@ -986,7 +986,12 @@ def serve_cmd(
         store = Store.open(db)
     except ReplayError as exc:
         raise _fail(str(exc)) from exc
-    where = str(static) if static else "none (API only; build it with `make ui`)"
+    where = (
+        str(static)
+        if static
+        else "none, API only: this install has no dashboard build; the PyPI wheel bundles "
+        "one, or run `make ui` in a source checkout, or set REPLAY_DASHBOARD_DIR"
+    )
     console.print(
         f"serving the {store.backend} run store on http://{host}:{port} (dashboard: "
         f"{escape(where)}; API docs at /docs)"

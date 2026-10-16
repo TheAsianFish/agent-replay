@@ -2,7 +2,7 @@
 # are added with the code they run.
 
 .PHONY: eval-judge-smoke setup lint format type test test-live check cassettes retail-cassettes demo ci-demo \
-	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check \
+	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check dist \
 	golden record-golden eval-judge eval-judge-objective token-rates \
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics
 
@@ -133,6 +133,15 @@ demo-data:
 ui:
 	npm --prefix dashboard ci --no-audit --no-fund
 	npm --prefix dashboard run build
+
+# The release artifacts: the dashboard built into the package, then the wheel and sdist in
+# dist/, each installed in a fresh venv outside the repo and smoke-tested (scripts/check_wheel.sh;
+# needs python3.12 and the package index, ~1 min), then `twine check` on their metadata.
+dist: ui
+	rm -rf dist
+	uv build
+	scripts/check_wheel.sh --expect-dashboard dist
+	uvx twine check --strict dist/*
 
 # Dashboard checks: generated API types current, tsc, eslint, vitest.
 ui-check:
