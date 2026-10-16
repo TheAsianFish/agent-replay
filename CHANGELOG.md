@@ -8,7 +8,7 @@ every older version.
 
 ## [Unreleased]
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-10-16
 
 The first release: the SDK, the `replay` CLI, the GitHub Action and the
 self-hosted dashboard.

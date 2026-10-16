@@ -70,6 +70,11 @@ them, but a forced add would not).
 3. `uv lock` (the lockfile records the project version), commit:
    `git commit -am "Release X.Y.Z"`, and push to `main` through a PR as usual.
 
+For 1.0.0 this step is done: `pyproject.toml` and `uv.lock` say `1.0.0` and
+CHANGELOG.md has a dated `[1.0.0]` section. If the tag lands on a later day,
+change that date before tagging, as Keep a Changelog dates a section by its
+release day.
+
 ## 4. Dry-run the release (optional)
 
 Actions → *Release* → *Run workflow* on `main`. Only the build job runs: tag
