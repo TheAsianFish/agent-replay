@@ -140,7 +140,7 @@ runs:
         ARTIFACT_NAME: ${{ inputs.artifact-name }}
       run: |
         dir=$(mktemp -d "${RUNNER_TEMP:-/tmp}/agent-replay.XXXXXX")
-        artifact=$ARTIFACT_NAME
+        artifact=${ARTIFACT_NAME//[$'\r\n']/}  # one output line
         if [ "$artifact" = auto ]; then
           # Artifact names allow no / \ : * ? " < > |; keep a portable subset.
           slug=$(printf '%s' "$SUITE" | tr -c 'A-Za-z0-9._-' '-')
@@ -178,6 +178,7 @@ runs:
       id: summarize
       if: always() && steps.run.outputs.exit-code != ''
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       env:
         PYTHON: ${{ inputs.python }}
         REPORT_JSON: ${{ steps.run.outputs.report-json }}
@@ -191,6 +192,7 @@ runs:
       id: comment
       if: always() && steps.run.outputs.exit-code != ''
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       env:
         PYTHON: ${{ inputs.python }}
         SUITE: ${{ inputs.suite }}
@@ -216,16 +218,23 @@ runs:
         path: ${{ steps.run.outputs.dir }}
         if-no-files-found: ignore
 
+    # The only step that fails: with replay ci's exit code, or 2 when it exited 0
+    # without a report (a replay-command that is not replay ci), never silently green.
     - name: Verdict
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       env:
         SUITE: ${{ inputs.suite }}
         EXIT_CODE: ${{ steps.run.outputs.exit-code }}
+        PASSED: ${{ steps.summarize.outputs.passed }}
         SCENARIOS: ${{ steps.summarize.outputs.scenarios }}
         FAILED: ${{ steps.summarize.outputs.failed }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
         SUITE=${SUITE//[$'\r\n']/ }  # one annotation line
+        if [ "$EXIT_CODE" = 0 ] && [ "$PASSED" != true ]; then
+          EXIT_CODE=2  # summarize said why: no readable report
+        fi
         if [ "$DRY_RUN" = "true" ]; then
           echo "::notice::agent-replay dry run: replay ci exited $EXIT_CODE on $SUITE; not failing the step"
           exit 0
@@ -233,6 +242,7 @@ runs:
         case "$EXIT_CODE" in
           0) exit 0 ;;
           1) echo "::error::agent-replay: $FAILED of $SCENARIOS scenario(s) in $SUITE regressed" ;;
-          *) echo "::error::agent-replay: replay ci could not run $SUITE (exit $EXIT_CODE); see its log" ;;
+          2) echo "::error::agent-replay: replay ci could not run every scenario in $SUITE (exit 2); the summary names the scenario, the log has the error" ;;
+          *) echo "::error::agent-replay: replay ci failed on $SUITE (exit $EXIT_CODE); see its log" ;;
         esac
         exit "$EXIT_CODE"

@@ -5,6 +5,9 @@ name: Agent replay
 
 on:
   pull_request:
+  # Not pull_request_target: that event carries a write token, and replay ci imports
+  # the PR's agent code. Fork PRs get the verdict and artifact, and a warning in
+  # place of the comment.
 
 permissions:
   contents: read

@@ -607,7 +607,15 @@ The Action:
   are unique per workflow run, so give matrix legs their own). A failed upload
   is reported but never fails the job;
 - fails the job with `replay ci`'s exit code: 1 for a regression, 2 for a
-  broken suite.
+  broken suite, and 2 when the command exited 0 without writing a report (a
+  `replay-command` that is not replay ci), so it is never green on no evidence.
+
+Keep the trigger `pull_request`. The Action also comments on
+`pull_request_target` events, but that event runs with a write token on the
+base branch's behalf, so a workflow that checks out the PR's head there and
+replays it executes the PR's own agent code with that token; never combine the
+two. A fork's PR gets its verdict and artifact and a warning instead of a
+comment.
 
 `mode`, `policy`, `agent`, `client`, `baseline` and `cassette-dir` pass
 through to `replay ci`, and `args` appends anything else. A `model-live` suite

@@ -92,21 +92,30 @@ def _load_report(path: Path) -> dict[str, Any] | None:
 
 
 def summarize(report_json: Path, report_markdown: Path, exit_code: int) -> dict[str, str]:
-    """The step outputs for one ``replay ci`` run; ``passed`` follows the exit code."""
+    """The step outputs for one ``replay ci`` run.
+
+    ``passed`` is true only for exit 0 *with* a readable report: a command that exits
+    0 without writing one (a ``replay-command`` that is not replay ci) must not pass.
+    """
     report = _load_report(report_json)
     scenarios: list[Any] = report["scenarios"] if report is not None else []
     failed = sum(1 for s in scenarios if not (isinstance(s, dict) and s.get("passed") is True))
-    if report is None and exit_code != 0:
+    if report is not None:
+        print(f"replay ci: {len(scenarios) - failed}/{len(scenarios)} scenario(s) passed")
+    elif exit_code == 0:
+        error(
+            f"replay ci exited 0 but wrote no readable report at {report_json}: did the "
+            "replay-command run replay ci? The step fails rather than pass on no evidence"
+        )
+    elif not report_json.exists():
         error(
             f"replay ci exited {exit_code} without a report: the suite could not be loaded "
             "or the command did not start; its error is in the log above"
         )
-    elif report is None:
-        warning("replay ci exited 0 but wrote no readable report")
     else:
-        print(f"replay ci: {len(scenarios) - failed}/{len(scenarios)} scenario(s) passed")
+        error(f"replay ci exited {exit_code} and its report {report_json} could not be read")
     return {
-        "passed": "true" if exit_code == 0 else "false",
+        "passed": "true" if exit_code == 0 and report is not None else "false",
         "scenarios": str(len(scenarios)),
         "failed": str(failed),
         "report-json": str(report_json) if report is not None else "",
@@ -308,8 +317,8 @@ def _post(
     api = env.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
     try:
         url = upsert(http or urllib_http(token), api, repo, number, marker(suite), body)
-    except (CommentError, OSError, ValueError, KeyError, TypeError) as exc:
-        warning(f"agent-replay did not comment on #{number}: {exc}")
+    except Exception as exc:  # commenting never fails the job
+        warning(f"agent-replay did not comment on #{number}: {type(exc).__name__}: {exc}")
         return ""
     print(f"PR comment: {url}")
     return url

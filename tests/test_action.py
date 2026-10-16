@@ -1,9 +1,12 @@
 """The composite GitHub Action: action.yml's wiring and its helper script, offline."""
 
 import importlib.util
+import io
 import json
 import re
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -410,3 +413,116 @@ def test_dry_run_prints_the_body_even_without_a_pr_number(tmp_path, pr_env, caps
     out = capsys.readouterr().out
     assert "::warning::agent-replay did not comment: the event payload has no pull" in out
     assert "(no pull request to post to): dry run, not posted" in out
+
+
+# review follow-ups: no silent green, every step in the working directory, the real HTTP layer
+
+
+def test_exit_zero_without_a_report_does_not_pass(tmp_path, capsys):
+    # A replay-command that is not replay ci can exit 0 and write nothing.
+    outputs = _summarize(tmp_path, 0)
+    assert (outputs["passed"], outputs["scenarios"], outputs["report-json"]) == ("false", "0", "")
+    assert "::error::replay ci exited 0 but wrote no readable report" in capsys.readouterr().out
+
+
+def test_the_verdict_fails_exit_zero_without_a_report():
+    verdict = ACTION["runs"]["steps"][-1]
+    assert verdict["env"]["PASSED"] == "${{ steps.summarize.outputs.passed }}"
+    assert 'if [ "$EXIT_CODE" = 0 ] && [ "$PASSED" != true ]; then\n  EXIT_CODE=2' in verdict["run"]
+
+
+def test_every_run_step_uses_the_working_directory():
+    # A relative `python` (.venv/bin/python) must resolve the same way in every step.
+    for step in ACTION["runs"]["steps"]:
+        if "run" in step:
+            assert step["working-directory"] == "${{ inputs.working-directory }}", step["name"]
+
+
+@pytest.mark.parametrize("content", ["[]", '{"scenarios": "x"}', '{"passed": true}'])
+def test_a_report_that_is_not_a_replay_ci_report_is_rejected(tmp_path, capsys, content):
+    (tmp_path / "report.json").write_text(content)
+    outputs = _summarize(tmp_path, 1)
+    out = capsys.readouterr().out
+    assert (outputs["passed"], outputs["scenarios"], outputs["report-json"]) == ("false", "0", "")
+    assert "::warning::the replay report" in out
+    assert "has no scenarios list" in out
+    assert "without a report" not in out
+    assert "::error::replay ci exited 1 and its report" in out
+
+
+def test_summarize_and_comment_append_to_one_output_file(tmp_path, pr_env):
+    _report(tmp_path, True)
+    out = tmp_path / "out"
+    env = {**pr_env, "GITHUB_OUTPUT": str(out)}
+    args = ["--report-markdown", str(tmp_path / "report.md"), "--exit-code", "0"]
+    summarize = ["summarize", "--report-json", str(tmp_path / "report.json"), *args]
+    assert ra.main(summarize, env=env) == 0
+    body = tmp_path / "comment.md"
+    comment = ["comment", "--suite", SUITE, *args, "--body", str(body), "--dry-run", "true"]
+    assert ra.main(comment, env=env) == 0
+    assert _outputs(out) == {
+        "passed": "true",
+        "scenarios": "1",
+        "failed": "0",
+        "report-json": str(tmp_path / "report.json"),
+        "report-markdown": str(tmp_path / "report.md"),
+        "comment-body": str(body),
+        "comment-url": "",
+    }
+
+
+def test_annotations_escape_workflow_command_characters(capsys):
+    ra.warning("100% sure\r\nnot a second line")
+    assert capsys.readouterr().out == "::warning::100%25 sure%0D%0Anot a second line\n"
+
+
+def test_an_unexpected_listing_shape_warns_instead_of_failing(tmp_path, pr_env, capsys):
+    def odd(method, url, payload):
+        return ra.Response(200, [{"id": 1, "body": MARKER + "\nx", "user": "ghost"}])
+
+    outputs = _comment(tmp_path, pr_env, odd)
+    assert outputs["comment-url"] == ""
+    out = capsys.readouterr().out
+    assert "::warning::agent-replay did not comment on #7: AttributeError" in out
+
+
+def test_the_marker_comment_on_a_later_page_is_found(tmp_path, pr_env):
+    pages = [[_other(i) for i in range(100)] for _ in range(3)]
+    pages.append([{"id": 4000, "body": MARKER + "\nold"}])
+    gh = FakeGitHub(pages)
+    _comment(tmp_path, pr_env, gh)
+    assert [m for m, _, _ in gh.calls] == ["GET"] * 4 + ["PATCH"]
+    assert gh.calls[-1][1].endswith("/issues/comments/4000")
+
+
+def test_the_real_http_layer_sends_the_token_and_reads_error_bodies(monkeypatch):
+    seen = []
+
+    class Resp(io.BytesIO):
+        status = 201
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return None
+
+    def urlopen(req, timeout):
+        seen.append((req, timeout))
+        if req.get_method() == "PATCH":
+            raise urllib.error.HTTPError(req.full_url, 403, "Forbidden", {}, io.BytesIO(b"<html>"))
+        return Resp(b'{"html_url": "https://github.com/c/1"}')
+
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    http = ra.urllib_http("ghs_token", timeout=7.5)
+    created = http("POST", "https://api.github.com/x", {"body": "hi"})
+    assert created == ra.Response(201, {"html_url": "https://github.com/c/1"})
+    req, timeout = seen[0]
+    assert timeout == 7.5
+    assert req.get_method() == "POST"
+    assert req.get_header("Authorization") == "Bearer ghs_token"
+    assert req.get_header("Content-type") == "application/json"
+    assert req.get_header("X-github-api-version") == ra.API_VERSION
+    assert json.loads(req.data) == {"body": "hi"}
+    assert http("PATCH", "https://api.github.com/y", {"body": "hi"}) == ra.Response(403, None)
+    assert seen[1][0].get_header("Authorization") == "Bearer ghs_token"
