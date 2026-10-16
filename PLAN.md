@@ -653,3 +653,19 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     PyPI, the `v1` tag and the hosted demo (maintainer steps in RELEASE.md),
     `make bench-flake` (D3; needs a key and the larger golden set). M7 API spend
     $0.
+    (i) **Review fixes,** each with a test that fails on the old code: a
+    `replay-command` that exited 0 without writing a report passed the check
+    (`passed` now needs a readable report and the verdict exits 2 without one);
+    the summarize, comment and verdict steps ran outside `working-directory`,
+    so a relative `python` broke after `replay ci` had run; an unexpected API
+    response failed the comment step instead of warning; the release trigger
+    accepted `v1.0.0-rc1` and would have published it as final and `latest`
+    (now only a final `X.Y.Z` on `main`); a wheel built without the dashboard
+    passed `check_wheel.sh` unless a flag was given (now the default check);
+    the Markdown summary's diff fence could be closed by three backticks in a
+    tool argument; `make bench` rewrote the committed timings; and four numbers
+    in RESULTS.md (load average, duration, the loaded-run and before-the-fix
+    timings) had no raw output and were replaced by measured ones. RELEASE.md's
+    private-file check matched every example agent and now matches only the
+    files it means; it also lists the `pypi` reviewer and a tag ruleset as the
+    settings that keep a bare tag push from publishing.
