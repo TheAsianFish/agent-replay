@@ -15,3 +15,12 @@ dashboard/playwright-report
 agent_replay/server/static
 docs
 **/.env*
+dist
+build
+**/*.egg-info
+**/node_modules
+dashboard/dist
+dashboard/coverage
+tests
+scripts
+.github
