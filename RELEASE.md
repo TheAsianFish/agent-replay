@@ -156,8 +156,11 @@ route below has been deployed: both need an account.
 
 ```bash
 fly launch --no-deploy --copy-config --config deploy/fly.toml --name agent-replay-demo
-fly deploy --config deploy/fly.toml
+fly deploy . --config deploy/fly.toml --dockerfile Dockerfile
 ```
+
+The repository root is the build context (the Dockerfile copies `dashboard/`,
+`agent_replay/` and `examples/` from it), so run both from there.
 
 **Render** (no CLI): New → *Web Service* → this repository → Runtime *Docker*,
 Dockerfile path `./Dockerfile`, Docker build target `demo`, health check path

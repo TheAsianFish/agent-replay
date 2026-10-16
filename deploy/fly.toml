@@ -1,12 +1,13 @@
 # Fly.io config for the optional hosted demo (RELEASE.md, step 9): the Dockerfile's
 # `demo` stage, a read-only dashboard over demo data baked into the image.
+# From the repository root, which is the image's build context:
 #   fly launch --no-deploy --copy-config --config deploy/fly.toml --name agent-replay-demo
-#   fly deploy --config deploy/fly.toml
+#   fly deploy . --config deploy/fly.toml --dockerfile Dockerfile
 app = "agent-replay-demo"
 primary_region = "sjc"
 
+# The Dockerfile is passed on the command line (--dockerfile), relative to the root.
 [build]
-  dockerfile = "../Dockerfile"
   build-target = "demo"
 
 [env]

@@ -620,7 +620,7 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     (b) **Packaging.** Version 1.0.0, set only in `pyproject.toml`
     (`__version__` reads the installed metadata). The wheel bundles the
     gitignored dashboard build as a hatch artifact; the sdist holds only the
-    package (322 KB, was the whole 2 MB repo). The PyPI description rewrites the
+    package (327 KB, was the whole 1.99 MB repo). The PyPI description rewrites the
     README's relative links. `make dist` and the `package` CI job install the
     wheel and the sdist in fresh venvs outside the repo and smoke-test them.
     (c) **Release workflow** (`release.yml`): the tag must equal the package

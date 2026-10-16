@@ -1068,11 +1068,29 @@ user	0m50.139s
 sys	0m8.032s
 ```
 
-Sizes: wheel 342,782 bytes (dashboard included: `index.html` and a 416 KB JS
-bundle, 127 KB gzipped), sdist 327,427 bytes. Before M7 the sdist was the
-whole repository (1,992,663 bytes) and the wheel had no dashboard. A
-`pip install` of the source tree, as the Action's `install: action` does,
-took 7.75 s and 9.87 s in two fresh venvs (dependencies included).
+Sizes and install times, raw (2026-10-16; `ls -l` of `make dist`'s output, the
+vite lines from the same run, the M6 sdist rebuilt from `main` with `uv build
+--sdist` in a worktree, and `/usr/bin/time` around a `pip install` of the
+source tree into two fresh `python3.12 -m venv`s, the second with pip's cache
+warm, which is what the Action's `install: action` does):
+
+```
+$ ls -l dist/
+-rw-r--r-- 1 runner runner 342782 Oct 16 07:27 agent_replay-1.0.0-py3-none-any.whl
+-rw-r--r-- 1 runner runner 327427 Oct 16 07:27 agent_replay-1.0.0.tar.gz
+../agent_replay/server/static/index.html                   0.48 kB │ gzip:   0.29 kB
+../agent_replay/server/static/assets/index-DU9qURRW.css   21.12 kB │ gzip:   5.20 kB
+../agent_replay/server/static/assets/index-CM2IjIM_.js   416.24 kB │ gzip: 127.10 kB
+$ ls -l /tmp/maindist/            # main (M6), before the sdist was trimmed
+-rw-r--r-- 1 runner runner 1992496 Oct 16 07:45 agent_replay-0.1.0.tar.gz
+$ /usr/bin/time -f "%e s" python -m pip install -q <repo>
+7.75 s
+9.87 s (second, pip cache warm)
+```
+
+The M6 sdist was the whole repository, untracked local files included; the
+1.0.0 sdist holds `agent_replay/`, `README.md`, `CHANGELOG.md`, `LICENSE`,
+`pyproject.toml`, `PKG-INFO` and `.gitignore`. The M6 wheel had no dashboard.
 
 **The Action, run as the CI job does.** The `action` job in
 `.github/workflows/ci.yml` is this repository as the Action's consumer:
@@ -1086,7 +1104,9 @@ act pull_request -e event.json -j action -W .github/workflows/ci.yml \
   -P ubuntu-latest=catthehacker/ubuntu:act-latest --artifact-server-path /tmp/act-artifacts --pull=false
 ```
 
-Lines from its output (prefixes stripped):
+Lines from its output after the review fixes (2026-10-16; job-name prefixes and
+artifact ids stripped; act repeats each composite action's outputs once more
+after its last step). The passing step uses the default artifact name:
 
 ```
 | Successfully installed agent-replay-1.0.0
@@ -1096,17 +1116,25 @@ Lines from its output (prefixes stripped):
 ⚙  ::set-output:: scenarios=6
 ⚙  ::set-output:: failed=0
 ❓  ::group::PR comment for #7: dry run, not posted
-| Artifact replay-report-pass has been successfully uploaded! Final size is 3015 bytes.
+| Artifact replay-report-action-examples-retail_agent-replay.toml has been successfully uploaded! Final size is 3023 bytes.
+⚙  ::set-output:: exit-code=0
+⚙  ::set-output:: passed=true
+⚙  ::set-output:: scenarios=6
+⚙  ::set-output:: failed=0
 | 1/6 scenario(s) passed: failed
 ⚙  ::set-output:: exit-code=1
 ⚙  ::set-output:: passed=false
 ⚙  ::set-output:: scenarios=6
 ⚙  ::set-output:: failed=5
 ❓  ::group::PR comment for #7: dry run, not posted
-| Artifact replay-report-mutant has been successfully uploaded! Final size is 4178 bytes.
+| Artifact replay-report-mutant has been successfully uploaded! Final size is 4183 bytes.
+⚙  ::set-output:: exit-code=1
+⚙  ::set-output:: passed=false
+⚙  ::set-output:: scenarios=6
+⚙  ::set-output:: failed=5
 | pass: exit 0, passed true
 | mutant: exit 1, passed false, failed 5
-[CI/GitHub Action (dry run on the retail example)] 🏁  Job succeeded
+🏁  Job succeeded
 ```
 
 Posting a real comment through the GitHub API was not exercised here (no
@@ -1120,7 +1148,7 @@ repository's own pull requests once a workflow runs without `dry-run`.
 PostgreSQL ("480 runs, 14 suites, 6 flake reports, 2 calibration reports"),
 `/api/runs?limit=1` reported a total of 480 and `/api/health` the
 `postgresql` backend at revision `0002`. The `demo` stage
-(`docker build --target demo`, 285 MB) served the same 480 runs from its baked
+(`docker build --target demo`; `docker images` reports 285MB) served the same 480 runs from its baked
 SQLite store on `PORT=8123`: `/api/health` returned
 `{"status":"ok","version":"1.0.0","backend":"sqlite","revision":"0002"}` and
 the container's health check reported `healthy`. Neither hosted route in
