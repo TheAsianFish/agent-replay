@@ -1269,12 +1269,18 @@ the sticky comment as `github-actions[bot]`
 ## ✅ Replay: 6/6 scenarios passed
 
 Suite `examples/retail_agent/replay.toml` passed at `6bba25535a03` in 0.23s.
+
+| Scenario | Mode | Result | Checks | Steps | Cost |
+|---|---|---|---|---|---|
 | `cancel_pending_laptop` | full | ✅ pass | 7/7 | 11 exact | $0.0000 |
 | `modify_address_suite` | full | ✅ pass | 7/7 | 8 exact | $0.0000 |
 | `return_damaged_bicycle` | full | ✅ pass | 7/7 | 12 exact | $0.0000 |
 | `exchange_waterproof_boots` | full | ✅ pass | 7/7 | 14 exact | $0.0000 |
 | `lookup_latest_order_total` | full | ✅ pass | 8/8 | 7 exact | $0.0000 |
 | `transfer_swapped_refunds` | full | ✅ pass | 8/8 | 10 exact | $0.0000 |
+
+---
+[Run log and report](https://github.com/TheAsianFish/agent-replay/actions/runs/39578764254)
 ```
 
 `6bba25535a03` is the PR's merge commit (a `pull_request` run checks out
