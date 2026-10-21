@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-16 (M7).
+definition of done is met and CI is green. Last updated: 2026-10-21 (evolution round 1).
 
 ## Goal
 
@@ -247,6 +247,145 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
 | Dashboard scope creep | M5 balloons | Five pages, read-only, no auth; everything else is roadmap |
 | τ-bench data licensing / size | Repo bloat | MIT; vendor only the retail domain data and tool functions with attribution |
 | Replay of thinking-enabled conversations | Recorded assistant turns with thinking blocks are model-bound | `full` mode never contacts the API; `model-live` never injects recorded assistant turns; documented limitation |
+
+## Evolution round 1 (2026-10-21)
+
+Every v1 milestone is merged. This round asks what is worth proving next,
+starting from the directions set on 2026-10-20: make Replay real on a popular
+open-source agent, get live data from a small open model through Ollama, show
+the Action failing a real PR and the dashboard in a recorded walkthrough, and
+grow like a product that real agent teams adopt, with free tools only.
+
+### Where the project stands (measured in this round)
+
+- `make check`: ruff and mypy clean; 1085 passed, 22 skipped, 58 xfailed in
+  90 s. The xfails are `agent_replay/stats.py`, still a specification, so no
+  judge criterion can gate and the SPRT savings stay unmeasured.
+- `make eval` (43 s) and `make bench` (17 s) reproduce every committed result
+  byte for byte; `make ui-check` passes 97 Vitest tests after `npm ci`.
+- **The strict configuration fails a healthy task on every real run.** In all
+  25 live `model-live` runs of `transfer_swapped_refunds` (20 Haiku, 5 Opus,
+  `eval/results/m4_flake_*.json`) the `transfer_to_human_agents` call is an
+  `approximate` step, because its free-text `summary` is worded differently
+  each run; 24 of the 25 passed every check. So the "8/8 tool bugs with
+  `fail_on_approximate`" row costs more than the 1/5 benign false alarm the
+  mutation study shows: on live traffic it fails 1 of 6 tasks 100% of the
+  time. The flag compares the *request bytes* of the next model call, which
+  is the wrong signal for tool bugs; the roadmap's drift check compares the
+  tool's *result*.
+- **A local model drives the unchanged agent through the Anthropic SDK.**
+  Ollama 0.40.6 serves an Anthropic-compatible `/v1/messages` (tools,
+  `tool_result`, streaming, `system`, `output_config.effort` supported;
+  `tool_choice`, `cache_control` and `count_tokens` not). With
+  `Anthropic(base_url="http://localhost:11434", api_key="ollama")` and a
+  subclass that only changes `model`, `replay run --mode model-live` recorded
+  and checked the retail agent on this 4-vCPU runner with no change to the
+  wrapper. qwen2.5:3b: 53 prompt tok/s, 15.5 generation tok/s; runs of 37,
+  79 and 94 s; 0/3 passed (it skipped lookups or asked the user a question).
+  qwen2.5:7b: 59 and 180 s; 0/2 passed `tool_sequence` in `exact` mode, yet
+  on `lookup_latest_order_total` it answered the correct total ($829.43) after
+  fetching one order instead of Opus's three. The exact sequence check
+  measures agreement with the recorded path, not correctness; a local-model
+  suite needs `in_order` sequences and the ground-truth rules.
+- **The matcher serves a recording for a different argument.** Two of the
+  3b runs called a tool with an argument the cassette never saw (a guessed
+  user id) and were served the recorded result as `approximate`, because it
+  was the only envelope of that kind and name at that level. The fake model
+  never exercised this; a real one does on the first run.
+- **The first real framework does not record.** pydantic-ai 2.58.0 (MIT,
+  released several times a week) accepts an injected
+  `AsyncAnthropic` through `AnthropicProvider(anthropic_client=...)`, so
+  `replay.wrap()` can sit on it, but it calls
+  `client.beta.messages.create(..., stream=..., betas=[...])` and
+  `client.beta.messages.count_tokens`, and the wrapper refuses the `beta`
+  surface. smolagents, mini-swe-agent, aider, OpenHands and crewai go through
+  litellm or the `openai` SDK, which Replay has no adapter for;
+  langchain-anthropic uses the anthropic SDK with a configurable base URL.
+- An unpriced model's calls cost `None`, which `replay flake` reports as
+  `$0.0000`; a local-model report would print a measured-looking zero.
+- The Action's comment path has run only against a fake HTTP layer and in
+  dry-run CI; no real PR has ever carried its comment.
+
+### What comes next, and why
+
+**M8: the Action on a real failing PR, and a recorded dashboard walkthrough**
+(question 3; steer item 3). *Hypothesis:* the composite Action posts exactly
+one sticky comment on a real pull request that seeds a regression and fails
+the check, with no path the fake-HTTP tests missed. *Measured as:* the PR URL
+and comment permalink in RESULTS.md, a screenshot in `docs/screenshots/`,
+and a walkthrough video of runs, aligned diff and flakiness pages recorded
+with Playwright from `make demo-data`, replacing the terminal GIF. The
+regression PR is closed once the evidence is captured; the comment stays.
+
+**M9: dogfood on pydantic-ai through Ollama** (question 1, first half; steer
+items 1 and 2). *Hypothesis:* once the wrapper records the beta messages
+surface, a pydantic-ai tool-using agent records on a local model and replays
+in `full` with 0 approximate steps and in `model-live` against the same
+model, with no change to the framework. *Measured as:* a committed cassette
+naming the model (qwen2.5:7b), `make eval-pydantic-ai` running `replay ci` in
+both modes, and a RESULTS.md section listing every surface that broke on
+first contact and how it was fixed. Replaying that cassette across upstream
+releases, to catch a real regression, is the second half, planned for round 2
+once the example exists. The live number is the 10-run `model-live` flake
+result per scenario on qwen2.5:7b, the first non-Anthropic live data.
+
+**M10: a tool-result drift check** (steer item 1, "report tool-bug detection
+honestly"; the roadmap item). *Hypothesis:* comparing each live tool's result
+in `tools-live` with the recorded envelope's response catches the three
+read-only tool bugs that only `fail_on_approximate` catches today, without
+the JSON-layout false alarm, since those refactors return identical values.
+*Prediction:* `tools-live+drift` 8/8 tool bugs, 0/5 false alarms, 0 drift on
+the six live cassettes replayed `tools-live`; `drops_error_flag` still
+survives. *Measured as:* a sixth column in `make eval-mutations` beside the
+v1 columns, byte-stable in CI.
+
+### Review of this round (2026-10-21)
+
+Re-ran: `make check` (1085 passed, 22 skipped, 58 xfailed), `make eval` and
+`make bench` (tree unchanged afterwards), the 25 `transfer_swapped_refunds`
+outcomes in `eval/results/m4_flake_{haiku,opus}.json` (25/25 with one
+approximate step, 24/25 passed; every other scenario 0/25 approximate), the
+mutation table (the three read-only tool bugs are caught only by
+`no_approximate_steps`; `drops_error_flag` is an agent mutation), the wrapper's
+refusal of `beta`, pydantic-ai 2.58.0's `client.beta.messages.create` call and
+`AnthropicProvider(anthropic_client=...)`, and a tool round trip through
+Ollama 0.40.6's `/v1/messages` with qwen2.5:3b (tool_use, then tool_result,
+then end_turn, 13 s for the first call). The 3b/7b pass counts above have no
+committed log; they motivate M9 and no number from them enters RESULTS.md.
+
+Changed: M9 now ends in a measured live result (a 10-run `model-live` flake
+per scenario on qwen2.5:7b, committed raw), not only a recorded run. M8 states
+what happens when the build environment has no GitHub credentials (the regression
+PR is one maintainer command, and the milestone stays open until its evidence
+is in), and its definition of done records the failing check and its wall time.
+M9 integrates a framework with a pydantic-ai agent written here, not yet a
+third-party agent; catching a real upstream regression stays round 2's
+first item.
+
+### Considered and not chosen this round
+
+- **Q4, the verdict-stability curve on a local model.** Deferred to round 2:
+  one run takes 1 to 3 minutes on 4 cores and does not parallelise, the
+  retail suite's exact sequences and Opus latency baselines fail a local model
+  for the wrong reasons, and the model that passes has to be found first (M9
+  does that). The offline part, resampling the committed Haiku outcomes at
+  run prefixes, comes with it.
+- **Q2, the mutation study on a real model.** Deferred: 12 of the 32
+  mutations wrap the fake model's policy and cannot run against a real one,
+  the 8 tool bugs cannot act in `model-live`, so only the 12 agent mutations
+  apply, and the result is uninterpretable without the baseline pass rate
+  from Q4.
+- **A scale benchmark (long runs, many runs, bytes per turn).** Deferred to
+  round 2 in a reframed form: the suspected quadratic matcher is not one
+  (queues are per kind and name), but cassette bytes do grow quadratically
+  with turns because each model envelope carries the whole history.
+- **A distance threshold on approximate matches.** Rejected: the argument
+  distance of a one-field change is the same for the legitimate reworded
+  summary and for the guessed user id, so no threshold separates them. The
+  successor is per-tool identifying arguments, after M10.
+- **An `openai` SDK adapter.** Not yet: pydantic-ai gets to the first real
+  framework through the SDK Replay already wraps. The adapter becomes the
+  question when the dogfood wants a second framework.
 
 ## Milestones
 
@@ -669,3 +808,6 @@ oracles; `eval/sprt_sim.py` plots expected runs against the true pass rate.
     private-file check matched every example agent and now matches only the
     files it means; it also lists the `pypi` reviewer and a tag ruleset as the
     settings that keep a bare tag push from publishing.
+- [ ] M8: The Action on a real failing PR, and a dashboard walkthrough — the repository's own `action` CI job keeps its dry run; a script creates a branch that points the retail suite at a seeded mutant and opens a pull request whose workflow runs the Action for real (`dry-run: false`, `pull-requests: write`); the PR is closed after the evidence is captured. The script is one command (`make regression-pr`, using `gh` and the maintainer's own GitHub login, no new secret); where the build environment has no GitHub credentials, the PR body says so and the milestone stays unticked until that command has run and its evidence is committed. A Playwright script records runs, run detail, aligned diff and flakiness pages from `make demo-data` into `docs/walkthrough` (video and a GIF via ffmpeg), replacing the terminal GIF in the README. Done when RESULTS.md links the PR, its failing check run and the comment permalink, records the check's wall time and which scenarios failed, holds `docs/screenshots/pr-comment.png`, the README demo is the walkthrough, and CI is green.
+- [ ] M9: Dogfood on pydantic-ai through Ollama — the Anthropic wrapper records `client.beta.messages.create` (plain and `stream=True`) with `betas` in the fingerprint, decoding replays to the beta message types pydantic-ai inspects, and names `count_tokens` as unsupported; `examples/pydantic_ai_agent/` holds a tool-using pydantic-ai agent with the client injected through `AnthropicProvider(anthropic_client=replay.wrap(AsyncAnthropic(base_url=...)))`, a `replay.toml` with `in_order` sequences and rule checks, fake-model cassettes for tests, and one cassette recorded on qwen2.5:7b through Ollama (the model named in the cassette and RESULTS.md); `make eval-pydantic-ai` runs `replay ci` in `full` and, with Ollama running, `replay flake` in `model-live` (10 runs per qwen2.5:7b scenario, at most three scenarios, raw report committed to `eval/results/`); unpriced models are reported as unpriced, not `$0`. Heavy recording runs locally or by `workflow_dispatch`, never on pull requests. Done when the committed cassette replays in `full` with 0 approximate steps in CI, RESULTS.md records the `model-live` flake result on qwen2.5:7b (passes out of runs per scenario, approximate steps per run, wall time, the CPU it ran on) beside the v1 Haiku and Opus rows without changing them, and RESULTS.md lists every surface that broke on first contact.
+- [ ] M10: Tool-result drift check — `fail_on_tool_drift` beside `fail_on_approximate` in suites and `replay ci`: in `tools-live`, each live tool step is aligned with the cassette's tool envelopes by name and order and its result compared with the recorded response as canonical JSON (per-tool `ignore_fields` for values that legitimately vary); drift is reported like `no_approximate_steps`, with the first differing path; `eval/mutation_study.py` gains the configuration `tools-live+drift`. Done when `make eval-mutations` shows the sixth column beside the five v1 columns (hypothesis: 8/8 tool bugs, 0/5 false alarms), `replay ci examples/retail_agent/replay-live.toml --mode tools-live` with the flag reports 0 drift on the six live cassettes, RESULTS.md and the README results table carry the number beside the v1 ones, and the roadmap entry is removed.
