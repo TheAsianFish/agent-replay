@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `make regression-pr` opens a PR built to fail against a regression-demo/ base;
+    # only the replay workflow (replay.yml) runs on it.
+    branches-ignore: ["regression-demo/**"]
   workflow_dispatch:
 
 permissions:
