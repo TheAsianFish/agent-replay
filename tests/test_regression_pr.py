@@ -311,6 +311,20 @@ def test_not_logged_in_names_the_fix(tmp_path: Path) -> None:
     assert not any(argv[:2] == ["git", "push"] for argv in shell.log)
 
 
+def test_a_missing_browser_stops_before_any_push(tmp_path: Path) -> None:
+    class NoBrowser(FakeShell):
+        def run(self, argv: Sequence[str], **kwargs: Any) -> str:
+            if list(argv[:1]) == ["npm"]:
+                raise rp.RegressionPrError("`npm exec playwright` exited 1: no chromium")
+            return super().run(argv, **kwargs)
+
+    shell = NoBrowser()
+    with pytest.raises(rp.RegressionPrError, match="playwright install chromium"):
+        _demo(tmp_path, shell).run()
+    assert not any(argv[:2] == ["git", "push"] for argv in shell.log)
+    assert not any(argv[:3] == ["gh", "pr", "create"] for argv in shell.log)
+
+
 def test_wait_for_run_times_out_with_a_command_to_watch(tmp_path: Path) -> None:
     class Stuck(FakeShell):
         def run(self, argv: Sequence[str], **kwargs: Any) -> str:

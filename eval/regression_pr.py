@@ -281,10 +281,24 @@ class Demo:
                 f"`gh auth login` as a maintainer of the repository ({exc})"
             ) from exc
         check_mutant(self.mutant)
+        # The screenshot is the last capture step; a missing browser found there would
+        # leave an open PR and a spent check behind, so it is tried before any push.
+        with tempfile.TemporaryDirectory(prefix="regression-pr-preflight-") as tmp:
+            page = Path(tmp) / "probe.html"
+            page.write_text("<p>preflight</p>", encoding="utf-8")
+            try:
+                self.take_screenshot(page, Path(tmp) / "probe.png")
+            except (RegressionPrError, FileNotFoundError) as exc:
+                raise RegressionPrError(
+                    "Playwright cannot take the comment screenshot; run `npm --prefix dashboard "
+                    f"ci` and `npx playwright install chromium` in dashboard/ ({exc})"
+                ) from exc
         self.shell.run(["git", "fetch", "--quiet", "origin"], cwd=self.root)
         try:
             self.shell.run(["git", "cat-file", "-e", f"{self.source}:{WORKFLOW}"], cwd=self.root)
-            ci = self.shell.run(["git", "show", f"{self.source}:.github/workflows/ci.yml"])
+            ci = self.shell.run(
+                ["git", "show", f"{self.source}:.github/workflows/ci.yml"], cwd=self.root
+            )
         except RegressionPrError as exc:
             raise RegressionPrError(
                 f"{self.source} has no {WORKFLOW}: merge the change that adds it first, or "
