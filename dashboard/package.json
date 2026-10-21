@@ -15,7 +15,8 @@
     "gen:types": "openapi-typescript openapi.json -o src/api/schema.d.ts",
     "check:types": "node scripts/check-types.mjs",
     "e2e": "playwright test --project=smoke",
-    "screenshots": "playwright test --project=screenshots"
+    "screenshots": "playwright test --project=screenshots",
+    "walkthrough": "playwright test --project=walkthrough"
   },
   "dependencies": {
     "@tanstack/react-query": "5.104.1",

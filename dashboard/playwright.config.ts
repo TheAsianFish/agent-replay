@@ -27,5 +27,14 @@ export default defineConfig({
       testMatch: /screenshots\.spec\.ts/,
       use: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
     },
+    {
+      name: "walkthrough",
+      testMatch: /walkthrough\.spec\.ts/,
+      use: {
+        viewport: { width: 1280, height: 800 },
+        deviceScaleFactor: 1,
+        video: { mode: "on", size: { width: 1280, height: 800 } },
+      },
+    },
   ],
 });
