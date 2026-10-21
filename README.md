@@ -23,10 +23,18 @@ reports its verdict but cannot fail the build. Agents are not deterministic eith
 scenario, estimates its pass probability with an interval, gates on it, and
 tells flaky from failing.
 
-![replay ci passing on the retail suite, then failing on a seeded regression](docs/demo.gif)
+![The dashboard: the runs list, a failing run's trace, the aligned diff against a passing run, and the flakiness page](docs/walkthrough/walkthrough.gif)
 
-<!-- The GIF is scripted: `docs/demo.tape` re-captures it with VHS (`vhs docs/demo.tape`,
-     or the Docker commands in the tape's header). Re-record it after a CLI output change. -->
+<!-- Scripted: `make walkthrough` seeds the demo store (`make demo-data`), serves the
+     dashboard and records it with Playwright (dashboard/e2e/walkthrough.spec.ts), then
+     ffmpeg writes docs/walkthrough/walkthrough.{mp4,gif}. Re-record after a UI change. -->
+
+The walkthrough ([mp4](docs/walkthrough/walkthrough.mp4)) clicks through the
+dashboard over `make demo-data`'s real `replay ci` and `replay flake` runs of
+the retail example: the runs list, a failing run's checks and trace with its
+`approximate` steps, the aligned diff against a passing run of the same
+scenario (the order lookups a mutant skipped show up as removed steps), and the
+flakiness page with a flaky scenario's pass rate and interval over reports.
 
 **Status: 1.0.0, all seven milestones built** (not yet published to PyPI; see
 [RELEASE.md](RELEASE.md)). Working today:
@@ -118,6 +126,7 @@ the rows still to measure.
 | Fixed-sample gate meeting α = β = 0.05 | 24 runs (pass on ≥ 19); a fixed-20 majority gate false-passes 13.4% at p = 0.6 | `make bench-sprt` |
 | Recorder overhead (median) | ~0.7 ms per model call (12.5 KB request), ~0.1 ms per tool call, ~50 µs per clock read | `make bench-replay` |
 | Replay speed | `full` replay of the six live recordings with checks: 222 ms against 51 s spent in live calls (230×) | `make bench-replay` |
+| The Action on a real failing PR | to measure: one maintainer command opens it (rehearsed locally: the seeded `wrong_write_argument` PR fails 4 of 6 scenarios, all on `rule:matches_ground_truth`) | `make regression-pr` |
 | **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
 
 ## Install
@@ -626,8 +635,15 @@ uploads and prints the comment, but neither posts it nor fails. Outputs:
 
 Every input reaches the shell through `env:`, never as `${{ }}` in a script,
 so a suite path or argument cannot inject shell code. This repository is its
-own first consumer: the `action` CI job runs `uses: ./` in dry-run mode on the
-retail suite and asserts that it passes and that a seeded mutant fails.
+own first consumer, twice: the `action` CI job runs `uses: ./` in dry-run mode
+on the retail suite and asserts that it passes and that a seeded mutant fails,
+and [`.github/workflows/replay.yml`](.github/workflows/replay.yml) runs it for
+real (dry-run off, `pull-requests: write`) on every pull request that changes
+the retail agent. `make regression-pr` opens such a PR with a seeded
+regression, waits for that check to fail, captures the check run, the failed
+scenarios and the comment into `eval/results/regression_pr/`, and closes the
+PR; it needs `gh auth login` as a maintainer and no new secret
+(`make regression-pr-rehearse` runs the same edit and `replay ci` offline).
 
 ## `replay flake`
 
@@ -1032,6 +1048,9 @@ make serve             # replay serve over $REPLAY_DB_URL (or .replay/replay.db)
 make eval              # every offline evaluation (mutations, judge smoke and objective, LLMBar floors, token rates)
 make bench             # every offline benchmark (bench-sprt, bench-replay)
 make bench-replay      # recorder overhead per boundary and full replay vs live duration (~20 s, to .replay/)
+make walkthrough       # record the README's dashboard walkthrough (Playwright + ffmpeg, ~1 min)
+make regression-pr     # open a seeded-regression PR, capture its failing check and comment, close it (gh login)
+make regression-pr-rehearse  # the same suite edit and replay ci, offline
 make dist              # dashboard + wheel and sdist, each installed and smoke-tested in a clean venv
 make openapi           # regenerate dashboard/openapi.json from the API
 docker compose up --build   # PostgreSQL + demo seed + dashboard on :8000
