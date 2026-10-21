@@ -1074,7 +1074,7 @@ Next (evolution round 1, 2026-10-21; evidence and hypotheses in
 9. Dogfood on [pydantic-ai](https://github.com/pydantic/pydantic-ai) through
    Ollama: record the `beta` messages surface the framework uses, commit a
    cassette from a local model (qwen2.5:7b), replay it in `full` and
-   `model-live`
+   measure its pass rate over 10 `model-live` runs
 10. A tool-result drift check (`fail_on_tool_drift`): in `tools-live`, compare
     each live tool's result with the recorded one, so that the three tool bugs
     only `fail_on_approximate` catches today are caught without failing the
