@@ -1066,15 +1066,30 @@ for every measured number, [RELEASE.md](RELEASE.md) for the release steps and
    workflow, container image~~ (built; publishing is the maintainer steps in
    [RELEASE.md](RELEASE.md))
 
-Next, in order: implement `agent_replay/stats.py` so kappa and the SPRT run
-for real; label the retail golden set and record D1 to measure judge-human
-kappa; the real judge on LLMBar; `make bench-flake` (D3).
+Next (evolution round 1, 2026-10-21; evidence and hypotheses in
+[PLAN.md](PLAN.md), "Evolution round 1"):
 
-Later: live updates in the dashboard (server-sent events), authentication for
-a shared deployment, and a tool-result drift check (in `tools-live`, compare each live tool
-result with the recorded one, so that drift is caught without failing on
-every `approximate` model request as `fail_on_approximate` does), and running
-a flake suite's scenarios in parallel as well as their runs.
+8. The Action on a real failing pull request, and a recorded walkthrough of
+   the dashboard (runs, aligned diff, flakiness) in place of the terminal GIF
+9. Dogfood on [pydantic-ai](https://github.com/pydantic/pydantic-ai) through
+   Ollama: record the `beta` messages surface the framework uses, commit a
+   cassette from a local model (qwen2.5:7b), replay it in `full` and
+   `model-live`
+10. A tool-result drift check (`fail_on_tool_drift`): in `tools-live`, compare
+    each live tool's result with the recorded one, so that the three tool bugs
+    only `fail_on_approximate` catches today are caught without failing the
+    benign JSON-layout refactor, or the live task whose free-text argument is
+    reworded on every run
+
+Still to do, in order: implement `agent_replay/stats.py` so kappa and the
+SPRT run for real; label the retail golden set and record D1 to measure
+judge-human kappa; the real judge on LLMBar; `make bench-flake` (D3).
+
+Later: replaying the pydantic-ai cassette across upstream releases, the
+verdict-stability curve on a local model, a bytes-per-turn scale benchmark,
+live updates in the dashboard (server-sent events), authentication for a
+shared deployment, and running a flake suite's scenarios in parallel as well
+as their runs.
 
 ## Prior art
 
