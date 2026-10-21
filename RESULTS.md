@@ -31,6 +31,7 @@ byte-stable ones and fails on any change.
 | Wheel installs in a clean venv | wheel 342,782 B with the dashboard; sdist 327,427 B; both install and pass the smoke test | Release readiness (M7) | `make dist` | measured |
 | The Action, dry run on the retail suite | pass: exit 0, 0 failed; mutant: exit 1, 5/6 failed | Release readiness (M7) | CI job `action`; locally with `act` | measured |
 | The Action fails a seeded regression, rehearsed | `replay ci` 2/6 passed, 4 failed on `rule:matches_ground_truth`; the `replay.yml` job under act fails with exit 1 | The Action on a real failing PR (M8) | `make regression-pr-rehearse`; act | measured, offline |
+| The Action on a real PR, passing half | PR #11 (it changes `replay.yml`): 6/6 passed, sticky comment posted by `github-actions[bot]`, identical to a local run | The Action on a real failing PR (M8) | `replay.yml` on PR #11 | measured, observed on GitHub |
 | The Action on a real failing PR | — | The Action on a real failing PR (M8) | `make regression-pr` (needs `gh auth login`) | **to measure** |
 | Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
 | D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
@@ -1255,6 +1256,36 @@ order with well-typed arguments, and in `full` mode the changed write call is
 served its recorded result as one `approximate` step. A suite with only
 structural checks would let this PR through unless it set
 `fail_on_approximate`, the same gap the mutation study measures for tool bugs.
+
+**Observed on GitHub: the passing half.** This milestone's own pull request
+([#11](https://github.com/TheAsianFish/agent-replay/pull/11)) changes
+`.github/workflows/replay.yml`, so the workflow ran on it for real, with dry-run
+off and the unmodified suite. It did the one thing act could not do: it posted
+the sticky comment as `github-actions[bot]`
+([run 39578764254](https://github.com/TheAsianFish/agent-replay/actions/runs/39578764254)):
+
+```
+<!-- agent-replay: examples/retail_agent/replay.toml -->
+## ✅ Replay: 6/6 scenarios passed
+
+Suite `examples/retail_agent/replay.toml` passed at `6bba25535a03` in 0.23s.
+| `cancel_pending_laptop` | full | ✅ pass | 7/7 | 11 exact | $0.0000 |
+| `modify_address_suite` | full | ✅ pass | 7/7 | 8 exact | $0.0000 |
+| `return_damaged_bicycle` | full | ✅ pass | 7/7 | 12 exact | $0.0000 |
+| `exchange_waterproof_boots` | full | ✅ pass | 7/7 | 14 exact | $0.0000 |
+| `lookup_latest_order_total` | full | ✅ pass | 8/8 | 7 exact | $0.0000 |
+| `transfer_swapped_refunds` | full | ✅ pass | 8/8 | 10 exact | $0.0000 |
+```
+
+`6bba25535a03` is the PR's merge commit (a `pull_request` run checks out
+`refs/pull/11/merge`), not the branch head. The same command at the branch head
+(`replay ci examples/retail_agent/replay.toml --json r.json --markdown r.md
+--no-store`, at `b39cdadbdb45`) gives the same table row for row, with the same
+0.23 s. That is the control for the failing PR: the unmodified suite passes on
+GitHub with 0 approximate steps, so a failure on the seeded branch is the
+mutant's doing. The 0.23 s is `replay ci`'s own time; the job's wall time was
+not captured (no `gh` here), and `make regression-pr` records it for the failing
+run.
 
 **This environment:** `make regression-pr` stops at its preflight, before any
 push:
