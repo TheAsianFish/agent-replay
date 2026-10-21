@@ -30,13 +30,15 @@ byte-stable ones and fails on any change.
 | Full replay vs live call time | suite 222 ms with checks vs 51.0 s (230×) | Recorder overhead and replay speed (M7) | `make bench-replay` | measured, offline (machine-dependent) |
 | Wheel installs in a clean venv | wheel 342,782 B with the dashboard; sdist 327,427 B; both install and pass the smoke test | Release readiness (M7) | `make dist` | measured |
 | The Action, dry run on the retail suite | pass: exit 0, 0 failed; mutant: exit 1, 5/6 failed | Release readiness (M7) | CI job `action`; locally with `act` | measured |
+| The Action fails a seeded regression, rehearsed | `replay ci` 2/6 passed, 4 failed on `rule:matches_ground_truth`; the `replay.yml` job under act fails with exit 1 | The Action on a real failing PR (M8) | `make regression-pr-rehearse`; act | measured, offline |
+| The Action on a real failing PR | — | The Action on a real failing PR (M8) | `make regression-pr` (needs `gh auth login`) | **to measure** |
 | Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
 | D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
 | Real judge on LLMBar | — | To measure | `make eval-llmbar` (~$12.73) | **to measure** |
 | D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
 
 API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
-M7 $0).
+M8 $0).
 
 ## Live recording smoke test (M1)
 
@@ -1181,8 +1183,113 @@ REPOSITORY          TAG       IMAGE ID       CREATED         SIZE
 agent-replay-demo   latest    f107e5a97e0d   6 minutes ago   285MB
 ```
 
+## The Action on a real failing PR (M8; rehearsed, the real PR is to measure)
+
+Question 3: does the GitHub Action stop a bad pull request in practice? The
+harness is built and rehearsed twice; the real PR needs the maintainer's own
+GitHub login, which the environment this milestone was built in does not have.
+
+**Method.** `.github/workflows/replay.yml` runs the Action (`uses: ./`,
+`install: action`, dry-run off, `pull-requests: write`) on every pull request
+that changes `examples/retail_agent/**`. `make regression-pr`
+(`eval/regression_pr.py`) pushes a base branch `regression-demo/base-<stamp>`
+at `origin/main` (ci.yml ignores PRs against `regression-demo/**`, so only the
+replay check spends minutes), commits on `regression-demo/<stamp>` the one-line
+change that points the suite's default agent at
+`examples.retail_agent.mutants:wrong_write_argument` (every write action gets
+one wrong argument: a swapped cancel reason, an emptied `address2`, a gift-card
+refund), opens the PR with `gh`, waits for the run, reads the job's wall time
+from `gh run view`, the failed scenarios from the run's report artifact and the
+sticky comment from the issue-comments API (only `github-actions[bot]`'s
+comment with the suite's marker counts), renders the comment's GitHub HTML
+into `docs/screenshots/pr-comment.png`, then closes the PR and deletes both
+branches. It writes `eval/results/regression_pr/{evidence,report}.json` and
+`comment.md` only once everything is captured and checked, and exits 2,
+leaving the PR open with the commands that clean it up, if the check did not
+conclude `failure` or the report shows a suite that could not run (an exit-2
+broken suite also fails the check, but it is not a caught regression). It
+prints the lines below.
+
+**Rehearsal 1: the same edit and `replay ci` command, no GitHub.**
+`make regression-pr-rehearse` (a detached worktree at `HEAD`, the action's
+`<python> -m agent_replay ci <suite> --json --markdown --no-store`, then
+`action/replay_action.py comment --post false` for the body):
+
+```
+## ❌ Replay: 2/6 scenarios passed
+| `cancel_pending_laptop` | full | ❌ fail | 6/7 | 1 approximate, 10 exact | $0.0000 |
+| `modify_address_suite` | full | ❌ fail | 6/7 | 1 approximate, 7 exact | $0.0000 |
+| `return_damaged_bicycle` | full | ❌ fail | 6/7 | 1 approximate, 11 exact | $0.0000 |
+| `exchange_waterproof_boots` | full | ❌ fail | 6/7 | 1 approximate, 13 exact | $0.0000 |
+| `lookup_latest_order_total` | full | ✅ pass | 8/8 | 7 exact | $0.0000 |
+| `transfer_swapped_refunds` | full | ✅ pass | 8/8 | 10 exact | $0.0000 |
+"replay_ci_wall_seconds": 2.39, "passed": false,
+"failed": cancel_pending_laptop, modify_address_suite, return_damaged_bicycle,
+          exchange_waterproof_boots, each on ["rule:matches_ground_truth"]
+```
+
+**Rehearsal 2: the real workflow job under act.** `act pull_request -j replay
+-W .github/workflows/replay.yml -P ubuntu-latest=catthehacker/ubuntu:act-latest
+--artifact-server-path /tmp/act-artifacts` (act 0.2.89) in a worktree with the
+seeded suite:
+
+```
+✅  Success - Main Install agent-replay [14.124163087s]
+✅  Success - Main Run replay ci [4.106743334s]          exit-code=1
+🚧  ::warning::agent-replay did not comment: no github-token or GITHUB_REPOSITORY
+✅  Success - Main Upload the report [540.503924ms]      Final size is 4107 bytes
+❗  ::error::agent-replay: 4 of 6 scenario(s) in examples/retail_agent/replay.toml regressed
+❌  Failure - Main Verdict [62.095148ms]
+❌  Failure - Main ./ [32.88214098s]
+🏁  Job failed
+```
+
+The job fails with exit 1 and the reason as an annotation; under act there is
+no token, so the comment step warns instead of posting, which is the one path
+the real PR has to show.
+
+**What the seeded regression says about the checks.** All four failures come
+from one check, τ-bench's ground-truth rule. `tool_sequence`, `arg_schema` and
+`required_tools` pass, because the mutant calls the same tools in the same
+order with well-typed arguments, and in `full` mode the changed write call is
+served its recorded result as one `approximate` step. A suite with only
+structural checks would let this PR through unless it set
+`fail_on_approximate`, the same gap the mutation study measures for tool bugs.
+
+**This environment:** `make regression-pr` stops at its preflight, before any
+push:
+
+```
+regression-pr: gh is not installed or not logged in; install the GitHub CLI and run `gh auth login` as a maintainer of the repository (`gh auth status` exited 1: You are not logged into any GitHub hosts. To log in, run: gh auth login)
+make: *** [Makefile:160: regression-pr] Error 2
+```
+
+**To measure** (free; one command after this change is on `main`, about two
+minutes): `gh auth login`, then `make regression-pr`. Paste the printed lines
+here (the PR, the failing check run, the comment permalink, the job's wall
+time, the scenarios that failed), and commit `eval/results/regression_pr/` and
+`docs/screenshots/pr-comment.png`.
+
+## Dashboard walkthrough (M8, offline)
+
+`make walkthrough` (`scripts/walkthrough.sh`) builds the dashboard, seeds
+`.replay/demo.db` with `make demo-data`, serves it, and runs
+`dashboard/e2e/walkthrough.spec.ts` in Chromium at 1280×800 with Playwright's
+video on: the runs list, a failing `full` run's checks and trace (an
+`approximate` step expanded), the aligned diff against a passing run of the
+same scenario picked from the run page's "Compare with", and the flakiness
+page charting a scenario that is not always passing. ffmpeg writes an H.264
+mp4 (CRF 28) and a 960-pixel, 10 fps GIF. On the build machine, with an
+existing demo store (`SKIP_DEMO_DATA=1`): 53.8 s wall, a 34.4 s video,
+`walkthrough.mp4` 855,493 bytes and `walkthrough.gif` 3,473,123 bytes. Sizes
+change from run to run (timestamps and run ids differ), so the files are not
+byte-stable and CI does not re-record them.
+
 ## To measure
 
+- **The Action on a real failing PR** (question 3): `gh auth login` as a
+  maintainer, then `make regression-pr` (free, about two minutes); see the M8
+  section for what it records.
 - **SPRT savings vs the fixed-sample test.** `make bench-sprt` (offline, about
   1 s) once `agent_replay/stats.py` is implemented: the core rows and
   "runs vs the fixed-sample test" lines join the table above with no other
@@ -1253,3 +1360,6 @@ the new calls are under "To measure"). Project total: $3.326.
 
 API spend in M7: $0 (packaging, the Action and the benchmark are offline).
 Project total: $3.326.
+
+API spend in M8: $0 (the rehearsals and the walkthrough are offline; the real
+PR costs Actions minutes, not API calls). Project total: $3.326.
