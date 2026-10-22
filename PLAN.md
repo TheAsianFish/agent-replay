@@ -809,5 +809,31 @@ first item.
     files it means; it also lists the `pypi` reviewer and a tag ruleset as the
     settings that keep a bare tag push from publishing.
 - [ ] M8: The Action on a real failing PR, and a dashboard walkthrough — the repository's own `action` CI job keeps its dry run; a script creates a branch that points the retail suite at a seeded mutant and opens a pull request whose workflow runs the Action for real (`dry-run: false`, `pull-requests: write`); the PR is closed after the evidence is captured. The script is one command (`make regression-pr`, using `gh` and the maintainer's own GitHub login, no new secret); where the build environment has no GitHub credentials, the PR body says so and the milestone stays unticked until that command has run and its evidence is committed. A Playwright script records runs, run detail, aligned diff and flakiness pages from `make demo-data` into `docs/walkthrough` (video and a GIF via ffmpeg), replacing the terminal GIF in the README. Done when RESULTS.md links the PR, its failing check run and the comment permalink, records the check's wall time and which scenarios failed, holds `docs/screenshots/pr-comment.png`, the README demo is the walkthrough, and CI is green.
+  - *M8 notes (2026-10-21; unticked: the real PR is one maintainer command away).*
+    Built: (a) `.github/workflows/replay.yml` on `main`, not only on the
+    regression branch: every PR that changes `examples/retail_agent/**` (or the
+    Action) runs the Action for real, so the repository gates its own agent the
+    way a consumer would, at about a minute only on those PRs; ci.yml's
+    `action` job keeps its dry run. (b) `make regression-pr`
+    (`eval/regression_pr.py`, `gh` plus git, stdlib only) opens the PR against
+    a `regression-demo/base-*` copy of `origin/main` that ci.yml ignores
+    (`branches-ignore`), so a PR built to fail does not spend a full CI run;
+    it captures the evidence, then closes the PR and deletes both branches.
+    (c) `docs/screenshots/pr-comment.png` is the comment's GitHub-rendered
+    `body_html`, fetched through the API and screenshotted with Playwright,
+    because the PR page of a private repository needs a browser login the
+    script does not have. (d) `--rehearse` runs the same edit and the Action's
+    `replay ci` command offline, and the job ran under act: both fail 4 of 6
+    scenarios (RESULTS.md, M8). (e) `make walkthrough` records the dashboard
+    with Playwright and ffmpeg into `docs/walkthrough/`; the terminal GIF, its
+    VHS tape and the VHS Dockerfile are gone. Open: the build environment has
+    no GitHub credentials, so RESULTS.md has no PR link, check run, comment
+    permalink or screenshot yet, and CI on this branch is unobserved. The
+    milestone is ticked once `make regression-pr` has run and its evidence is
+    committed.
+    Since then the passing half ran for real on PR #11 itself (it changes
+    `replay.yml`): 6/6 passed and `github-actions[bot]` posted the sticky
+    comment, the step act could not exercise (RESULTS.md, M8). The failing PR
+    is still the open item.
 - [ ] M9: Dogfood on pydantic-ai through Ollama — the Anthropic wrapper records `client.beta.messages.create` (plain and `stream=True`) with `betas` in the fingerprint, decoding replays to the beta message types pydantic-ai inspects, and names `count_tokens` as unsupported; `examples/pydantic_ai_agent/` holds a tool-using pydantic-ai agent with the client injected through `AnthropicProvider(anthropic_client=replay.wrap(AsyncAnthropic(base_url=...)))`, a `replay.toml` with `in_order` sequences and rule checks, fake-model cassettes for tests, and one cassette recorded on qwen2.5:7b through Ollama (the model named in the cassette and RESULTS.md); `make eval-pydantic-ai` runs `replay ci` in `full` and, with Ollama running, `replay flake` in `model-live` (10 runs per qwen2.5:7b scenario, at most three scenarios, raw report committed to `eval/results/`); unpriced models are reported as unpriced, not `$0`. Heavy recording runs locally or by `workflow_dispatch`, never on pull requests. Done when the committed cassette replays in `full` with 0 approximate steps in CI, RESULTS.md records the `model-live` flake result on qwen2.5:7b (passes out of runs per scenario, approximate steps per run, wall time, the CPU it ran on) beside the v1 Haiku and Opus rows without changing them, and RESULTS.md lists every surface that broke on first contact.
 - [ ] M10: Tool-result drift check — `fail_on_tool_drift` beside `fail_on_approximate` in suites and `replay ci`: in `tools-live`, each live tool step is aligned with the cassette's tool envelopes by name and order and its result compared with the recorded response as canonical JSON (per-tool `ignore_fields` for values that legitimately vary); drift is reported like `no_approximate_steps`, with the first differing path; `eval/mutation_study.py` gains the configuration `tools-live+drift`. Done when `make eval-mutations` shows the sixth column beside the five v1 columns (hypothesis: 8/8 tool bugs, 0/5 false alarms), `replay ci examples/retail_agent/replay-live.toml --mode tools-live` with the flag reports 0 drift on the six live cassettes, RESULTS.md and the README results table carry the number beside the v1 ones, and the roadmap entry is removed.

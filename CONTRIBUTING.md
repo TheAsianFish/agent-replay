@@ -23,7 +23,7 @@ dashboard/           React 19 + TypeScript strict (Vite, TanStack Query, Tailwin
 examples/            retail_agent (τ-bench retail subset, MIT, attributed) and a toy agent
 eval/                datasets, mutation suite, SPRT simulation, eval scripts
 tests/               offline, deterministic; no network ever
-docs/                screenshots, the demo GIF and its VHS tape (docs/demo.tape)
+docs/                screenshots and the dashboard walkthrough (docs/walkthrough, `make walkthrough`)
 action.yml           composite GitHub Action; its logic in action/replay_action.py (stdlib)
 examples/github-workflow/  the consumer workflow users copy
 scripts/             check_wheel.sh (clean-venv install check), release_notes.py
@@ -76,6 +76,10 @@ make eval         every offline evaluation (mutations, judge smoke + objective, 
 make bench        every offline benchmark (bench-sprt, bench-replay)
 make bench-replay recorder overhead per boundary and full replay vs live duration (to .replay/; not byte-stable)
 make bench-replay-record  the same, rewriting the committed eval/results/bench_replay.json that RESULTS.md quotes
+make walkthrough  record docs/walkthrough (mp4 + GIF) from make demo-data with Playwright and ffmpeg
+make regression-pr  open a PR that seeds a regression, capture its failing replay check and comment
+                  into eval/results/regression_pr/ and docs/screenshots/pr-comment.png, close it
+                  (needs `gh auth login` as a maintainer; `make regression-pr-rehearse` is offline)
 make dist         dashboard + uv build; installs the wheel and sdist in clean venvs and smoke-tests them
 docker compose up --build   PostgreSQL + demo seed + dashboard on :8000
 ```
@@ -92,10 +96,12 @@ disagree.
 Planned (not in the Makefile yet): `make bench-flake` (D3; needs a key and prints a cost
 estimate first).
 
-The Action is tested three ways: `tests/test_action.py` (offline, a fake HTTP layer), the
-`action` CI job (`uses: ./`, dry run on the retail suite), and locally with
+The Action is tested four ways: `tests/test_action.py` (offline, a fake HTTP layer), the
+`action` CI job (`uses: ./`, dry run on the retail suite), for real by `replay.yml` on PRs
+that change the retail agent (`make regression-pr` opens one built to fail), and locally with
 [act](https://github.com/nektos/act): `act pull_request -j action -W .github/workflows/ci.yml
--P ubuntu-latest=catthehacker/ubuntu:act-latest --artifact-server-path /tmp/act-artifacts`.
+-P ubuntu-latest=catthehacker/ubuntu:act-latest --artifact-server-path /tmp/act-artifacts`
+(`-j replay -W .github/workflows/replay.yml` runs the real, failing job on a seeded suite).
 Release steps are in RELEASE.md; never publish by hand.
 
 Until a target exists, say so in the PR rather than inventing it.

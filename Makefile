@@ -5,7 +5,7 @@
 	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check dist \
 	golden record-golden eval-judge eval-judge-objective token-rates \
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
-	bench-replay bench-replay-record eval bench
+	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -148,6 +148,24 @@ serve:
 DEMO_DB ?= sqlite:///.replay/demo.db
 demo-data:
 	uv run python -m examples.demo_data --db $(DEMO_DB)
+
+# Question 3 on a real pull request: a branch that points the retail suite at a seeded
+# mutant, a PR whose replay workflow runs the Action with dry-run off, the evidence
+# (check run, wall time, failed scenarios, comment permalink and screenshot) captured
+# into eval/results/regression_pr/, then the PR closed. Needs `gh auth login` as a
+# maintainer and origin/main to have .github/workflows/replay.yml (FROM= overrides).
+# The rehearsal does the same edit and replay ci locally, without GitHub.
+MUTANT ?= wrong_write_argument
+regression-pr:
+	uv run python -m eval.regression_pr --mutant $(MUTANT) $(if $(FROM),--from $(FROM))
+regression-pr-rehearse:
+	uv run python -m eval.regression_pr --rehearse --mutant $(MUTANT)
+
+# The README's dashboard walkthrough: seeds the demo store, serves the built dashboard,
+# records runs, run detail, aligned diff and flakiness with Playwright, and converts
+# the video with ffmpeg into docs/walkthrough/ (mp4 and GIF; needs ffmpeg, ~2 min).
+walkthrough:
+	scripts/walkthrough.sh
 
 # Build the dashboard into agent_replay/server/static, where replay serve finds it.
 ui:

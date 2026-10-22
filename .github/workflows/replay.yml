@@ -1,0 +1,39 @@
+# This repository as its own consumer, for real: a pull request that changes the
+# retail example agent replays its suite through the Action with dry-run off, so a
+# regression fails the check and the summary lands in one sticky PR comment.
+# (ci.yml's `action` job keeps the dry run that asserts both verdicts.)
+# `make regression-pr` opens a PR that seeds a regression to show it failing.
+name: Agent replay
+
+on:
+  pull_request:
+    paths:
+      - examples/retail_agent/**
+      - action.yml
+      - action/**
+      - .github/workflows/replay.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: replay-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay:
+    name: Replay the retail suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: ./
+        with:
+          suite: examples/retail_agent/replay.toml
+          install: action
+          args: --no-store
