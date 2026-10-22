@@ -31,7 +31,7 @@ byte-stable ones and fails on any change.
 | Wheel installs in a clean venv | wheel 342,782 B with the dashboard; sdist 327,427 B; both install and pass the smoke test | Release readiness (M7) | `make dist` | measured |
 | The Action, dry run on the retail suite | pass: exit 0, 0 failed; mutant: exit 1, 5/6 failed | Release readiness (M7) | CI job `action`; locally with `act` | measured |
 | The Action fails a seeded regression, rehearsed | `replay ci` 2/6 passed, 4 failed on `rule:matches_ground_truth`; the `replay.yml` job under act fails with exit 1 | The Action on a real failing PR (M8) | `make regression-pr-rehearse`; act | measured, offline |
-| The Action on a real PR, passing half | PR #11 (it changes `replay.yml`): 6/6 passed, sticky comment posted by `github-actions[bot]`, identical to a local run; PR #12: 6/6 again, same rows | The Action on a real failing PR (M8) | `replay.yml` on PR #11 | measured, observed on GitHub |
+| The Action on a real PR, passing half | PR #11 (it changes `replay.yml`): 6/6 passed, sticky comment posted by `github-actions[bot]`, identical to a local run; PR #12: 6/6 again, same rows | The Action on a real failing PR (M8) | `replay.yml` on PRs #11 and #12 | measured, observed on GitHub |
 | The Action on a real failing PR | — | The Action on a real failing PR (M8) | `make regression-pr` (needs `gh auth login`) | **to measure** |
 | Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
 | D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
