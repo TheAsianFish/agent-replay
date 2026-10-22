@@ -31,7 +31,7 @@ byte-stable ones and fails on any change.
 | Wheel installs in a clean venv | wheel 342,782 B with the dashboard; sdist 327,427 B; both install and pass the smoke test | Release readiness (M7) | `make dist` | measured |
 | The Action, dry run on the retail suite | pass: exit 0, 0 failed; mutant: exit 1, 5/6 failed | Release readiness (M7) | CI job `action`; locally with `act` | measured |
 | The Action fails a seeded regression, rehearsed | `replay ci` 2/6 passed, 4 failed on `rule:matches_ground_truth`; the `replay.yml` job under act fails with exit 1 | The Action on a real failing PR (M8) | `make regression-pr-rehearse`; act | measured, offline |
-| The Action on a real PR, passing half | PR #11 (it changes `replay.yml`): 6/6 passed, sticky comment posted by `github-actions[bot]`, identical to a local run | The Action on a real failing PR (M8) | `replay.yml` on PR #11 | measured, observed on GitHub |
+| The Action on a real PR, passing half | PR #11 (it changes `replay.yml`): 6/6 passed, sticky comment posted by `github-actions[bot]`, identical to a local run; PR #12: 6/6 again, same rows | The Action on a real failing PR (M8) | `replay.yml` on PR #11 | measured, observed on GitHub |
 | The Action on a real failing PR | — | The Action on a real failing PR (M8) | `make regression-pr` (needs `gh auth login`) | **to measure** |
 | Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
 | D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
@@ -1292,6 +1292,15 @@ GitHub with 0 approximate steps, so a failure on the seeded branch is the
 mutant's doing. The 0.23 s is `replay ci`'s own time; the job's wall time was
 not captured (no `gh` here), and `make regression-pr` records it for the failing
 run.
+
+The branch's next pull request
+([#12](https://github.com/TheAsianFish/agent-replay/pull/12)) ran the same
+workflow again and got the same result: 6/6 passed, with an identical table
+([run 39831038543](https://github.com/TheAsianFish/agent-replay/actions/runs/39831038543),
+merge commit `b18a3cd1b446`, 0.27 s). A local run at the branch head
+(`1bd4dd8d85d5`, the same command) gives the same six rows in 0.14 s. The rows
+are deterministic across both runners. Only `replay ci`'s own time varies with
+the machine.
 
 **This environment:** `make regression-pr` stops at its preflight, before any
 push:
