@@ -33,13 +33,15 @@ byte-stable ones and fails on any change.
 | The Action fails a seeded regression, rehearsed | `replay ci` 2/6 passed, 4 failed on `rule:matches_ground_truth`; the `replay.yml` job under act fails with exit 1 | The Action on a real failing PR (M8) | `make regression-pr-rehearse`; act | measured, offline |
 | The Action on a real PR, passing half | PR #11 (it changes `replay.yml`): 6/6 passed, sticky comment posted by `github-actions[bot]`, identical to a local run; PR #12: 6/6 again, same rows | The Action on a real failing PR (M8) | `replay.yml` on PRs #11 and #12 | measured, observed on GitHub |
 | The Action on a real failing PR | PR #13 (seeded `wrong_write_argument`): check failed, 4/6 scenarios on `rule:matches_ground_truth`, sticky comment posted; job 26 s | The Action on a real failing PR (M8) | `make regression-pr` | measured, observed on GitHub |
+| A pydantic-ai agent records and replays with no framework change | both suites (fake model; qwen2.5:7b via Ollama) pass in `full` with 0 approximate steps, also against `run_stream`; 13 first-contact breaks listed (6 in Replay, all fixed) | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai-offline` (in `make eval`) | measured, offline |
+| Live flake on a local model | qwen2.5:7b, `model-live`, 10 runs each: 10/10, 2/10, 0/10; 1 approximate step in 30 runs; 1026 s on 4 vCPU (AMD EPYC 7763); $0 | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai` (Ollama) | measured, local model |
 | Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
 | D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
 | Real judge on LLMBar | — | To measure | `make eval-llmbar` (~$12.73) | **to measure** |
 | D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
 
 API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
-M8 $0).
+M9 $0; M9's live runs used qwen2.5:7b on a local CPU).
 
 ## Live recording smoke test (M1)
 
@@ -1342,6 +1344,157 @@ existing demo store (`SKIP_DEMO_DATA=1`): 53.8 s wall, a 34.4 s video,
 `walkthrough.mp4` 855,493 bytes and `walkthrough.gif` 3,473,123 bytes. Sizes
 change from run to run (timestamps and run ids differ), so the files are not
 byte-stable and CI does not re-record them.
+
+## pydantic-ai through Ollama: first contact and a `model-live` flake on qwen2.5:7b (M9)
+
+Does Replay work on a framework it did not write, with a live model that costs
+nothing? The agent is a tool-using [pydantic-ai](https://github.com/pydantic/pydantic-ai)
+travel desk (`examples/pydantic_ai_agent`: search flights, convert currency,
+book, cancel; three tasks with one right answer each). Its Anthropic client is
+injected through `AnthropicProvider(anthropic_client=replay.wrap(AsyncAnthropic(base_url=...)))`,
+and the `base_url` is a local Ollama server, which speaks the Anthropic
+Messages API. No framework code was changed.
+
+- **Model:** `qwen2.5:7b` (digest `845dbda0ea48…`), Ollama 0.40.11, default
+  sampling, CPU only: AMD EPYC 7763, 4 logical CPUs (a GitHub-hosted-size
+  runner), one request at a time. pydantic-ai-slim 2.61.0, anthropic 1.12.1.
+- **Checks** (`replay-qwen.toml`, the same as `replay.toml`): `in_order` tool
+  sequences, the writes (`book_flight` / `cancel_booking` with the right
+  arguments), the figures in the answer (`B6416` and `173.88`; `NEW001`;
+  `243`), a lookup before any write, `forbidden_tools`, `max_tool_calls` 8 and
+  at most 6 model calls. They judge outcomes and the one process rule, not
+  agreement with one recorded path.
+- **Cost:** $0 (an open model on a local CPU; reports print `unpriced`).
+- **Date:** 2026-10-26.
+
+### What broke on first contact
+
+Every surface that failed the first time the framework or the model touched
+Replay, and what was done about it. Items 1 to 6 are Replay's; 7 to 9 are the
+example's; 10 to 13 are the model's behaviour, which is what the suite is
+for.
+
+| # | Surface | How it showed | Fix |
+|---|---|---|---|
+| 1 | `client.beta.messages.create` | The first `replay record` ended in `ReplayError: client.beta is not recorded yet`, 0 envelopes: pydantic-ai sends every request through the beta surface, which the wrapper refused | Record `beta.messages.create` (plain and `stream=True`) and `beta.messages.stream` under `anthropic.beta.messages.create`, `betas` in the fingerprint, replies decoded to `BetaMessage` and the beta stream event classes (pydantic-ai asserts `isinstance(event, BetaRawMessageStartEvent)`) |
+| 2 | Offline stand-in client | The first `full` replay of a streamed run failed with `AttributeError: '_AsyncOffline' object has no attribute 'base_url'`: pydantic-ai copies `client.base_url` into every response | The stand-in exposes `base_url`, `timeout` and `max_retries` (SDK defaults; nothing is ever sent) |
+| 3 | Rebuilt beta streams | A test of `beta.messages.stream()` failed with `NoHTTPResponseError`: the SDK's `BetaMessageStream` reads `response.request.headers` on every event (to look for the fine-grained tool streaming beta), and a stream rebuilt from a cassette has no HTTP response. It broke `beta.messages.stream` always, and recording `create(stream=True)` from the fake client | A rebuilt beta stream carries a stand-in response whose request headers hold the recorded `betas`; a plain stream still refuses `.response` |
+| 4 | `client.with_options()` / `.copy()` | Found reading pydantic-ai's request path: a request with `max_retries` set goes through `client.with_options(...)`, which the proxy forwarded to the bare client, so the call would have gone live unrecorded | Both return a wrapped copy |
+| 5 | `count_tokens`, batches | `messages.count_tokens` was forwarded to the live client inside a session (pydantic-ai calls it for `UsageLimits(count_tokens_before_request=True)`) | Inside a session they raise a `ReplayError` that names them and says token counting is not supported |
+| 6 | Async client teardown | Every `model-live` run of the async agent in `replay flake` printed `RuntimeError: Event loop is closed`: the client made from `--client` for the run was garbage-collected after `asyncio.run` had closed its loop | `replay ci` / `flake` close the client they made, on the run's loop (verified: a `model-live` run on Ollama no longer prints it) |
+| 7 | Cost of an unpriced model | `replay flake` printed `$0.0000` for runs of a model with no price | Reports print `unpriced` (or `$x + N unpriced calls`); a budget cost limit fails closed on unpriced calls |
+| 8 | Tool errors in pydantic-ai | One recording attempt crashed the whole run: qwen2.5:7b called `get_booking` with an invented reference (`DL2207-AL-20261105`), the tool raised `ValueError`, and pydantic-ai only sends `ModelRetry` back to the model (`eval/results/m9_first_contact/recording_attempts_before_model_retry.json`) | The tools raise `ModelRetry` for bad arguments; Replay re-raises a recorded `ModelRetry` as a `ModelRetry`, so a replay gives the model the same retry prompt (tested) |
+| 9 | A check that was too lenient | The first passing recording of `cheapest_fare_in_euros` stated the right price under the wrong flight: "UA512 departing at 11:40, … 173.88 EUR" (the cheapest is B6416; `recording_attempts_before_rule_fix.json`). The answer rule only looked for `173.88` | The answer must state the flight and the price; the booking answer must state the reference the tool returned |
+| 10 | Parallel calls with a guessed argument | In the very first recording, with the first prompt, qwen2.5:7b called `search_flights` and `convert_currency` in the same turn, converting a guessed $350, and answered "approximately 165.00 EUR" (`eval/results/m9_first_contact/cheapest_fare_in_euros.jsonl`) | One prompt line ("give a tool only values from the message or earlier results"); no recording since has done it |
+| 11 | An invented argument | The first recording of the cancellation called `cancel_booking(booking_ref, passenger)` with no lookup; pydantic-ai rejected the extra argument and the model asked the user a question (`m9_first_contact/cancel_refundable_booking.jsonl`) | None: the suite fails it |
+| 12 | Cancelling without a lookup | Across the 15 recording attempts and the 10 flake runs of the cancellation, 23 of 25 cancelled without calling `get_booking` first. The booking happened to be refundable, so every outcome check passed; only `looked_up_before_writing` and the `in_order` sequence failed them | None: the suite fails it. No qwen2.5:7b recording of this task passes, so its `model-live` scenario takes its tools from the fake-model recording |
+| 13 | A claimed action that never happened | One attempt called only `get_booking` and answered "The booking QX7Y2K has been canceled and you will receive a full refund of $243.00 USD" without calling `cancel_booking` (`recording_attempts_before_rule_fix.json`, attempt 2) | None: `writes_match` fails it, while `answer_states` alone would have passed it |
+
+### The committed recordings
+
+`make record-pydantic-ai` records each task up to five times on qwen2.5:7b and
+keeps the first attempt that passes the suite; every attempt is logged in
+`eval/results/m9_qwen_recording.json`:
+
+```
+$ uv run python -m examples.pydantic_ai_agent.record_all --live --attempts 5
+cheapest_fare_in_euros attempt 1: passed in 55.9 s
+book_earliest_flight attempt 1: passed in 67.4 s
+cancel_refundable_booking attempt 1: failed ['rule:looked_up_before_writing', 'tool_sequence'] in 26.6 s
+cancel_refundable_booking attempt 2: failed ['rule:looked_up_before_writing', 'tool_sequence'] in 24.6 s
+cancel_refundable_booking attempt 3: failed ['rule:looked_up_before_writing', 'tool_sequence'] in 20.4 s
+cancel_refundable_booking attempt 4: failed ['rule:looked_up_before_writing', 'tool_sequence'] in 17.2 s
+cancel_refundable_booking attempt 5: failed ['rule:looked_up_before_writing', 'tool_sequence'] in 17.6 s
+cancel_refundable_booking: no attempt passed; its cassette was left as it was
+logged 7 attempt(s) to eval/results/m9_qwen_recording.json
+```
+
+The two qwen2.5:7b cassettes name the model in their header (`"model":
+"qwen2.5:7b", "provider": "ollama"`, with the digest) and in every response.
+Both suites replay in `full` with every step `exact` (`make eval`, so CI runs
+it), and replay just as exactly against `agent.run_stream`, because `stream`
+is not part of a request's identity:
+
+```
+$ make eval-pydantic-ai-offline
+PASS replay.toml cheapest_fare_in_euros: 5 steps, 0 approximate
+PASS replay.toml book_earliest_flight: 5 steps, 0 approximate
+PASS replay.toml cancel_refundable_booking: 5 steps, 0 approximate
+PASS replay-qwen.toml cheapest_fare_in_euros: 5 steps, 0 approximate
+PASS replay-qwen.toml book_earliest_flight: 5 steps, 0 approximate
+PASS replay-qwen.toml cancel_refundable_booking: 5 steps, 0 approximate
+```
+
+### `replay flake` in `model-live`, 10 runs per scenario
+
+The model live (qwen2.5:7b through Ollama), the tools served from the
+recordings, 10 runs per scenario, one at a time. `REPLAY_STATS_IMPL=baseline`
+(`stats.py` is not written yet): the gate is a fixed 10 runs that passes at a
+pass rate of at least 0.75, and the intervals are Wald intervals, so read the
+pass counts. Raw report `eval/results/m9_flake_qwen.json`; summary with the
+approximate steps per run, per-run times and the environment
+`eval/results/m9_flake_qwen_summary.json`.
+
+```
+$ make eval-pydantic-ai
+$ uv run replay flake examples/pydantic_ai_agent/replay-qwen.toml --no-store --mode model-live --client examples.pydantic_ai_agent.agent:make_client --max-runs 10 --concurrency 1 --json eval/results/m9_flake_qwen.json
+PASS cheapest_fare_in_euros (passing 10/10 (100%), interval [1.00, 1.00])
+FAIL book_earliest_flight (flaky 2/10 (20%), interval [0.00, 0.45])
+FAIL cancel_refundable_booking (failing 0/10 (0%), interval [0.00, 0.00])
+1/3 scenario(s) passed the gate (1 flaky; 30 runs, unpriced; gate: fixed 10
+runs, pass on a pass rate of at least 0.75 (the baseline stand-in for the SPRT);
+Wald intervals): failed
+cheapest_fare_in_euros: 10/10 passed (passing), approximate steps per run [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+book_earliest_flight: 2/10 passed (flaky), approximate steps per run [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+cancel_refundable_booking: 0/10 passed (failing), approximate steps per run [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+wall time 1026.3 s on AMD EPYC 7763 64-Core Processor
+```
+
+| Scenario (qwen2.5:7b, `model-live`) | Passed | Approximate steps per run | Seconds per run (min / median / max) |
+|---|---|---|---|
+| `cheapest_fare_in_euros` | 10 / 10 | 0 in every run | 41.3 / 47.3 / 66.5 |
+| `book_earliest_flight` | 2 / 10 | 1 in run 0, else 0 | 31.9 / 33.6 / 55.6 |
+| `cancel_refundable_booking` | 0 / 10 | 0 in every run | 14.3 / 14.5 / 17.1 |
+| All 30 runs | 12 / 30 | 1 step in 1 run | wall 1026 s (17.1 min) |
+
+Beside the v1 rows (retail agent, `replay flake` on live models, M4, kept as
+they were): `claude-haiku-5-5` passed 119 / 120 runs and `claude-opus-5-5`
+30 / 30, every scenario passing or flaky with at most one failure. The local
+model's runs are a different agent and different tasks, so this is not a
+model comparison. It is the first live data that cost nothing.
+
+Where the failures came from (per-run `failed_checks` and step counts in the
+raw report; a flake report keeps no answers):
+
+- **`book_earliest_flight`, 8 failures.** 6 runs searched once and stopped
+  after one more model call without booking (`tool_sequence`, `writes_match`
+  and `answer_states` failed; 2 model calls, about 1,400 tokens). That is what
+  the first-contact attempt that searched without booking did, when it
+  answered "The earliest flight is DL2207 … Would you…". One run converted the
+  fare to euros, a call the recording never made, and ended in
+  `UnrecordedCallError`. One run booked with arguments that differed from the
+  recording, so the booking step was served the recorded result as
+  `approximate`, and `writes_match` failed it.
+- **`cancel_refundable_booking`, 10 failures.** 9 runs cancelled without a
+  lookup (row 12 above). One made no tool call at all.
+- **No pass needed an approximate step.** `passes_with_an_approximate_step` is
+  0 for every scenario: no pass came from a recorded result served for
+  different arguments, the hazard PLAN.md's round 1 found.
+
+What this shows and does not show: on this agent qwen2.5:7b is reliable on a
+two-step lookup (10/10) and unreliable as soon as it has to act (2/10 and
+0/10). A single recorded run would have passed `book_earliest_flight` (both
+committed recordings passed on attempt 1) and hidden an 80% failure rate.
+Ten runs per scenario cannot tell 0.2 from 0.3; the counts are the result, and
+Wilson intervals come with `stats.py`. The runs used default sampling on one
+CPU type; another machine or Ollama version may sample differently, which is
+why the digest, version and CPU are recorded.
+
+**Provenance.** The flake report records `git_sha` 497f501, the commit before
+the example itself was committed; the example code that ran is the one
+committed in the next three commits (it was not changed after the run). The
+teardown fix (row 6) came after this run and changes no outcome; it only
+removes the traceback.
 
 ## To measure
 

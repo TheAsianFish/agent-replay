@@ -1,0 +1,724 @@
+{
+  "suite": "examples/pydantic_ai_agent/replay-qwen.toml",
+  "stats_impl": "baseline",
+  "settings": {
+    "gate": "sprt",
+    "p_fail": 0.6,
+    "p_pass": 0.9,
+    "alpha": 0.05,
+    "beta": 0.05,
+    "max_runs": 10,
+    "min_pass_rate": 0.8,
+    "confidence": 0.95,
+    "concurrency": 1,
+    "runs_per_minute": null,
+    "seed": 0
+  },
+  "passed": false,
+  "started_at": "2026-10-26T21:51:26.515814Z",
+  "duration_ms": 1024102.685,
+  "git_sha": "497f501e2024aed1565d92b34ba20cb41fb3dbfa",
+  "suite_id": null,
+  "scenarios": [
+    {
+      "name": "cheapest_fare_in_euros",
+      "cassette": "examples/pydantic_ai_agent/cassettes/qwen/cheapest_fare_in_euros.jsonl",
+      "agent": "examples.pydantic_ai_agent.agent:run",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "passing",
+      "decision": "pass",
+      "runs": 10,
+      "passes": 10,
+      "pass_rate": 1.0,
+      "interval": [
+        1.0,
+        1.0
+      ],
+      "failures": {},
+      "executed": 10,
+      "concurrency": 1,
+      "cost_usd": 0.0,
+      "unpriced_calls": 30,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 3063848772,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2264,
+          "duration_ms": 59651.795,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 3248074706,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2268,
+          "duration_ms": 57983.488,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 1485897320,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2264,
+          "duration_ms": 66528.626,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 798478078,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2266,
+          "duration_ms": 49530.766,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 2985515869,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2264,
+          "duration_ms": 55207.622,
+          "run_id": null
+        },
+        {
+          "index": 5,
+          "seed": 3337907147,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2264,
+          "duration_ms": 45029.825,
+          "run_id": null
+        },
+        {
+          "index": 6,
+          "seed": 1610431089,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2266,
+          "duration_ms": 41899.841,
+          "run_id": null
+        },
+        {
+          "index": 7,
+          "seed": 687475431,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2266,
+          "duration_ms": 41533.222,
+          "run_id": null
+        },
+        {
+          "index": 8,
+          "seed": 3091535734,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2266,
+          "duration_ms": 41338.504,
+          "run_id": null
+        },
+        {
+          "index": 9,
+          "seed": 3477219296,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2266,
+          "duration_ms": 41445.084,
+          "run_id": null
+        }
+      ],
+      "passed": true
+    },
+    {
+      "name": "book_earliest_flight",
+      "cassette": "examples/pydantic_ai_agent/cassettes/qwen/book_earliest_flight.jsonl",
+      "agent": "examples.pydantic_ai_agent.agent:run",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "flaky",
+      "decision": "fail",
+      "runs": 10,
+      "passes": 2,
+      "pass_rate": 0.2,
+      "interval": [
+        0.0,
+        0.44791801292182465
+      ],
+      "failures": {
+        "rule:answer_states": 7,
+        "rule:writes_match": 7,
+        "tool_sequence": 6,
+        "error:UnrecordedCallError": 1
+      },
+      "executed": 10,
+      "concurrency": 1,
+      "cost_usd": 0.0,
+      "unpriced_calls": 23,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 2603076256,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:writes_match"
+          ],
+          "steps": {
+            "live": 3,
+            "exact": 1,
+            "approximate": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2344,
+          "duration_ms": 55645.522,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 3961584182,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2270,
+          "duration_ms": 41240.147,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 1965665164,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": {
+            "type": "UnrecordedCallError",
+            "module": "agent_replay.errors",
+            "message": "the agent made a tool call 'convert_currency' that the cassette never recorded (or made it more times than recorded); request: {\"amount\":158.0,\"from_currency\":\"USD\",\"to_currency\":\"EUR\"}. If the change is intended, re-record the cassette with `replay record`, or replay with --policy fallback (perform it for real) or --policy synth (stub it)."
+          },
+          "failed_checks": [
+            "rule:answer_states"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 2,
+            "unrecorded": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1414,
+          "duration_ms": 34940.195,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 36608794,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "tool_sequence",
+            "rule:writes_match",
+            "rule:answer_states"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1400,
+          "duration_ms": 32246.244,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 2622099129,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "tool_sequence",
+            "rule:writes_match",
+            "rule:answer_states"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1429,
+          "duration_ms": 37419.029,
+          "run_id": null
+        },
+        {
+          "index": 5,
+          "seed": 3947707951,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "tool_sequence",
+            "rule:writes_match",
+            "rule:answer_states"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1396,
+          "duration_ms": 32116.93,
+          "run_id": null
+        },
+        {
+          "index": 6,
+          "seed": 1917087637,
+          "passed": true,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [],
+          "steps": {
+            "live": 3,
+            "exact": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 3,
+          "tokens": 2288,
+          "duration_ms": 44429.205,
+          "run_id": null
+        },
+        {
+          "index": 7,
+          "seed": 88301315,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "tool_sequence",
+            "rule:writes_match",
+            "rule:answer_states"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1399,
+          "duration_ms": 32167.06,
+          "run_id": null
+        },
+        {
+          "index": 8,
+          "seed": 2516337298,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "tool_sequence",
+            "rule:writes_match",
+            "rule:answer_states"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1400,
+          "duration_ms": 32194.441,
+          "run_id": null
+        },
+        {
+          "index": 9,
+          "seed": 3808129540,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "tool_sequence",
+            "rule:writes_match",
+            "rule:answer_states"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1400,
+          "duration_ms": 31874.563,
+          "run_id": null
+        }
+      ],
+      "passed": false
+    },
+    {
+      "name": "cancel_refundable_booking",
+      "cassette": "examples/pydantic_ai_agent/cassettes/cancel_refundable_booking.jsonl",
+      "agent": "examples.pydantic_ai_agent.agent:run",
+      "mode": "model-live",
+      "policy": "strict",
+      "classification": "failing",
+      "decision": "fail",
+      "runs": 10,
+      "passes": 0,
+      "pass_rate": 0.0,
+      "interval": [
+        0.0,
+        0.0
+      ],
+      "failures": {
+        "tool_sequence": 10,
+        "rule:looked_up_before_writing": 9,
+        "rule:answer_states": 1,
+        "rule:writes_match": 1
+      },
+      "executed": 10,
+      "concurrency": 1,
+      "cost_usd": 0.0,
+      "unpriced_calls": 20,
+      "error": null,
+      "outcomes": [
+        {
+          "index": 0,
+          "seed": 3679393452,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:looked_up_before_writing",
+            "tool_sequence"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1221,
+          "duration_ms": 17147.59,
+          "run_id": null
+        },
+        {
+          "index": 1,
+          "seed": 2890409530,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "tool_sequence",
+            "rule:writes_match",
+            "rule:answer_states"
+          ],
+          "steps": {
+            "live": 2
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1218,
+          "duration_ms": 15232.052,
+          "run_id": null
+        },
+        {
+          "index": 2,
+          "seed": 893482880,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:looked_up_before_writing",
+            "tool_sequence"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1222,
+          "duration_ms": 14489.901,
+          "run_id": null
+        },
+        {
+          "index": 3,
+          "seed": 1111901974,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:looked_up_before_writing",
+            "tool_sequence"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1221,
+          "duration_ms": 14372.031,
+          "run_id": null
+        },
+        {
+          "index": 4,
+          "seed": 3693269685,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:looked_up_before_writing",
+            "tool_sequence"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1221,
+          "duration_ms": 14343.27,
+          "run_id": null
+        },
+        {
+          "index": 5,
+          "seed": 2871386659,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:looked_up_before_writing",
+            "tool_sequence"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1221,
+          "duration_ms": 14465.057,
+          "run_id": null
+        },
+        {
+          "index": 6,
+          "seed": 841790361,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:looked_up_before_writing",
+            "tool_sequence"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1221,
+          "duration_ms": 14308.943,
+          "run_id": null
+        },
+        {
+          "index": 7,
+          "seed": 1160479503,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:looked_up_before_writing",
+            "tool_sequence"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1222,
+          "duration_ms": 14561.684,
+          "run_id": null
+        },
+        {
+          "index": 8,
+          "seed": 3583286942,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:looked_up_before_writing",
+            "tool_sequence"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1220,
+          "duration_ms": 14270.891,
+          "run_id": null
+        },
+        {
+          "index": 9,
+          "seed": 2727587336,
+          "passed": false,
+          "ran": true,
+          "counted": true,
+          "error": null,
+          "failed_checks": [
+            "rule:looked_up_before_writing",
+            "tool_sequence"
+          ],
+          "steps": {
+            "live": 2,
+            "exact": 1
+          },
+          "cost_usd": 0.0,
+          "unpriced_calls": 2,
+          "tokens": 1233,
+          "duration_ms": 16477.368,
+          "run_id": null
+        }
+      ],
+      "passed": false
+    }
+  ],
+  "failed": [
+    "book_earliest_flight",
+    "cancel_refundable_booking"
+  ],
+  "flaky": [
+    "book_earliest_flight"
+  ],
+  "broken": [],
+  "runs": 30,
+  "cost_usd": 0.0,
+  "unpriced_calls": 73
+}

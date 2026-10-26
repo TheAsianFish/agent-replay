@@ -127,6 +127,8 @@ the rows still to measure.
 | Recorder overhead (median) | ~0.7 ms per model call (12.5 KB request), ~0.1 ms per tool call, ~50 µs per clock read | `make bench-replay` |
 | Replay speed | `full` replay of the six live recordings with checks: 222 ms against 51 s spent in live calls (230×) | `make bench-replay` |
 | The Action on a real failing PR | [PR #13](https://github.com/TheAsianFish/agent-replay/pull/13): the seeded `wrong_write_argument` regression fails the check, 4 of 6 scenarios on `rule:matches_ground_truth`, in a 26 s job | `make regression-pr` |
+| A real framework: pydantic-ai, unchanged | records through `client.beta.messages`; fake-model and qwen2.5:7b cassettes replay in `full` with 0 approximate steps | `make eval-pydantic-ai-offline` |
+| Live flakiness on a local model (free) | qwen2.5:7b via Ollama, 10 `model-live` runs per task: lookup 10/10, booking 2/10, cancellation 0/10 (23 of 25 attempts cancel without looking the booking up); 1026 s on 4 vCPU | `make eval-pydantic-ai` (RESULTS.md, M9) |
 | **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
 
 ## Install
@@ -242,9 +244,16 @@ run(replay.wrap(anthropic.Anthropic()), "Refund order A1001")
 - **Agents** are any callable `agent(client, task)`, or `async def`, referred
   to as `module:function` by the CLI.
 - **Clients:** `anthropic.Anthropic` and `AsyncAnthropic` (`create`,
-  `create(stream=True)`, `stream(...)`, `parse(...)`), and `ollama.Client` /
+  `create(stream=True)`, `stream(...)`, `parse(...)`, and
+  `beta.messages.create` / `beta.messages.stream`), and `ollama.Client` /
   `AsyncClient` (`chat`, streaming included; `pip install
-  agent-replay[ollama]`).
+  agent-replay[ollama]`). `count_tokens` and batches are not recorded and
+  fail the session with a message that names them.
+- **Frameworks:** anything that takes an Anthropic client. pydantic-ai, for
+  example: `AnthropicProvider(anthropic_client=replay.wrap(AsyncAnthropic()))`
+  (see [examples/pydantic_ai_agent](examples/pydantic_ai_agent)). With
+  `base_url` pointed at a local Ollama server the same agent records on an
+  open model for free.
 - **Tools** are plain or `async def` functions decorated with `@tool`.
 - **Clock and randomness:** `replay.now()`, `replay.random()`,
   `replay.randint()`, `replay.choice()`, `replay.uuid4()`, plus
@@ -804,6 +813,7 @@ credentials).
 | `REPLAY_LABELLER` | — | Who is labelling, for `replay label` when `--labeller` is not given (one of the two is required) |
 | `REPLAY_JUDGE_CACHE` | `.replay/judge-cache` | Verdict cache directory when a judge check sets no `cache_dir` |
 | `REPLAY_JUDGE_OFFLINE` | off | `1` / `true`: judge from the cache only; a miss breaks the scenario (exit 2) |
+| `REPLAY_OLLAMA_URL` | `http://localhost:11434` | The Ollama server the pydantic-ai example's live client (`examples.pydantic_ai_agent.agent:make_client`) talks to |
 | `REPLAY_PRICES_FILE` | — | JSON `{"model": {"input", "output", "cache_read", "cache_write"}}` in USD per MTok, extending or overriding the built-in price table |
 | `REPLAY_STATS_IMPL` | `baseline` | Statistics implementation: `baseline` (naive reference) or `core` (`agent_replay/stats.py`) |
 | `REPLAY_TEST_PG_URL` | — | Tests only: a disposable PostgreSQL database for the `postgres`-marked tests (they reset its schema) |
@@ -1092,10 +1102,12 @@ Next (evolution round 1, 2026-10-21; evidence and hypotheses in
    the dashboard (runs, aligned diff, flakiness) in place of the terminal GIF~~
    (done: [PR #13](https://github.com/TheAsianFish/agent-replay/pull/13) and
    the walkthrough above)
-9. Dogfood on [pydantic-ai](https://github.com/pydantic/pydantic-ai) through
+9. ~~Dogfood on [pydantic-ai](https://github.com/pydantic/pydantic-ai) through
    Ollama: record the `beta` messages surface the framework uses, commit a
    cassette from a local model (qwen2.5:7b), replay it in `full` and
-   measure its pass rate over 10 `model-live` runs
+   measure its pass rate over 10 `model-live` runs~~ (done:
+   [examples/pydantic_ai_agent](examples/pydantic_ai_agent), results in
+   [RESULTS.md](RESULTS.md))
 10. A tool-result drift check (`fail_on_tool_drift`): in `tools-live`, compare
     each live tool's result with the recorded one, so that the three tool bugs
     only `fail_on_approximate` catches today are caught without failing the
