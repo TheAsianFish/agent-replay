@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any, Literal
 
@@ -129,14 +129,29 @@ def load_agent(ref: str) -> Agent:
     return obj
 
 
-def _run_agent(agent: Agent, client: object, task: str) -> object:
-    """Call the agent; an ``async def`` agent runs to completion on a fresh event loop."""
+def _run_agent(agent: Agent, client: object, task: str, *, close_client: bool = False) -> object:
+    """Call the agent; an ``async def`` agent runs to completion on a fresh event loop.
+
+    ``close_client``: the client was made for this run (``--client``), so an async one
+    is closed on that loop once the agent is done. Left open, its connection pool is
+    closed later by the garbage collector, on a loop that no longer exists, and every
+    run prints a ``RuntimeError: Event loop is closed`` traceback.
+    """
     if inspect.iscoroutinefunction(agent):
-        return asyncio.run(agent(client, task))
+        return asyncio.run(_closing(agent(client, task), client, close_client))
     output = agent(client, task)
     if inspect.isawaitable(output):
-        return asyncio.run(_await(output))
+        return asyncio.run(_closing(_await(output), client, close_client))
     return output
+
+
+async def _closing(work: Awaitable[object], client: object, close: bool) -> object:
+    try:
+        return await work
+    finally:
+        aclose = getattr(client, "close", None) if close else None
+        if aclose is not None and inspect.iscoroutinefunction(aclose):
+            await aclose()
 
 
 async def _await(awaitable: Any) -> object:
@@ -144,11 +159,11 @@ async def _await(awaitable: Any) -> object:
 
 
 def _run(
-    session: Session, agent: Agent, client: object, task: str
+    session: Session, agent: Agent, client: object, task: str, *, close_client: bool = False
 ) -> tuple[object, Exception | None]:
     with session:
         try:
-            return _run_agent(agent, client, task), None
+            return _run_agent(agent, client, task, close_client=close_client), None
         except Exception as exc:
             log.warning("run.agent_error", mode=session.mode, error=repr(exc))
             return None, exc
@@ -192,6 +207,7 @@ def replay(
     task: str | None = None,
     client: object = None,
     save_to: str | Path | None = None,
+    close_client: bool = False,
 ) -> RunResult:
     """Re-run ``agent`` against ``cassette`` with the cut point ``mode``.
 
@@ -209,6 +225,8 @@ def replay(
     ``client`` is only used by ``fallback``. The agent's exceptions end the
     run and are reported in ``RunResult.error`` rather than raised.
     ``save_to`` writes the replayed run as a cassette of its own.
+    ``close_client`` closes an async ``client`` at the end of the run, on its event
+    loop; ``replay ci`` and ``replay flake`` set it for the client they made.
     """
     if mode not in REPLAY_MODES:
         raise ReplayError(f"unknown replay mode {mode!r}; use one of {', '.join(REPLAY_MODES)}")
@@ -234,7 +252,7 @@ def replay(
         raise AgentLoadError(f"{exc}; --client must return a model client") from exc
     session = ReplaySession(cassette, mode=mode, policy=policy)
     log.info("replay.start", mode=mode, policy=policy, cassette=cassette.header.cassette_id)
-    output, failure = _run(session, agent, model_client, task)
+    output, failure = _run(session, agent, model_client, task, close_client=close_client)
     error = ErrorInfo.from_exception(failure) if failure is not None else None
     try:
         output_json = to_jsonable(output)

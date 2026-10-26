@@ -339,7 +339,13 @@ def run_scenario(
         client_ref = overrides.client or scenario.client or defaults.client
         client = make_client(client_ref, seed=seed) if client_ref is not None else None
         result = replay(
-            cassette, agent, mode=mode, policy=policy, task=scenario.task, client=client
+            cassette,
+            agent,
+            mode=mode,
+            policy=policy,
+            task=scenario.task,
+            client=client,
+            close_client=client is not None,
         )
     except ReplayError as exc:
         return failed(exc, agent_ref or "?")

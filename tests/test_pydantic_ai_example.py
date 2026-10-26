@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import urllib.error
 from pathlib import Path
 from types import SimpleNamespace
@@ -177,3 +178,21 @@ def test_a_tool_retry_records_and_replays_as_the_same_retry_prompt():
     assert result.ok, result.error
     assert result.output == recorded.output
     assert result.trajectory.count(StepStatus.APPROXIMATE) == 0
+
+
+def test_a_client_made_for_the_run_is_closed_on_its_own_loop():
+    """replay ci / flake close the async client they made, inside the run's event loop."""
+    closed: list[bool] = []
+
+    class Closable(FakeAsyncAnthropic):
+        async def close(self) -> None:
+            asyncio.get_running_loop()  # raises if the loop is already gone
+            closed.append(True)
+
+    cassette = Cassette.load(EXAMPLE / "cassettes" / "cheapest_fare_in_euros.jsonl")
+    client = Closable(fake_model.policy)
+    replay(cassette, agent.run, mode="model-live", client=client)
+    assert closed == []  # a caller's own client is left alone
+    result = replay(cassette, agent.run, mode="model-live", client=client, close_client=True)
+    assert result.ok, result.error
+    assert closed == [True]
