@@ -32,7 +32,7 @@ byte-stable ones and fails on any change.
 | The Action, dry run on the retail suite | pass: exit 0, 0 failed; mutant: exit 1, 5/6 failed | Release readiness (M7) | CI job `action`; locally with `act` | measured |
 | The Action fails a seeded regression, rehearsed | `replay ci` 2/6 passed, 4 failed on `rule:matches_ground_truth`; the `replay.yml` job under act fails with exit 1 | The Action on a real failing PR (M8) | `make regression-pr-rehearse`; act | measured, offline |
 | The Action on a real PR, passing half | PR #11 (it changes `replay.yml`): 6/6 passed, sticky comment posted by `github-actions[bot]`, identical to a local run; PR #12: 6/6 again, same rows | The Action on a real failing PR (M8) | `replay.yml` on PRs #11 and #12 | measured, observed on GitHub |
-| The Action on a real failing PR | — | The Action on a real failing PR (M8) | `make regression-pr` (needs `gh auth login`) | **to measure** |
+| The Action on a real failing PR | PR #13 (seeded `wrong_write_argument`): check failed, 4/6 scenarios on `rule:matches_ground_truth`, sticky comment posted; job 26 s | The Action on a real failing PR (M8) | `make regression-pr` | measured, observed on GitHub |
 | Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
 | D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
 | Real judge on LLMBar | — | To measure | `make eval-llmbar` (~$12.73) | **to measure** |
@@ -1184,11 +1184,10 @@ REPOSITORY          TAG       IMAGE ID       CREATED         SIZE
 agent-replay-demo   latest    f107e5a97e0d   6 minutes ago   285MB
 ```
 
-## The Action on a real failing PR (M8; rehearsed, the real PR is to measure)
+## The Action on a real failing PR (M8)
 
 Question 3: does the GitHub Action stop a bad pull request in practice? The
-harness is built and rehearsed twice; the real PR needs the maintainer's own
-GitHub login, which the environment this milestone was built in does not have.
+harness was rehearsed twice offline, then run for real on PR #13.
 
 **Method.** `.github/workflows/replay.yml` runs the Action (`uses: ./`,
 `install: action`, dry-run off, `pull-requests: write`) on every pull request
@@ -1290,8 +1289,7 @@ Suite `examples/retail_agent/replay.toml` passed at `6bba25535a03` in 0.23s.
 0.23 s. That is the control for the failing PR: the unmodified suite passes on
 GitHub with 0 approximate steps, so a failure on the seeded branch is the
 mutant's doing. The 0.23 s is `replay ci`'s own time; the job's wall time was
-not captured (no `gh` here), and `make regression-pr` records it for the failing
-run.
+not captured for those runs; for the failing PR below it is 26 s.
 
 The branch's next pull request
 ([#12](https://github.com/TheAsianFish/agent-replay/pull/12)) ran the same
@@ -1302,19 +1300,33 @@ merge commit `b18a3cd1b446`, 0.27 s). A local run at the branch head
 are deterministic across both runners. Only `replay ci`'s own time varies with
 the machine.
 
-**This environment:** `make regression-pr` stops at its preflight, before any
-push:
+**Observed on GitHub: the failing PR.** `make regression-pr` (2026-10-26,
+mutant `wrong_write_argument`, base copied from `origin/main`) printed:
 
 ```
-regression-pr: gh is not installed or not logged in; install the GitHub CLI and run `gh auth login` as a maintainer of the repository (`gh auth status` exited 1: You are not logged into any GitHub hosts. To log in, run: gh auth login)
-make: *** [Makefile:160: regression-pr] Error 2
+- Pull request: https://github.com/TheAsianFish/agent-replay/pull/13 (seeded mutant `wrong_write_argument`, head `90b5bc1be108`, closed after capture)
+- Failing check run: https://github.com/TheAsianFish/agent-replay/actions/runs/40380755513/job/121775995565 (conclusion `failure`)
+- Sticky comment: https://github.com/TheAsianFish/agent-replay/pull/13#issuecomment-6424518479
+- Check wall time: 26 s for the job (28 s for the whole run, queueing included)
+- Scenarios failed: 4 of 6
+  - `cancel_pending_laptop`: rule:matches_ground_truth
+  - `modify_address_suite`: rule:matches_ground_truth
+  - `return_damaged_bicycle`: rule:matches_ground_truth
+  - `exchange_waterproof_boots`: rule:matches_ground_truth
+- Passed: `lookup_latest_order_total`, `transfer_swapped_refunds`
 ```
 
-**To measure** (free; one command after this change is on `main`, about two
-minutes): `gh auth login`, then `make regression-pr`. Paste the printed lines
-here (the PR, the failing check run, the comment permalink, the job's wall
-time, the scenarios that failed), and commit `eval/results/regression_pr/` and
-`docs/screenshots/pr-comment.png`.
+The real check failed on exactly the four scenarios the two rehearsals
+predicted, for the same reason, and `replay ci` itself took 0.26 s of the
+job's 26 s (the rest is checkout and install). `github-actions[bot]` posted
+the failing comment ([permalink](https://github.com/TheAsianFish/agent-replay/pull/13#issuecomment-6424518479)),
+rendered in [`docs/screenshots/pr-comment.png`](docs/screenshots/pr-comment.png);
+each failed scenario names the expected and actual write call, e.g. a cancel
+with reason `ordered by mistake` instead of `no longer needed`. The raw
+evidence, the report artifact and the comment body are in
+`eval/results/regression_pr/`. The script then closed the PR and deleted both
+`regression-demo/*` branches. Cost: $0 (no model calls; the job is about half
+a minute of Actions time).
 
 ## Dashboard walkthrough (M8, offline)
 
@@ -1333,9 +1345,6 @@ byte-stable and CI does not re-record them.
 
 ## To measure
 
-- **The Action on a real failing PR** (question 3): `gh auth login` as a
-  maintainer, then `make regression-pr` (free, about two minutes); see the M8
-  section for what it records.
 - **SPRT savings vs the fixed-sample test.** `make bench-sprt` (offline, about
   1 s) once `agent_replay/stats.py` is implemented: the core rows and
   "runs vs the fixed-sample test" lines join the table above with no other
