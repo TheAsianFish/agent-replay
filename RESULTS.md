@@ -33,7 +33,7 @@ byte-stable ones and fails on any change.
 | The Action fails a seeded regression, rehearsed | `replay ci` 2/6 passed, 4 failed on `rule:matches_ground_truth`; the `replay.yml` job under act fails with exit 1 | The Action on a real failing PR (M8) | `make regression-pr-rehearse`; act | measured, offline |
 | The Action on a real PR, passing half | PR #11 (it changes `replay.yml`): 6/6 passed, sticky comment posted by `github-actions[bot]`, identical to a local run; PR #12: 6/6 again, same rows | The Action on a real failing PR (M8) | `replay.yml` on PRs #11 and #12 | measured, observed on GitHub |
 | The Action on a real failing PR | PR #13 (seeded `wrong_write_argument`): check failed, 4/6 scenarios on `rule:matches_ground_truth`, sticky comment posted; job 26 s | The Action on a real failing PR (M8) | `make regression-pr` | measured, observed on GitHub |
-| A pydantic-ai agent records and replays with no framework change | both suites (fake model; qwen2.5:7b via Ollama) pass in `full` with 0 approximate steps, also against `run_stream`; 13 first-contact breaks listed (6 in Replay, all fixed) | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai-offline` (in `make eval`) | measured, offline |
+| A pydantic-ai agent records and replays with no framework change | both suites (fake model; qwen2.5:7b via Ollama) pass in `full` with 0 approximate steps, also against `run_stream`; 13 first-contact breaks listed (7 in Replay, all fixed) | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai-offline` (in `make eval`) | measured, offline |
 | Live flake on a local model | qwen2.5:7b, `model-live`, 10 runs each: 10/10, 2/10, 0/10; 1 approximate step in 30 runs; 1026 s on 4 vCPU (AMD EPYC 7763); $0 | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai` (Ollama) | measured, local model |
 | Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
 | D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
@@ -1370,7 +1370,7 @@ Messages API. No framework code was changed.
 ### What broke on first contact
 
 Every surface that failed the first time the framework or the model touched
-Replay, and what was done about it. Items 1 to 6 are Replay's; 7 to 9 are the
+Replay, and what was done about it. Items 1 to 7 are Replay's; 8 and 9 are the
 example's; 10 to 13 are the model's behaviour, which is what the suite is
 for.
 
