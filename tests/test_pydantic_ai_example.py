@@ -19,7 +19,7 @@ from examples.pydantic_ai_agent.tasks import TASKS
 from examples.pydantic_ai_agent.tools import BOOKINGS, book_flight, cancel_booking, reset
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "pydantic_ai_agent"
-SUITES = ["replay.toml"]
+SUITES = ["replay.toml", "replay-qwen.toml"]
 
 
 @pytest.mark.parametrize("suite", SUITES)
@@ -37,6 +37,19 @@ def test_suite_replays_in_full_with_every_step_exact(suite, entry):
     for scenario in report.scenarios:
         assert scenario.steps.by_status == {"exact": scenario.steps.total}
         assert scenario.unconsumed == ()
+
+
+def test_qwen_cassettes_name_their_model():
+    for path in sorted((EXAMPLE / "cassettes" / "qwen").glob("*.jsonl")):
+        cassette = Cassette.load(path)
+        assert cassette.header.metadata["model"] == "qwen2.5:7b"
+        assert cassette.header.metadata["provider"] == "ollama"
+        models = {e.response["model"] for e in cassette.envelopes if e.kind is Kind.MODEL}
+        assert models == {"qwen2.5:7b"}
+        names = {e.name for e in cassette.envelopes if e.kind is Kind.MODEL}
+        assert names == {"anthropic.beta.messages.create"}
+        # A local model has no price: unpriced, never a measured-looking $0.
+        assert all(e.cost_usd is None for e in cassette.envelopes if e.kind is Kind.MODEL)
 
 
 @pytest.mark.parametrize("name", list(TASKS))
