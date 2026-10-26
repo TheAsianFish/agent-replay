@@ -54,7 +54,8 @@ def test_record_writes_loadable_cassette(tmp_path: Path) -> None:
     result = invoke(*record_args(out))
     assert result.exit_code == 0, result.output
     assert "envelope" in result.output
-    assert "no priced model calls" in result.output
+    assert "unpriced)" in result.output  # the fake model has no price: not "$0.0000"
+    assert "$0.0000" not in result.output
     cassette = Cassette.load(out)
     assert cassette.header.agent == AGENT
     assert cassette.header.task == TASK

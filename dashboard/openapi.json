@@ -1520,6 +1520,11 @@
             "default": 0,
             "title": "Tokens",
             "type": "integer"
+          },
+          "unpriced_calls": {
+            "default": 0,
+            "title": "Unpriced Calls",
+            "type": "integer"
           }
         },
         "required": [

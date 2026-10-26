@@ -64,6 +64,11 @@ class RunResult(BaseModel):
         return round(sum(s.cost_usd or 0.0 for s in self.trajectory.steps), 8)
 
     @property
+    def unpriced_calls(self) -> int:
+        """Model calls left out of :attr:`cost_usd` because their model has no price."""
+        return self.trajectory.unpriced_calls()
+
+    @property
     def tokens(self) -> int:
         """Input plus output tokens over every model call (cache tokens included)."""
         return sum(

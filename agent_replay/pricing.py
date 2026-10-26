@@ -118,3 +118,18 @@ def cost_usd(model: str | None, usage: Usage) -> float | None:
         + usage.cache_creation_input_tokens * price.cache_write
     )
     return round(total / 1_000_000, 8)
+
+
+def format_cost(cost_usd: float, unpriced_calls: int = 0) -> str:
+    """A cost for people to read, without passing unpriced model calls off as free.
+
+    ``cost_usd`` is the sum over priced calls; ``unpriced_calls`` counts model calls
+    whose model has no price (see :func:`cost_usd`). All priced: ``$0.0123``; none
+    priced: ``unpriced``; some of each: ``$0.0123 + 3 unpriced calls``. A run with no
+    model calls at all costs ``$0.0000``.
+    """
+    if unpriced_calls <= 0:
+        return f"${cost_usd:.4f}"
+    if cost_usd == 0:
+        return "unpriced"
+    return f"${cost_usd:.4f} + {unpriced_calls} unpriced call{'s' if unpriced_calls != 1 else ''}"

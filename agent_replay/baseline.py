@@ -49,6 +49,8 @@ class RunMetrics(BaseModel):
     model_calls: int
     p95_latency_ms: float | None
     """Nearest-rank p95 over the model steps that carry a latency; ``None`` if none do."""
+    unpriced_calls: int = 0
+    """Model calls left out of ``cost_usd`` because their model has no price."""
 
 
 def measure(run: RunResult) -> RunMetrics:
@@ -60,6 +62,7 @@ def measure(run: RunResult) -> RunMetrics:
         tokens=run.tokens,
         model_calls=len(model_steps),
         p95_latency_ms=percentile_nearest_rank(latencies, 95),
+        unpriced_calls=run.unpriced_calls,
     )
 
 
@@ -73,6 +76,9 @@ class ScenarioBaseline(BaseModel):
     model_calls: int = Field(ge=0)
     p95_latency_ms: float | None = Field(default=None, ge=0)
     runs: int = Field(ge=1)
+    unpriced_calls: int = Field(default=0, ge=0)
+    """The most model calls any measured run left unpriced (their model has no price), so
+    ``cost_usd`` is incomplete when this is above 0. Omitted from the file when 0."""
 
 
 def _median_int(values: Sequence[int]) -> int:
@@ -88,6 +94,8 @@ def aggregate(metrics: Sequence[RunMetrics]) -> ScenarioBaseline:
     number of runs puts the median between two integers; cost is rounded to
     8 decimals like :attr:`RunResult.cost_usd`. ``p95_latency_ms`` is the median
     over the runs that measured a latency, or ``None`` when none did.
+    ``unpriced_calls`` is the maximum over the runs: one unpriced run makes the
+    cost incomplete.
     """
     if not metrics:
         raise ValueError("aggregate needs at least one run's metrics")
@@ -98,6 +106,7 @@ def aggregate(metrics: Sequence[RunMetrics]) -> ScenarioBaseline:
         model_calls=_median_int([m.model_calls for m in metrics]),
         p95_latency_ms=statistics.median(latencies) if latencies else None,
         runs=len(metrics),
+        unpriced_calls=max(m.unpriced_calls for m in metrics),
     )
 
 
@@ -144,8 +153,14 @@ class BaselineFile(BaseModel):
             ) from exc
 
     def dumps(self) -> str:
-        """Stable JSON: 2-space indent, scenarios sorted by name, trailing newline."""
+        """Stable JSON: 2-space indent, scenarios sorted by name, trailing newline.
+
+        ``unpriced_calls`` is written only when above 0, so a fully priced baseline
+        reads as it did before the field existed."""
         data = self.model_dump(mode="json")
+        for scenario in data["scenarios"].values():
+            if not scenario["unpriced_calls"]:
+                del scenario["unpriced_calls"]
         data["scenarios"] = dict(sorted(data["scenarios"].items()))
         return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 

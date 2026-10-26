@@ -70,5 +70,15 @@ class Trajectory(BaseModel):
     def model_steps(self) -> list[Step]:
         return [s for s in self.steps if s.kind is Kind.MODEL]
 
+    def unpriced_calls(self) -> int:
+        """Model calls that answered (or reported usage) but have no cost: their model is
+        not in the price table (:mod:`agent_replay.pricing`). Calls that never got an answer
+        (unrecorded, or failed without usage) cost nothing and are not counted."""
+        return sum(
+            1
+            for s in self.model_steps()
+            if s.cost_usd is None and (s.usage is not None or s.response is not None)
+        )
+
     def count(self, status: StepStatus) -> int:
         return sum(1 for s in self.steps if s.status is status)

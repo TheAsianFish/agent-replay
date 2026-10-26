@@ -804,6 +804,11 @@ export interface components {
              * @default 0
              */
             tokens: number;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /** RunPage */
         RunPage: {

@@ -208,10 +208,79 @@ def test_a_suite_without_relative_limits_reports_the_baseline_without_gating(
 
 def test_markdown_cost_cell_against_a_zero_baseline(tmp_path: Path) -> None:
     zero = ScenarioBaseline(cost_usd=0, tokens=0, model_calls=0, runs=1)
-    report = run_suite(SUITE)  # fake cassettes are unpriced: cost 0
-    scenarios = tuple(s.model_copy(update={"baseline": zero}) for s in report.scenarios)
+    report = run_suite(SUITE)
+    scenarios = tuple(
+        s.model_copy(update={"baseline": zero, "unpriced_calls": 0}) for s in report.scenarios
+    )
     markdown = to_markdown(report.model_copy(update={"scenarios": scenarios}))
     assert "$0.0000 (baseline $0)" in markdown
+
+
+def test_unpriced_fake_cassettes_report_unpriced_not_zero() -> None:
+    report = run_suite(SUITE)  # the fake model answers as `fake:<model>`, which has no price
+    assert all(s.cost_usd == 0 and s.unpriced_calls > 0 for s in report.scenarios)
+    markdown = to_markdown(report)
+    assert "$0.0000" not in markdown
+    rows = [line for line in markdown.splitlines() if line.startswith("| `")]
+    assert rows
+    assert all(row.endswith("| unpriced |") for row in rows)
+    data = json.loads(to_json(report))
+    assert data["scenarios"][0]["unpriced_calls"] == report.scenarios[0].unpriced_calls
+
+
+def test_markdown_cost_cell_shows_no_change_when_either_side_is_unpriced() -> None:
+    report = run_suite(SUITE)
+    s = report.scenarios[0]
+    priced_base = ScenarioBaseline(cost_usd=0.04, tokens=1, model_calls=1, runs=1)
+    unpriced_base = priced_base.model_copy(update={"cost_usd": 0, "unpriced_calls": 2})
+    mixed_base = priced_base.model_copy(update={"unpriced_calls": 1})
+
+    def cell(scenario: ScenarioReport) -> str:
+        markdown = to_markdown(report.model_copy(update={"scenarios": (scenario,)}))
+        row = next(line for line in markdown.splitlines() if line.startswith("| `"))
+        return row.rsplit("|", 2)[1].strip()
+
+    assert cell(s.model_copy(update={"baseline": priced_base})) == "unpriced (baseline $0.0400)"
+    priced = s.model_copy(update={"cost_usd": 0.05, "unpriced_calls": 0})
+    assert cell(priced.model_copy(update={"baseline": unpriced_base})) == (
+        "$0.0500 (baseline unpriced)"
+    )
+    assert cell(priced.model_copy(update={"baseline": mixed_base})) == (
+        "$0.0500 (baseline $0.0400 + 1 unpriced call)"
+    )
+    mixed = s.model_copy(update={"cost_usd": 0.05, "unpriced_calls": 3, "baseline": priced_base})
+    assert cell(mixed) == "$0.0500 + 3 unpriced calls (baseline $0.0400)"
+    assert cell(priced.model_copy(update={"baseline": priced_base})) == "$0.0500 (+25.0%)"
+
+
+def test_a_relative_cost_limit_fails_closed_on_an_unpriced_suite(tmp_path: Path) -> None:
+    unpriced = BaselineFile(
+        suite=str(SUITE),
+        created_at=CREATED,
+        mode="full",
+        policy="strict",
+        scenarios=measure_suite(SUITE).scenarios,
+    )
+    assert all(b.unpriced_calls > 0 and b.cost_usd == 0 for b in unpriced.scenarios.values())
+    unpriced.dump(tmp_path / "baseline.json")
+    assert '"unpriced_calls"' in (tmp_path / "baseline.json").read_text(encoding="utf-8")
+    text = SUITE.read_text(encoding="utf-8").replace('"cassettes/', f'"{RETAIL}/cassettes/')
+    text = text.replace("[defaults]\n", '[defaults]\nbaseline = "baseline.json"\n').replace(
+        '{ type = "budget", max_model_calls = 8 },',
+        f'{{ type = "budget", max_model_calls = 8 }},\n  {RELATIVE_BUDGET},',
+    )
+    suite = tmp_path / "replay.toml"
+    suite.write_text(text, encoding="utf-8")
+
+    report = run_suite(suite)
+
+    assert not report.passed
+    for scenario in report.scenarios:
+        (relative,) = [c for c in scenario.checks if c.details.get("max_cost_increase_pct")]
+        assert not relative.passed
+        assert "max_cost_increase_pct cannot be checked" in relative.message
+        assert "agent_replay/pricing.py" in relative.message
+        assert relative.details["cost_usd_delta_pct"] is None
 
 
 # --- replay baseline ----------------------------------------------------------------------

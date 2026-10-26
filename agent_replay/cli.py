@@ -65,7 +65,7 @@ from agent_replay.flake import (
 from agent_replay.flake import to_json as flake_json
 from agent_replay.flake import to_markdown as flake_markdown
 from agent_replay.judge.calibration import CalibrationReport
-from agent_replay.pricing import prices
+from agent_replay.pricing import format_cost, prices
 from agent_replay.record import wrap
 from agent_replay.runner import RunResult, load_agent, make_client, record, replay
 from agent_replay.session import Policy as PolicyName
@@ -189,8 +189,7 @@ def record_cmd(
             f"cannot write the cassette to {output}: {exc}; pick a writable --output path"
         ) from exc
     console.print(_steps_table(result.trajectory))
-    costs = [e.cost_usd for e in cassette.envelopes if e.cost_usd is not None]
-    cost = f"${sum(costs):.4f}" if costs else "no priced model calls"
+    cost = format_cost(result.cost_usd, result.unpriced_calls)
     tokens = sum(
         (e.usage.input_tokens + e.usage.output_tokens) if e.usage else 0 for e in cassette.envelopes
     )
@@ -568,7 +567,12 @@ def baseline_cmd(
     for name, b in sorted(baseline.scenarios.items()):
         p95 = f"{b.p95_latency_ms:.0f} ms" if b.p95_latency_ms is not None else "—"
         table.add_row(
-            escape(name), str(b.runs), f"${b.cost_usd:.4f}", str(b.tokens), str(b.model_calls), p95
+            escape(name),
+            str(b.runs),
+            format_cost(b.cost_usd, b.unpriced_calls),
+            str(b.tokens),
+            str(b.model_calls),
+            p95,
         )
     console.print(table)
     console.print(
@@ -724,7 +728,7 @@ def flake_cmd(
     verdict = "[bold green]passed[/]" if report.passed else "[bold red]failed[/]"
     console.print(
         f"{total - failed}/{total} scenario(s) passed the gate ({len(report.flaky)} flaky; "
-        f"{report.runs} runs, ${report.cost_usd:.4f}; gate: "
+        f"{report.runs} runs, {format_cost(report.cost_usd, report.unpriced_calls)}; gate: "
         f"{escape(gate_summary(settings, report.stats_impl))}; "
         f"{interval_name(report.stats_impl)} intervals): {verdict}"
     )

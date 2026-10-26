@@ -44,6 +44,7 @@ from agent_replay.checks.base import Check, CheckResult
 from agent_replay.checks.budget import RELATIVE_LIMITS
 from agent_replay.checks.spec import build_check
 from agent_replay.errors import ConfigError, JudgeCacheMiss, MeasurementError, ReplayError
+from agent_replay.pricing import format_cost
 from agent_replay.runner import RunResult, load_agent, make_client, replay
 from agent_replay.session import Policy, ReplayMode
 from agent_replay.trajectory import StepStatus
@@ -154,6 +155,8 @@ class ScenarioReport(BaseModel):
     """Names of recorded calls the replay never made."""
     output: JsonValue = None
     cost_usd: float = 0.0
+    unpriced_calls: int = 0
+    """Model calls left out of ``cost_usd`` because their model has no price."""
     tokens: int = 0
     duration_ms: float = 0.0
     run_id: str | None = None
@@ -374,6 +377,7 @@ def run_scenario(
         unconsumed=tuple(e.name for e in result.unconsumed),
         output=result.output,
         cost_usd=result.cost_usd,
+        unpriced_calls=result.unpriced_calls,
         tokens=result.tokens,
         duration_ms=round((timer() - started) * 1000, 3),
         baseline=baseline,
@@ -538,10 +542,17 @@ def _fence(lines: Sequence[object]) -> str:
 
 
 def _cost(s: ScenarioReport) -> str:
-    """The cost cell: ``$0.0461``, with the change against the baseline when there is one."""
-    cost = f"${s.cost_usd:.4f}"
+    """The cost cell: ``$0.0461``, with the change against the baseline when there is one.
+
+    No percentage when either side has unpriced model calls: their cost is unknown."""
+    cost = format_cost(s.cost_usd, s.unpriced_calls)
     if s.baseline is None or not s.ran:
         return cost
+    if s.baseline.unpriced_calls:
+        baseline = format_cost(s.baseline.cost_usd, s.baseline.unpriced_calls)
+        return f"{cost} (baseline {baseline})"
+    if s.unpriced_calls:
+        return f"{cost} (baseline {format_cost(s.baseline.cost_usd)})"
     if s.baseline.cost_usd == 0:
         return f"{cost} (baseline $0)"
     return f"{cost} ({(s.cost_usd - s.baseline.cost_usd) / s.baseline.cost_usd * 100:+.1f}%)"

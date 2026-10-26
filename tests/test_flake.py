@@ -832,6 +832,51 @@ def test_markdown_shows_runs_in_flight_when_the_gate_decided() -> None:
     assert f", {extra} more in flight" in describe(scenario)
 
 
+def test_a_report_over_an_unpriced_model_says_unpriced_not_zero(
+    flaky_report: FlakeReport,
+) -> None:
+    # The flaky model answers as `fake:<model>`, which has no price.
+    assert flaky_report.cost_usd == 0
+    assert flaky_report.unpriced_calls > 0
+    assert all(
+        s.unpriced_calls == sum(o.unpriced_calls for o in s.outcomes)
+        for s in flaky_report.scenarios
+    )
+    md = to_markdown(flaky_report)
+    assert "$0.0000" not in md
+    assert f"{flaky_report.runs} runs in" in md
+    assert "s, unpriced. Gate:" in md
+    rows = [line for line in md.splitlines() if line.startswith("| `")]
+    assert all(row.endswith("| unpriced |") for row in rows)
+    data = json.loads(to_json(flaky_report))
+    assert data["unpriced_calls"] == flaky_report.unpriced_calls
+    assert data["scenarios"][0]["unpriced_calls"] == flaky_report.scenarios[0].unpriced_calls
+    assert data["scenarios"][0]["outcomes"][0]["unpriced_calls"] > 0
+
+
+def test_markdown_renders_a_partly_priced_cost(flaky_report: FlakeReport) -> None:
+    first, *rest = flaky_report.scenarios
+    priced = first.model_copy(update={"cost_usd": 0.0123, "unpriced_calls": 3})
+    fully = rest[0].model_copy(update={"cost_usd": 0.5, "unpriced_calls": 0})
+    report = flaky_report.model_copy(update={"scenarios": (priced, fully)})
+    md = to_markdown(report)
+    assert f"`{first.name}`" in md
+    assert "| $0.0123 + 3 unpriced calls |" in md
+    assert "| $0.5000 |" in md
+    assert "s, $0.5123 + 3 unpriced calls. Gate:" in md
+
+
+def test_old_json_reports_without_unpriced_calls_still_load(flaky_report: FlakeReport) -> None:
+    data = json.loads(to_json(flaky_report))
+    del data["unpriced_calls"]
+    for scenario in data["scenarios"]:
+        del scenario["unpriced_calls"]
+        for outcome in scenario["outcomes"]:
+            del outcome["unpriced_calls"]
+    loaded = FlakeReport.model_validate(data)
+    assert loaded.unpriced_calls == 0
+
+
 def test_gate_summary_depends_on_the_implementation() -> None:
     settings = FlakeSettings()
     assert "baseline stand-in for the SPRT" in gate_summary(settings, "baseline")
@@ -886,7 +931,11 @@ def test_cli_passes_with_the_fake_model_and_writes_reports(
     )
     assert result.exit_code == 0, result.output
     assert "2/2 scenario(s) passed the gate" in result.output
+    assert "6 runs, unpriced; gate:" in result.output  # the fake model has no price
+    assert "$0.0000" not in result.output
     data = json.loads(out_json.read_text(encoding="utf-8"))
+    assert data["cost_usd"] == 0
+    assert data["unpriced_calls"] > 0
     assert [s["classification"] for s in data["scenarios"]] == ["passing", "passing"]
     assert data["runs"] == 6
     markdown = out_md.read_text(encoding="utf-8")
