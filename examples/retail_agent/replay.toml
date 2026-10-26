@@ -5,7 +5,7 @@
 # only bites when the tools ran (tools-live) and passes vacuously when they were served.
 
 [defaults]
-agent = "examples.retail_agent.agent:run"
+agent = "examples.retail_agent.mutants:wrong_write_argument"
 mode = "full"
 policy = "strict"
 checks = [
