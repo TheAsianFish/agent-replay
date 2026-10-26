@@ -213,11 +213,29 @@ def test_unrecorded_message_methods_raise_inside_a_session(attr):
     assert session.fatal is not None
 
 
-def test_beta_namespace_raises_inside_a_session():
+def test_unrecorded_beta_resources_raise_inside_a_session():
+    # beta.messages is recorded; every other beta resource is refused, not sent live.
     client = wrap(anthropic.Anthropic(api_key="test-key"))
-    with RecordingSession(), pytest.raises(ReplayError, match=r"client\.beta"):
-        client.beta.messages.create(model="m", max_tokens=1, messages=[])
-    assert client.beta is not None  # fine outside a session
+    with RecordingSession(), pytest.raises(ReplayError, match=r"client\.beta\.files"):
+        client.beta.files.list()
+    with RecordingSession(), pytest.raises(ReplayError, match=r"client\.beta\.models"):
+        client.beta.models.list()
+    # Fine outside a session: the real resources are returned untouched.
+    assert client.beta.files is client._inner.beta.files
+    assert client.beta.models is not None
+
+
+@pytest.mark.parametrize("namespace", ["messages", "beta.messages"])
+def test_count_tokens_raises_inside_a_session_and_says_why(namespace):
+    client = wrap(anthropic.Anthropic(api_key="test-key"))
+    messages = client.beta.messages if namespace == "beta.messages" else client.messages
+    with RecordingSession() as session:
+        assert hasattr(messages, "count_tokens")  # probing is harmless
+        with pytest.raises(ReplayError, match=r"token counting is not supported") as info:
+            messages.count_tokens(model="m", messages=[])
+    assert f"{namespace}.count_tokens is not recorded yet" in str(info.value)
+    assert session.fatal is not None
+    assert callable(messages.count_tokens)  # the real method outside a session
 
 
 def test_async_clients_get_an_async_proxy():
@@ -425,8 +443,11 @@ def test_probing_unrecorded_surfaces_does_not_fail_the_session():
 
 def test_calling_through_an_unrecorded_namespace_raises():
     client = wrap(anthropic.Anthropic(api_key="test-key"))
-    with RecordingSession() as session, pytest.raises(ReplayError, match=r"client\.beta"):
-        client.beta.messages.create(model="m", max_tokens=1, messages=[])
+    with RecordingSession() as session:
+        assert hasattr(client.beta, "files")  # looking it up is harmless
+        assert session.fatal is None
+        with pytest.raises(ReplayError, match=r"client\.beta\.files is not recorded yet"):
+            client.beta.files.list()
     assert session.fatal is not None
 
 
