@@ -29,6 +29,7 @@ from agent_replay.diff import (
     steps_from_cassette,
     steps_from_record,
     steps_from_trajectory,
+    summary,
     to_json,
     to_markdown,
 )
@@ -282,6 +283,22 @@ def test_totals_of_cost_and_latency() -> None:
     assert diff.head_cost_usd == pytest.approx(0.03)
     assert diff.base_latency_ms == 100
     assert diff.head_latency_ms == 250
+
+
+def test_unpriced_model_calls_are_counted_and_not_shown_as_free() -> None:
+    priced = model("hi", response="ok").model_copy(update={"cost_usd": 0.01})
+    unpriced = model("hi", response="ok")
+    unanswered = model("hi")  # never got an answer, so it cost nothing
+    base = indexed([priced, unpriced, tool("a", response="r")])
+    head = indexed([unpriced, unpriced, unanswered])
+    diff = diff_steps(base, head)
+    assert (diff.base_unpriced_calls, diff.head_unpriced_calls) == (1, 2)
+    assert "cost $0.0100 + 1 unpriced call → unpriced; latency" in summary(diff)
+    assert summary(diff) + "." in to_markdown(diff)
+    assert TraceDiff.model_validate_json(to_json(diff)) == diff
+    all_priced = diff_steps([priced], [priced])
+    assert (all_priced.base_unpriced_calls, all_priced.head_unpriced_calls) == (0, 0)
+    assert "cost $0.0100 → $0.0100;" in summary(all_priced)
 
 
 def test_status_cost_and_latency_are_not_compared() -> None:

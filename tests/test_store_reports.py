@@ -206,6 +206,42 @@ def test_run_filters_offset_and_counts(store: Store):
     assert store.scenarios() == ["s0", "s1"]
 
 
+def test_replay_runs_shows_unpriced_cost_as_unpriced(tmp_path: Path):
+    db = f"sqlite:///{tmp_path / 'r.db'}"
+    unpriced = replay(Cassette.load(TOY), toy.run)  # the toy's fake model has no price
+    models = [s for s in unpriced.trajectory.steps if s.kind.value == "model"]
+    first = models[0].index
+    steps = tuple(
+        s.model_copy(update={"cost_usd": 0.0123}) if s.index == first else s
+        for s in unpriced.trajectory.steps
+    )
+    mixed = unpriced.model_copy(
+        update={"trajectory": unpriced.trajectory.model_copy(update={"steps": steps})}
+    )
+    with Store.open(db) as store:
+        for i, (name, result) in enumerate([("all_unpriced", unpriced), ("mixed", mixed)]):
+            store.save_run(
+                result,
+                [],
+                scenario=name,
+                cassette_path=str(TOY),
+                agent="examples.toy_agent.agent:run",
+                passed=True,
+                started_at=T0 + timedelta(minutes=i),
+                duration_ms=1.0,
+            )
+
+    listed = runner.invoke(app, ["runs", "--db", db], env=ENV)
+
+    assert listed.exit_code == 0, listed.output
+    rows = {line.split()[3]: line for line in listed.output.splitlines()[1:]}
+    assert rows["all_unpriced"].rstrip().endswith(" unpriced")
+    assert "$0.0000" not in listed.output
+    calls = len(models) - 1
+    mixed_cost = f"$0.0123 + {calls} unpriced call{'s' if calls != 1 else ''}"
+    assert rows["mixed"].rstrip().endswith(mixed_cost)
+
+
 def test_replay_flake_stores_its_report(tmp_path: Path):
     db = f"sqlite:///{tmp_path / 'r.db'}"
     result = runner.invoke(

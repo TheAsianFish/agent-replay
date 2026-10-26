@@ -164,7 +164,7 @@ export function RunsPage() {
                   <td className={`${tdNum} ${run.approximate_count > 0 ? "font-semibold text-amber-800" : "text-slate-500"}`}>
                     {formatInt(run.approximate_count)}
                   </td>
-                  <td className={tdNum}>{formatCost(run.cost_usd)}</td>
+                  <td className={tdNum}>{formatCost(run.cost_usd, run.unpriced_calls)}</td>
                   <td className={tdNum}>{formatMs(run.duration_ms)}</td>
                   <td className={`${td} font-mono text-xs text-slate-500`}>{shortId(run.id)}</td>
                 </tr>

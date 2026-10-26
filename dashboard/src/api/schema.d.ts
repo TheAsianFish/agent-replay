@@ -1018,6 +1018,11 @@ export interface components {
             base_label?: string | null;
             /** Base Latency Ms */
             base_latency_ms: number;
+            /**
+             * Base Unpriced Calls
+             * @default 0
+             */
+            base_unpriced_calls: number;
             /** Counts */
             counts: {
                 [key: string]: number;
@@ -1030,6 +1035,11 @@ export interface components {
             head_label?: string | null;
             /** Head Latency Ms */
             head_latency_ms: number;
+            /**
+             * Head Unpriced Calls
+             * @default 0
+             */
+            head_unpriced_calls: number;
             /** Rows */
             rows: components["schemas"]["DiffRow"][];
         };

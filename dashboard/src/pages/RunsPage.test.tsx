@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { runPage } from "../test/fixtures";
+import { passingRun, runPage, runSummary } from "../test/fixtures";
 import { type Canned, mockApi, renderAt } from "../test/render";
 
 const scenarios = { body: ["cancel_pending_laptop", "modify_address_suite"] };
@@ -23,6 +23,15 @@ describe("RunsPage", () => {
     expect(await screen.findByTestId("health")).toHaveTextContent("sqlite");
     expect(screen.getByTestId("health")).toHaveTextContent("0002");
     expect(screen.getByText("1–2 of 2")).toBeInTheDocument();
+  });
+
+  it("shows unpriced runs as unpriced, not as free", async () => {
+    const unpriced = runSummary({ id: "cccccccc11112222333344445555666", cost_usd: 0, unpriced_calls: 4 });
+    mockApi({ "/api/runs": { body: { total: 2, items: [passingRun, unpriced] } }, "/api/scenarios": scenarios });
+    renderAt("/");
+    expect(await screen.findByText("unpriced", { selector: "td" })).toBeInTheDocument();
+    expect(screen.getByText("$0.0123", { selector: "td" })).toBeInTheDocument();
+    expect(screen.queryByText("$0.00", { selector: "td" })).not.toBeInTheDocument();
   });
 
   it("sends filters to the API", async () => {

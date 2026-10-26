@@ -2157,6 +2157,11 @@
             "title": "Base Latency Ms",
             "type": "number"
           },
+          "base_unpriced_calls": {
+            "default": 0,
+            "title": "Base Unpriced Calls",
+            "type": "integer"
+          },
           "counts": {
             "additionalProperties": {
               "type": "integer"
@@ -2186,6 +2191,11 @@
           "head_latency_ms": {
             "title": "Head Latency Ms",
             "type": "number"
+          },
+          "head_unpriced_calls": {
+            "default": 0,
+            "title": "Head Unpriced Calls",
+            "type": "integer"
           },
           "rows": {
             "items": {

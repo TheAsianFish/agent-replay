@@ -117,7 +117,7 @@ export function DiffView({ base, head, diff }: { base: RunSummary; head: RunSumm
             ))}
           </span>
         </Stat>
-        <Stat label="Cost">{formatCost(diff.base_cost_usd)} → {formatCost(diff.head_cost_usd)}</Stat>
+        <Stat label="Cost">{formatCost(diff.base_cost_usd, diff.base_unpriced_calls)} → {formatCost(diff.head_cost_usd, diff.head_unpriced_calls)}</Stat>
         <Stat label="Latency">{formatMs(diff.base_latency_ms)} → {formatMs(diff.head_latency_ms)}</Stat>
       </section>
       {diff.rows.length === 0 ? (

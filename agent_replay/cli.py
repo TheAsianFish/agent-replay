@@ -801,7 +801,7 @@ def runs_cmd(
                         r.mode,
                         "[green]pass[/]" if r.passed else "[red]fail[/]",
                         str(r.step_count),
-                        f"${r.cost_usd:.4f}",
+                        format_cost(r.cost_usd, r.unpriced_calls),
                     )
                 console.print(table if runs else "No runs stored yet; run `replay ci`.")
                 return

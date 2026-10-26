@@ -113,6 +113,8 @@ export const diff: RunDiff = {
     counts: { same: 1, changed: 1, added: 1, removed: 1 },
     base_cost_usd: 0.01,
     head_cost_usd: 0.02,
+    base_unpriced_calls: 0,
+    head_unpriced_calls: 0,
     base_latency_ms: 1200,
     head_latency_ms: 900,
     rows: [

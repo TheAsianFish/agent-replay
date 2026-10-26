@@ -41,6 +41,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from agent_replay._json import canonical_json
 from agent_replay.cassette import Cassette, Kind
+from agent_replay.pricing import format_cost
 from agent_replay.store import RunRecord, StepRecord
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
@@ -170,6 +171,9 @@ class TraceDiff(BaseModel):
     """Rows per op; every op is present."""
     base_cost_usd: float
     head_cost_usd: float
+    base_unpriced_calls: int = 0
+    """Model calls on the base side that ``base_cost_usd`` leaves out: no price."""
+    head_unpriced_calls: int = 0
     base_latency_ms: float
     head_latency_ms: float
 
@@ -345,6 +349,15 @@ def _total(values: Iterable[float | None]) -> float:
     return sum(v for v in values if v is not None)
 
 
+def _unpriced(steps: Iterable[DiffStep]) -> int:
+    """Answered model calls without a cost, as :meth:`Trajectory.unpriced_calls` counts them."""
+    return sum(
+        1
+        for s in steps
+        if s.kind == Kind.MODEL.value and s.cost_usd is None and s.response is not None
+    )
+
+
 def diff_steps(
     base: Sequence[DiffStep],
     head: Sequence[DiffStep],
@@ -365,6 +378,8 @@ def diff_steps(
         counts=dict(counts),
         base_cost_usd=_total(s.cost_usd for s in base),
         head_cost_usd=_total(s.cost_usd for s in head),
+        base_unpriced_calls=_unpriced(base),
+        head_unpriced_calls=_unpriced(head),
         base_latency_ms=_total(s.latency_ms for s in base),
         head_latency_ms=_total(s.latency_ms for s in head),
     )
@@ -406,8 +421,10 @@ def summary(diff: TraceDiff) -> str:
     """One line: distance, row counts, cost and latency of each side."""
     counts = ", ".join(f"{diff.counts[op]} {op}" for op in OPS)
     return (
-        f"distance {cost_text(diff.distance)} ({counts}); cost ${diff.base_cost_usd:.4f} → "
-        f"${diff.head_cost_usd:.4f}; latency {diff.base_latency_ms:.0f} ms → "
+        f"distance {cost_text(diff.distance)} ({counts}); cost "
+        f"{format_cost(diff.base_cost_usd, diff.base_unpriced_calls)} → "
+        f"{format_cost(diff.head_cost_usd, diff.head_unpriced_calls)}; "
+        f"latency {diff.base_latency_ms:.0f} ms → "
         f"{diff.head_latency_ms:.0f} ms"
     )
 
