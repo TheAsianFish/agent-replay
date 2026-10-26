@@ -196,3 +196,26 @@ def test_a_client_made_for_the_run_is_closed_on_its_own_loop():
     result = replay(cassette, agent.run, mode="model-live", client=client, close_client=True)
     assert result.ok, result.error
     assert closed == [True]
+
+
+async def _run_with_max_retries(client, task):
+    # ModelSettings(max_retries=...) sends each request through client.with_options(
+    # http_client=client._client, max_retries=...), a copy the replay must still serve.
+    reset()
+    built = agent.build_agent(client)
+    result = await built.run(task, model_settings={"max_retries": 0})
+    return result.output
+
+
+def test_an_agent_that_sets_max_retries_replays_in_full_without_a_client():
+    path = EXAMPLE / "cassettes" / "cheapest_fare_in_euros.jsonl"
+    cassette = Cassette.load(path)
+    result = replay(cassette, _run_with_max_retries, mode="full")
+    assert result.error is None, result.error
+    assert {s.status for s in result.trajectory.steps} == {StepStatus.EXACT}
+
+
+def test_an_agent_that_sets_max_retries_records_through_the_wrapped_fake():
+    task = TASKS["cheapest_fare_in_euros"].text
+    _, cassette = record(_run_with_max_retries, task, client=fake_model.make_client())
+    assert sum(e.kind is Kind.MODEL for e in cassette.envelopes) == 3

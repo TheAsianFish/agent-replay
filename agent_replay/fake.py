@@ -274,6 +274,8 @@ class FakeAnthropic:
 
     base_url = "https://fake.invalid"
     """Read by frameworks (pydantic-ai's ``provider_url``); never contacted."""
+    _client = None
+    """Read by pydantic-ai when ``max_retries`` is set (the wrapper's copy is the fake)."""
 
     def __init__(self, policy: Policy) -> None:
         model = _FakeModel(policy)
@@ -292,6 +294,7 @@ class FakeAsyncAnthropic:
     """
 
     base_url = "https://fake.invalid"
+    _client = None
 
     def __init__(self, policy: Policy) -> None:
         model = _FakeModel(policy)

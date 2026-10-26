@@ -378,6 +378,8 @@ def test_with_options_returns_a_wrapped_client_whose_calls_are_recorded() -> Non
     assert real.with_options(max_retries=0)._inner.max_retries == 0  # type: ignore[attr-defined]
     real_async = wrap(anthropic.AsyncAnthropic(api_key="test-key"))
     assert type(real_async.with_options(max_retries=0)) is type(real_async)
+    assert type(real.with_middleware()) is type(real)
+    assert type(real_async.with_middleware()) is type(real_async)
 
     client = wrap(_OptionsFake(policy()))
     with RecordingSession() as session:

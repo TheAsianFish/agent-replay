@@ -516,10 +516,16 @@ class _ClientProxy(WrappedClient):
 
         pydantic-ai sends a request that sets ``max_retries`` through such a copy;
         without this the copy would be the bare client and the call would go live.
+        A client with no options to copy (the fakes, the offline stand-ins) is its own copy.
         """
-        return type(self)(self._inner.with_options(**kwargs))
+        with_options = getattr(self._inner, "with_options", None)
+        return self if with_options is None else type(self)(with_options(**kwargs))
 
     copy = with_options
+
+    def with_middleware(self, *middleware: Any) -> Any:
+        """:meth:`with_options` for ``client.with_middleware(...)``: the copy stays recorded."""
+        return type(self)(self._inner.with_middleware(*middleware))
 
     def __getattr__(self, name: str) -> Any:
         if name in _UNRECORDED_CLIENT and current_session() is not None:
@@ -561,13 +567,16 @@ def _offline_error() -> ReplayError:
 class _OfflineOptions:
     """The client options frameworks read without making a call.
 
-    pydantic-ai reads ``base_url`` (into every response's ``provider_url``) and
-    ``timeout``; the SDK's defaults stand in, since no request is ever sent.
+    pydantic-ai reads ``base_url`` (into every response's ``provider_url``),
+    ``timeout`` and, for ``max_retries``, ``_client``; the SDK's defaults stand in,
+    since no request is ever sent.
     """
 
     base_url = "https://api.anthropic.com"
     timeout = anthropic.DEFAULT_TIMEOUT
     max_retries = anthropic.DEFAULT_MAX_RETRIES
+    _client = None
+    """pydantic-ai passes it to ``with_options(http_client=...)`` when ``max_retries`` is set."""
 
 
 class _Offline(_OfflineOptions):
