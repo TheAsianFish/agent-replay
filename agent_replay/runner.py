@@ -135,7 +135,8 @@ def _run_agent(agent: Agent, client: object, task: str, *, close_client: bool = 
     ``close_client``: the client was made for this run (``--client``), so an async one
     is closed on that loop once the agent is done. Left open, its connection pool is
     closed later by the garbage collector, on a loop that no longer exists, and every
-    run prints a ``RuntimeError: Event loop is closed`` traceback.
+    run prints a ``RuntimeError: Event loop is closed`` traceback. So a ``--client``
+    factory must return a fresh client on every call, not a cached one.
     """
     if inspect.iscoroutinefunction(agent):
         return asyncio.run(_closing(agent(client, task), client, close_client))
@@ -151,7 +152,10 @@ async def _closing(work: Awaitable[object], client: object, close: bool) -> obje
     finally:
         aclose = getattr(client, "close", None) if close else None
         if aclose is not None and inspect.iscoroutinefunction(aclose):
-            await aclose()
+            try:
+                await aclose()
+            except Exception as exc:  # the run's own result or error is what matters
+                log.warning("run.client_close_error", error=repr(exc))
 
 
 async def _await(awaitable: Any) -> object:

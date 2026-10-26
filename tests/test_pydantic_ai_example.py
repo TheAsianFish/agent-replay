@@ -198,6 +198,17 @@ def test_a_client_made_for_the_run_is_closed_on_its_own_loop():
     assert closed == [True]
 
 
+def test_a_client_that_fails_to_close_keeps_the_runs_result():
+    class Broken(FakeAsyncAnthropic):
+        async def close(self) -> None:
+            raise RuntimeError("pool already closed")
+
+    cassette = Cassette.load(EXAMPLE / "cassettes" / "cheapest_fare_in_euros.jsonl")
+    client = Broken(fake_model.policy)
+    result = replay(cassette, agent.run, mode="model-live", client=client, close_client=True)
+    assert result.ok, result.error
+
+
 async def _run_with_max_retries(client, task):
     # ModelSettings(max_retries=...) sends each request through client.with_options(
     # http_client=client._client, max_retries=...), a copy the replay must still serve.
