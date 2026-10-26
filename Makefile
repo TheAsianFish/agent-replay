@@ -152,7 +152,7 @@ record-pydantic-ai:
 # Both of its suites replayed in full (every step exact, 0 approximate); then, when Ollama
 # serves qwen2.5:7b, `replay flake` in model-live, 10 runs per scenario, raw report and
 # summary (passes, approximate steps per run, wall time, CPU) to eval/results/m9_flake_qwen*.
-# Without Ollama the flake part is skipped with a message. About 30-60 minutes on 4 CPUs.
+# Without Ollama the flake part is skipped with a message. The measured run took 17 minutes on 4 CPUs.
 eval-pydantic-ai:
 	uv run python -m eval.pydantic_ai --runs 10
 
