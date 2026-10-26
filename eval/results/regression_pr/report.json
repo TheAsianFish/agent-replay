@@ -1,0 +1,720 @@
+{
+  "suite": "examples/retail_agent/replay.toml",
+  "passed": false,
+  "started_at": "2026-10-26T18:47:03.697516Z",
+  "duration_ms": 258.897,
+  "git_sha": "779675f4eaaa912ee96caf574a6f1257abcad837",
+  "suite_id": null,
+  "scenarios": [
+    {
+      "name": "cancel_pending_laptop",
+      "cassette": "examples/retail_agent/cassettes/cancel_pending_laptop.jsonl",
+      "agent": "examples.retail_agent.mutants:wrong_write_argument",
+      "mode": "full",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "6 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "cancel_pending_order"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "cancel_pending_order"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "6 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 6,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0,
+            "max_cost_usd": null,
+            "tokens": 18644,
+            "max_tokens": null,
+            "model_calls": 5,
+            "max_model_calls": 8,
+            "p95_latency_ms": 7.604,
+            "max_p95_latency_ms": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": false,
+          "message": "action #1: expected ('cancel_pending_order', {'order_id': '#W2417020', 'reason': 'no longer needed'}), got ('cancel_pending_order', {'order_id': '#W2417020', 'reason': 'ordered by mistake'})",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "rule:db_matches_ground_truth",
+          "passed": true,
+          "message": "not applicable: 6 tool call(s) were served from the cassette, so the run did not touch the database",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "arg_schema:cancel_pending_order",
+          "passed": true,
+          "message": "1 call(s) to cancel_pending_order match the JSON schema",
+          "details": {
+            "tool": "cancel_pending_order",
+            "calls": 1,
+            "failures": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 11,
+        "by_status": {
+          "exact": 10,
+          "approximate": 1
+        }
+      },
+      "unconsumed": [],
+      "output": "Done: order #W2417020 is now cancelled.",
+      "cost_usd": 0.0,
+      "tokens": 18644,
+      "duration_ms": 70.488,
+      "run_id": null,
+      "baseline": null,
+      "failed_checks": [
+        "rule:matches_ground_truth"
+      ],
+      "advisory_failures": []
+    },
+    {
+      "name": "modify_address_suite",
+      "cassette": "examples/retail_agent/cassettes/modify_address_suite.jsonl",
+      "agent": "examples.retail_agent.mutants:wrong_write_argument",
+      "mode": "full",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "4 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "modify_pending_order_address"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "modify_pending_order_address"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "4 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 4,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0,
+            "max_cost_usd": null,
+            "tokens": 14639,
+            "max_tokens": null,
+            "model_calls": 4,
+            "max_model_calls": 8,
+            "p95_latency_ms": 0.903,
+            "max_p95_latency_ms": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": false,
+          "message": "action #1: expected ('modify_pending_order_address', {'order_id': '#W8665881', 'address1': '123 Elm Street', 'address2': 'Suite 641', 'city': 'Austin', 'state': 'TX', 'country': 'USA', 'zip': '78712'}), got ('modify_pending_order_address', {'order_id': '#W8665881', 'address1': '123 Elm Street', 'address2': '', 'city': 'Austin', 'state': 'TX', 'country': 'USA', 'zip': '78712'})",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "rule:db_matches_ground_truth",
+          "passed": true,
+          "message": "not applicable: 4 tool call(s) were served from the cassette, so the run did not touch the database",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "required_tools",
+          "passed": true,
+          "message": "all 2 required tool(s) were called",
+          "details": {
+            "required": [
+              "get_order_details",
+              "modify_pending_order_address"
+            ],
+            "missing": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 8,
+        "by_status": {
+          "exact": 7,
+          "approximate": 1
+        }
+      },
+      "unconsumed": [],
+      "output": "Done: order #W8665881 will ship to 123 Elm Street, Suite 641, Austin, TX 78712.",
+      "cost_usd": 0.0,
+      "tokens": 14639,
+      "duration_ms": 30.342,
+      "run_id": null,
+      "baseline": null,
+      "failed_checks": [
+        "rule:matches_ground_truth"
+      ],
+      "advisory_failures": []
+    },
+    {
+      "name": "return_damaged_bicycle",
+      "cassette": "examples/retail_agent/cassettes/return_damaged_bicycle.jsonl",
+      "agent": "examples.retail_agent.mutants:wrong_write_argument",
+      "mode": "full",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "7 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "return_delivered_order_items"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "return_delivered_order_items"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "7 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 7,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0,
+            "max_cost_usd": null,
+            "tokens": 19877,
+            "max_tokens": null,
+            "model_calls": 5,
+            "max_model_calls": 8,
+            "p95_latency_ms": 1.005,
+            "max_p95_latency_ms": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": false,
+          "message": "action #1: expected ('return_delivered_order_items', {'order_id': '#W3916020', 'item_ids': ['7758198585'], 'payment_method_id': 'credit_card_8105988'}), got ('return_delivered_order_items', {'order_id': '#W3916020', 'item_ids': ['7758198585'], 'payment_method_id': 'gift_card_0000000'})",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "rule:db_matches_ground_truth",
+          "passed": true,
+          "message": "not applicable: 7 tool call(s) were served from the cassette, so the run did not touch the database",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "arg_schema:return_delivered_order_items",
+          "passed": true,
+          "message": "1 call(s) to return_delivered_order_items match the JSON schema",
+          "details": {
+            "tool": "return_delivered_order_items",
+            "calls": 1,
+            "failures": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 12,
+        "by_status": {
+          "exact": 11,
+          "approximate": 1
+        }
+      },
+      "unconsumed": [],
+      "output": "Done: order #W3916020 is now return requested.",
+      "cost_usd": 0.0,
+      "tokens": 19877,
+      "duration_ms": 39.396,
+      "run_id": null,
+      "baseline": null,
+      "failed_checks": [
+        "rule:matches_ground_truth"
+      ],
+      "advisory_failures": []
+    },
+    {
+      "name": "exchange_waterproof_boots",
+      "cassette": "examples/retail_agent/cassettes/exchange_waterproof_boots.jsonl",
+      "agent": "examples.retail_agent.mutants:wrong_write_argument",
+      "mode": "full",
+      "policy": "strict",
+      "passed": false,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "8 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_product_details",
+              "exchange_delivered_order_items"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_order_details",
+              "get_product_details",
+              "exchange_delivered_order_items"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "8 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 8,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0,
+            "max_cost_usd": null,
+            "tokens": 26941,
+            "max_tokens": null,
+            "model_calls": 6,
+            "max_model_calls": 8,
+            "p95_latency_ms": 1.107,
+            "max_p95_latency_ms": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": false,
+          "message": "action #1: expected ('exchange_delivered_order_items', {'order_id': '#W7181492', 'item_ids': ['8118291112'], 'new_item_ids': ['8277474082'], 'payment_method_id': 'paypal_3024827'}), got ('exchange_delivered_order_items', {'order_id': '#W7181492', 'item_ids': ['8118291112'], 'new_item_ids': ['8277474082'], 'payment_method_id': 'gift_card_0000000'})",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "rule:db_matches_ground_truth",
+          "passed": true,
+          "message": "not applicable: 8 tool call(s) were served from the cassette, so the run did not touch the database",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "required_tools",
+          "passed": true,
+          "message": "all 2 required tool(s) were called",
+          "details": {
+            "required": [
+              "get_product_details",
+              "exchange_delivered_order_items"
+            ],
+            "missing": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 14,
+        "by_status": {
+          "exact": 13,
+          "approximate": 1
+        }
+      },
+      "unconsumed": [],
+      "output": "Done: order #W7181492 is now exchange requested.",
+      "cost_usd": 0.0,
+      "tokens": 26941,
+      "duration_ms": 46.895,
+      "run_id": null,
+      "baseline": null,
+      "failed_checks": [
+        "rule:matches_ground_truth"
+      ],
+      "advisory_failures": []
+    },
+    {
+      "name": "lookup_latest_order_total",
+      "cassette": "examples/retail_agent/cassettes/lookup_latest_order_total.jsonl",
+      "agent": "examples.retail_agent.mutants:wrong_write_argument",
+      "mode": "full",
+      "policy": "strict",
+      "passed": true,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "3 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details"
+            ],
+            "actual": [
+              "find_user_id_by_name_zip",
+              "get_user_details",
+              "get_order_details"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "3 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 3,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0,
+            "max_cost_usd": null,
+            "tokens": 13443,
+            "max_tokens": null,
+            "model_calls": 4,
+            "max_model_calls": 8,
+            "p95_latency_ms": 0.825,
+            "max_p95_latency_ms": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "rule:db_matches_ground_truth",
+          "passed": true,
+          "message": "not applicable: 3 tool call(s) were served from the cassette, so the run did not touch the database",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "forbidden_tools",
+          "passed": true,
+          "message": "no forbidden tool was called",
+          "details": {
+            "forbidden": [
+              "cancel_pending_order",
+              "modify_pending_order_address",
+              "return_delivered_order_items",
+              "exchange_delivered_order_items"
+            ],
+            "calls": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "output_schema",
+          "passed": true,
+          "message": "output matches the JSON schema",
+          "details": {},
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 7,
+        "by_status": {
+          "exact": 7
+        }
+      },
+      "unconsumed": [],
+      "output": "You paid $829.43 for your most recent order, #W6729841.",
+      "cost_usd": 0.0,
+      "tokens": 13443,
+      "duration_ms": 30.555,
+      "run_id": null,
+      "baseline": null,
+      "failed_checks": [],
+      "advisory_failures": []
+    },
+    {
+      "name": "transfer_swapped_refunds",
+      "cassette": "examples/retail_agent/cassettes/transfer_swapped_refunds.jsonl",
+      "agent": "examples.retail_agent.mutants:wrong_write_argument",
+      "mode": "full",
+      "policy": "strict",
+      "passed": true,
+      "ran": true,
+      "error": null,
+      "checks": [
+        {
+          "check": "tool_sequence",
+          "passed": true,
+          "message": "5 tool call(s) match the expected sequence (exact)",
+          "details": {
+            "mode": "exact",
+            "expected": [
+              "find_user_id_by_email",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "transfer_to_human_agents"
+            ],
+            "actual": [
+              "find_user_id_by_email",
+              "get_user_details",
+              "get_order_details",
+              "get_order_details",
+              "transfer_to_human_agents"
+            ]
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:checked_before_writing",
+          "passed": true,
+          "message": "authenticated and checked every order before writing",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "max_tool_calls",
+          "passed": true,
+          "message": "5 tool call(s), within the limit of 12",
+          "details": {
+            "limit": 12,
+            "count": 5,
+            "tool": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "budget",
+          "passed": true,
+          "message": "within budget (model_calls)",
+          "details": {
+            "cost_usd": 0.0,
+            "max_cost_usd": null,
+            "tokens": 18202,
+            "max_tokens": null,
+            "model_calls": 5,
+            "max_model_calls": 8,
+            "p95_latency_ms": 1.128,
+            "max_p95_latency_ms": null
+          },
+          "advisory": false
+        },
+        {
+          "check": "rule:matches_ground_truth",
+          "passed": true,
+          "message": "all expected outputs present",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "rule:db_matches_ground_truth",
+          "passed": true,
+          "message": "not applicable: 5 tool call(s) were served from the cassette, so the run did not touch the database",
+          "details": {},
+          "advisory": false
+        },
+        {
+          "check": "required_tools",
+          "passed": true,
+          "message": "all 1 required tool(s) were called",
+          "details": {
+            "required": [
+              "transfer_to_human_agents"
+            ],
+            "missing": []
+          },
+          "advisory": false
+        },
+        {
+          "check": "forbidden_tools",
+          "passed": true,
+          "message": "no forbidden tool was called",
+          "details": {
+            "forbidden": [
+              "cancel_pending_order",
+              "modify_pending_order_address",
+              "return_delivered_order_items",
+              "exchange_delivered_order_items"
+            ],
+            "calls": []
+          },
+          "advisory": false
+        }
+      ],
+      "steps": {
+        "total": 10,
+        "by_status": {
+          "exact": 10
+        }
+      },
+      "unconsumed": [],
+      "output": "A human agent will take it from here.",
+      "cost_usd": 0.0,
+      "tokens": 18202,
+      "duration_ms": 37.821,
+      "run_id": null,
+      "baseline": null,
+      "failed_checks": [],
+      "advisory_failures": []
+    }
+  ],
+  "failed": [
+    "cancel_pending_laptop",
+    "modify_address_suite",
+    "return_damaged_bicycle",
+    "exchange_waterproof_boots"
+  ],
+  "broken": []
+}

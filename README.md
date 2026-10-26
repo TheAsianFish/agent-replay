@@ -126,7 +126,7 @@ the rows still to measure.
 | Fixed-sample gate meeting α = β = 0.05 | 24 runs (pass on ≥ 19); a fixed-20 majority gate false-passes 13.4% at p = 0.6 | `make bench-sprt` |
 | Recorder overhead (median) | ~0.7 ms per model call (12.5 KB request), ~0.1 ms per tool call, ~50 µs per clock read | `make bench-replay` |
 | Replay speed | `full` replay of the six live recordings with checks: 222 ms against 51 s spent in live calls (230×) | `make bench-replay` |
-| The Action on a real failing PR | to measure: one maintainer command opens it (rehearsed locally: the seeded `wrong_write_argument` PR fails 4 of 6 scenarios, all on `rule:matches_ground_truth`) | `make regression-pr` |
+| The Action on a real failing PR | [PR #13](https://github.com/TheAsianFish/agent-replay/pull/13): the seeded `wrong_write_argument` regression fails the check, 4 of 6 scenarios on `rule:matches_ground_truth`, in a 26 s job | `make regression-pr` |
 | **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
 
 ## Install
@@ -1088,8 +1088,10 @@ for every measured number, [RELEASE.md](RELEASE.md) for the release steps and
 Next (evolution round 1, 2026-10-21; evidence and hypotheses in
 [PLAN.md](PLAN.md), "Evolution round 1"):
 
-8. The Action on a real failing pull request, and a recorded walkthrough of
-   the dashboard (runs, aligned diff, flakiness) in place of the terminal GIF
+8. ~~The Action on a real failing pull request, and a recorded walkthrough of
+   the dashboard (runs, aligned diff, flakiness) in place of the terminal GIF~~
+   (done: [PR #13](https://github.com/TheAsianFish/agent-replay/pull/13) and
+   the walkthrough above)
 9. Dogfood on [pydantic-ai](https://github.com/pydantic/pydantic-ai) through
    Ollama: record the `beta` messages surface the framework uses, commit a
    cassette from a local model (qwen2.5:7b), replay it in `full` and

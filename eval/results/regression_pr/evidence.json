@@ -1,0 +1,50 @@
+{
+  "question": "Does the GitHub Action stop a bad PR in practice?",
+  "pr_url": "https://github.com/TheAsianFish/agent-replay/pull/13",
+  "mutant": "wrong_write_argument",
+  "source": "origin/main",
+  "head_sha": "90b5bc1be1081d4858eab9d80b3d6f00a849d7f3",
+  "run_url": "https://github.com/TheAsianFish/agent-replay/actions/runs/40380755513",
+  "check_url": "https://github.com/TheAsianFish/agent-replay/actions/runs/40380755513/job/121775995565",
+  "conclusion": "failure",
+  "job_started_at": "2026-10-26T18:46:43Z",
+  "job_completed_at": "2026-10-26T18:47:09Z",
+  "job_wall_seconds": 26.0,
+  "run_wall_seconds": 28.0,
+  "replay_ci_duration_ms": 258.897,
+  "scenarios": {
+    "failed": [
+      {
+        "name": "cancel_pending_laptop",
+        "failed_checks": [
+          "rule:matches_ground_truth"
+        ]
+      },
+      {
+        "name": "modify_address_suite",
+        "failed_checks": [
+          "rule:matches_ground_truth"
+        ]
+      },
+      {
+        "name": "return_damaged_bicycle",
+        "failed_checks": [
+          "rule:matches_ground_truth"
+        ]
+      },
+      {
+        "name": "exchange_waterproof_boots",
+        "failed_checks": [
+          "rule:matches_ground_truth"
+        ]
+      }
+    ],
+    "passed": [
+      "lookup_latest_order_total",
+      "transfer_swapped_refunds"
+    ]
+  },
+  "comment_url": "https://github.com/TheAsianFish/agent-replay/pull/13#issuecomment-6424518479",
+  "comment_created_at": "2026-10-26T18:47:05Z",
+  "captured_at": "2026-10-26T18:47:15+00:00"
+}
