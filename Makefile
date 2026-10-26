@@ -5,7 +5,8 @@
 	bench-sprt flake-demo eval-mutations openapi serve demo-data ui ui-check dist \
 	golden record-golden eval-judge eval-judge-objective token-rates \
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
-	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough
+	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough \
+	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -96,7 +97,8 @@ bench-replay-record:
 
 # Every offline evaluation: the mutation study, the judge against the checks and against the
 # golden set's objective labels, the LLMBar heuristic floors, the token-rate check. No key.
-eval: eval-mutations eval-judge-smoke eval-judge-objective eval-llmbar-heuristics token-rates
+eval: eval-mutations eval-judge-smoke eval-judge-objective eval-llmbar-heuristics token-rates \
+	eval-pydantic-ai-offline
 
 # Every offline benchmark: the sequential gate simulation and replay speed. No key.
 bench: bench-sprt bench-replay
@@ -134,6 +136,29 @@ eval-judge-objective:
 # ~25 s). The JSON is byte-stable across runs.
 eval-mutations:
 	uv run python eval/mutation_study.py --out eval/results/mutations.json
+
+# The pydantic-ai travel desk (examples/pydantic_ai_agent): re-record its fake-model
+# cassettes (offline, instant).
+pydantic-ai-cassettes:
+	uv run python -m examples.pydantic_ai_agent.record_all
+
+# Re-record its qwen2.5:7b cassettes through Ollama: up to 5 attempts per task, the first
+# that passes the suite's checks is kept, every attempt is logged to
+# eval/results/m9_qwen_recording.json. Needs `ollama serve` and `ollama pull qwen2.5:7b`;
+# CPU only, several minutes. Locally or from the manual Ollama workflow, never on a PR.
+record-pydantic-ai:
+	uv run python -m examples.pydantic_ai_agent.record_all --live
+
+# Both of its suites replayed in full (every step exact, 0 approximate); then, when Ollama
+# serves qwen2.5:7b, `replay flake` in model-live, 10 runs per scenario, raw report and
+# summary (passes, approximate steps per run, wall time, CPU) to eval/results/m9_flake_qwen*.
+# Without Ollama the flake part is skipped with a message. About 30-60 minutes on 4 CPUs.
+eval-pydantic-ai:
+	uv run python -m eval.pydantic_ai --runs 10
+
+# The offline half of eval-pydantic-ai (part of `make eval`, so CI runs it).
+eval-pydantic-ai-offline:
+	uv run python -m eval.pydantic_ai --offline
 
 # Regenerate the API schema the dashboard's TypeScript types come from.
 openapi:

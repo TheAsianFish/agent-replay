@@ -1,0 +1,62 @@
+name: Local model (Ollama)
+
+# The pydantic-ai example against qwen2.5:7b on the runner's CPU: re-record its live
+# cassettes and/or run `make eval-pydantic-ai` (replay flake in model-live, 10 runs per
+# scenario). Free (an open model, no key) but slow: started by hand only, never on a
+# push or pull request. Results come back as an artifact to review and commit.
+on:
+  workflow_dispatch:
+    inputs:
+      record:
+        description: "Re-record the qwen2.5:7b cassettes first (make record-pydantic-ai)"
+        type: boolean
+        default: false
+      runs:
+        description: "model-live runs per scenario"
+        type: number
+        default: 10
+
+permissions:
+  contents: read
+
+jobs:
+  ollama:
+    name: pydantic-ai travel desk on qwen2.5:7b
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      OLLAMA_VERSION: v0.40.11
+      MODEL: qwen2.5:7b
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install
+        run: uv sync --locked --all-extras
+      - name: Cache the model
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ env.MODEL }}
+      - name: Install and start Ollama
+        run: |
+          curl -fsSL -o /tmp/ollama.tar.zst \
+            "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-linux-amd64.tar.zst"
+          mkdir -p /tmp/ollama && tar --use-compress-program=unzstd -xf /tmp/ollama.tar.zst -C /tmp/ollama
+          OLLAMA_NUM_PARALLEL=1 nohup /tmp/ollama/bin/ollama serve > /tmp/ollama.log 2>&1 &
+          for _ in $(seq 30); do curl -fs localhost:11434/api/version && break; sleep 1; done
+          /tmp/ollama/bin/ollama pull "$MODEL"
+      - name: Re-record the live cassettes
+        if: ${{ inputs.record }}
+        run: make record-pydantic-ai
+      - name: replay ci in full, then replay flake in model-live
+        run: uv run python -m eval.pydantic_ai --runs ${{ inputs.runs }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pydantic-ai-qwen
+          path: |
+            eval/results/m9_*
+            examples/pydantic_ai_agent/cassettes/qwen/
+            /tmp/ollama.log
