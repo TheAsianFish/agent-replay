@@ -539,6 +539,11 @@ export interface components {
             suite: string;
             /** Suite Id */
             suite_id: string | null;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /** FlakeReportSummary */
         FlakeReportSummary: {
@@ -571,6 +576,11 @@ export interface components {
             suite: string;
             /** Suite Id */
             suite_id: string | null;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /** FlakeScenarioRecord */
         FlakeScenarioRecord: {
@@ -611,6 +621,11 @@ export interface components {
             policy: string;
             /** Runs */
             runs: number;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /**
          * FlakeSettings
@@ -865,6 +880,11 @@ export interface components {
             tokens: number;
             /** Unconsumed Count */
             unconsumed_count: number;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /** RunSummary */
         RunSummary: {
@@ -909,6 +929,11 @@ export interface components {
             tokens: number;
             /** Unconsumed Count */
             unconsumed_count: number;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /**
          * SelfConsistency

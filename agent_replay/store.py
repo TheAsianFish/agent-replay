@@ -123,6 +123,8 @@ class RunRow(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     output: Mapped[Any] = mapped_column(JSON)
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    unpriced_calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    """Model calls left out of ``cost_usd`` because their model has no price."""
     tokens: Mapped[int] = mapped_column(Integer, default=0)
     step_count: Mapped[int] = mapped_column(Integer, default=0)
     approximate_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -190,6 +192,8 @@ class FlakeReportRow(Base):
     flaky_count: Mapped[int] = mapped_column(Integer)
     run_count: Mapped[int] = mapped_column(Integer)
     cost_usd: Mapped[float] = mapped_column(Float)
+    unpriced_calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    """Model calls left out of ``cost_usd`` because their model has no price."""
 
     scenarios: Mapped[list[FlakeScenarioRow]] = relationship(
         order_by="FlakeScenarioRow.position", cascade="all, delete-orphan", passive_deletes=True
@@ -219,6 +223,8 @@ class FlakeScenarioRow(Base):
     executed: Mapped[int] = mapped_column(Integer)
     concurrency: Mapped[int] = mapped_column(Integer)
     cost_usd: Mapped[float] = mapped_column(Float)
+    unpriced_calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    """Model calls left out of ``cost_usd`` because their model has no price."""
     error: Mapped[Any | None] = mapped_column(JSON, nullable=True)
     outcomes: Mapped[list[Any]] = mapped_column(JSON)
 
@@ -269,6 +275,8 @@ class RunSummary(_Model):
     error_type: str | None
     error_message: str | None
     cost_usd: float
+    unpriced_calls: int = 0
+    """Model calls left out of ``cost_usd`` because their model has no price."""
     tokens: int
     step_count: int
     approximate_count: int
@@ -326,6 +334,8 @@ class FlakeReportSummary(_Model):
     flaky_count: int
     run_count: int
     cost_usd: float
+    unpriced_calls: int = 0
+    """Model calls left out of ``cost_usd`` because their model has no price."""
 
 
 class FlakeScenarioRecord(_Model):
@@ -345,6 +355,8 @@ class FlakeScenarioRecord(_Model):
     executed: int
     concurrency: int
     cost_usd: float
+    unpriced_calls: int = 0
+    """Model calls left out of ``cost_usd`` because their model has no price."""
     error: ErrorInfo | None
     outcomes: list[RunOutcome]
 
@@ -605,6 +617,7 @@ class Store:
             error_message=result.error.message if result.error else None,
             output=result.output,
             cost_usd=result.cost_usd,
+            unpriced_calls=result.unpriced_calls,
             tokens=result.tokens,
             step_count=len(steps),
             approximate_count=result.trajectory.count(StepStatus.APPROXIMATE),
@@ -752,6 +765,7 @@ class Store:
             flaky_count=len(report.flaky),
             run_count=report.runs,
             cost_usd=report.cost_usd,
+            unpriced_calls=report.unpriced_calls,
             scenarios=[
                 FlakeScenarioRow(
                     position=i,
@@ -771,6 +785,7 @@ class Store:
                     executed=s.executed,
                     concurrency=s.concurrency,
                     cost_usd=s.cost_usd,
+                    unpriced_calls=s.unpriced_calls,
                     error=s.error.model_dump(mode="json") if s.error else None,
                     outcomes=[o.model_dump(mode="json") for o in s.outcomes],
                 )

@@ -849,6 +849,11 @@
               }
             ],
             "title": "Suite Id"
+          },
+          "unpriced_calls": {
+            "default": 0,
+            "title": "Unpriced Calls",
+            "type": "integer"
           }
         },
         "required": [
@@ -939,6 +944,11 @@
               }
             ],
             "title": "Suite Id"
+          },
+          "unpriced_calls": {
+            "default": 0,
+            "title": "Unpriced Calls",
+            "type": "integer"
           }
         },
         "required": [
@@ -1050,6 +1060,11 @@
           },
           "runs": {
             "title": "Runs",
+            "type": "integer"
+          },
+          "unpriced_calls": {
+            "default": 0,
+            "title": "Unpriced Calls",
             "type": "integer"
           }
         },
@@ -1679,6 +1694,11 @@
           "unconsumed_count": {
             "title": "Unconsumed Count",
             "type": "integer"
+          },
+          "unpriced_calls": {
+            "default": 0,
+            "title": "Unpriced Calls",
+            "type": "integer"
           }
         },
         "required": [
@@ -1813,6 +1833,11 @@
           },
           "unconsumed_count": {
             "title": "Unconsumed Count",
+            "type": "integer"
+          },
+          "unpriced_calls": {
+            "default": 0,
+            "title": "Unpriced Calls",
             "type": "integer"
           }
         },

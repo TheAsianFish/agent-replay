@@ -458,3 +458,26 @@ def test_advisory_flag_round_trips(store: Store, result: RunResult):
     )
     stored = store.get_run(run_id).checks
     assert [c.advisory for c in stored] == [True, False]
+
+
+def test_unpriced_calls_round_trip(store: Store, result: RunResult):
+    # The toy agent's fake model has no price, so every answered model call is unpriced.
+    assert result.unpriced_calls > 0
+    assert result.cost_usd == 0
+    unpriced_id = save(store, result)
+    steps = tuple(
+        s.model_copy(update={"cost_usd": 0.001}) if s.kind.value == "model" else s
+        for s in result.trajectory.steps
+    )
+    priced = result.model_copy(
+        update={"trajectory": result.trajectory.model_copy(update={"steps": steps})}
+    )
+    assert priced.unpriced_calls == 0
+    priced_id = save(store, priced)
+
+    run = store.get_run(unpriced_id)
+    assert run.unpriced_calls == result.unpriced_calls
+    assert run.cost_usd == 0
+    assert store.get_run(priced_id).unpriced_calls == 0
+    by_id = {r.id: r.unpriced_calls for r in store.list_runs()}
+    assert by_id == {priced_id: 0, unpriced_id: result.unpriced_calls}

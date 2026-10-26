@@ -67,7 +67,21 @@ def test_a_flake_report_round_trips(store: Store, flake_report: FlakeReport):
         assert got.classification == want.classification
         assert got.failures == dict(want.failures)
         assert tuple(got.outcomes) == want.outcomes
+        assert got.unpriced_calls == want.unpriced_calls
+    assert stored.unpriced_calls == flake_report.unpriced_calls
     assert store.list_flake_reports()[0].id == report_id
+
+
+def test_a_flake_reports_unpriced_calls_round_trip(store: Store, flake_report: FlakeReport):
+    scenarios = tuple(
+        s.model_copy(update={"unpriced_calls": i + 2}) for i, s in enumerate(flake_report.scenarios)
+    )
+    report_id = store.save_flake(flake_report.model_copy(update={"scenarios": scenarios}))
+
+    stored = store.get_flake_report(report_id)
+    assert [s.unpriced_calls for s in stored.scenarios] == [2, 3]
+    assert stored.unpriced_calls == 5
+    assert store.list_flake_reports()[0].unpriced_calls == 5
 
 
 def test_flake_trend_is_oldest_first_and_keeps_the_newest_points(
@@ -222,7 +236,7 @@ def test_db_upgrade_and_add_calibration(tmp_path: Path):
     db = f"sqlite:///{tmp_path / 'r.db'}"
     upgraded = runner.invoke(app, ["db", "upgrade", "--db", db], env=ENV)
     assert upgraded.exit_code == 0, upgraded.output
-    assert "schema revision 0002" in upgraded.output
+    assert "schema revision 0003" in upgraded.output
 
     path = tmp_path / "cal.json"
     path.write_text(calibration().model_dump_json(), encoding="utf-8")
