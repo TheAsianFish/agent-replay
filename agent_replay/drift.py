@@ -7,14 +7,18 @@ served, and unless a later check observes the effect the run passes. The
 cassette already holds what each tool returned when the run was recorded; this
 module compares the two.
 
-Alignment. Each live tool step is paired with a recorded tool envelope of the
-same name at the same nesting level (top-level calls with top-level ones, calls
-made inside another call with nested ones), consuming envelopes in starting
-order: the first unpaired envelope with the same request fingerprint (same
-arguments), else the oldest unpaired one. Only a pair with the same arguments
-is compared: when the arguments differ, a different result is expected and says
-nothing about the tool (the agent or the model changed, which other checks see).
-A live call with no envelope left to pair with is counted, not compared.
+Alignment. Each live tool step is paired with the first unpaired recorded
+tool envelope (in starting order) of the same name, at the same nesting level
+(top-level calls with top-level ones, calls made inside another call with
+nested ones) and with the same request fingerprint, i.e. the same arguments.
+Only such pairs are compared: when the arguments differ, a different result is
+expected and says nothing about the tool (the agent or the model changed, which
+other checks see). A live call with no such envelope is counted, not compared,
+and consumes nothing, so an extra or changed call cannot take the recording a
+later identical call is paired with. A tool whose result depends on earlier
+calls (a read after a write) can still differ when the agent reorders, adds or
+drops a write before it: that is reported as drift, since the same call
+returned something else.
 
 Comparison. Results are compared as canonical JSON (keys sorted, so key order
 never matters; ``1`` and ``1.0`` differ, as do ``true`` and ``1``). A call that
@@ -23,7 +27,9 @@ against one that returned is drift at the root. ``ignore_fields`` names, per
 tool, paths whose values legitimately vary between runs (a timestamp, a
 generated id): ``created_at``, ``items[*].updated_at``, ``*.etag``. ``*`` matches
 any one key or index; ``[n]`` and ``.key`` address one. An ignored path is
-skipped whether it is present on one side, both or neither.
+skipped whether it is present on one side, both or neither; its parent is not
+(``meta.created_at`` does not hide a missing ``meta``). Errors are compared
+whole.
 """
 
 from __future__ import annotations
@@ -154,9 +160,10 @@ class DriftReport(BaseModel):
     """Live calls paired with a recording made with the same arguments."""
     drifted: tuple[ToolDrift, ...] = ()
     arguments_differ: int = 0
-    """Live calls paired with a recording made with other arguments: not compared."""
+    """Live calls of a recorded tool with no unpaired recording of the same arguments:
+    not compared."""
     unrecorded: int = 0
-    """Live calls with no recorded call of that tool left to pair with: not compared."""
+    """Live calls of a tool with no unpaired recording at all: not compared."""
 
     @property
     def ok(self) -> bool:
@@ -231,7 +238,6 @@ def tool_drift(
             continue
         same = next((i for i, e in enumerate(queue) if e.fingerprint == step.fingerprint), None)
         if same is None:
-            queue.pop(0)
             arguments_differ += 1
             continue
         compared += 1

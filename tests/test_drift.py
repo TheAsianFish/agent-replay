@@ -255,20 +255,59 @@ def test_calls_with_other_arguments_or_none_left_are_not_compared() -> None:
     cassette = _cassette(_envelope(0, "get_order", {"id": "A"}, "a"))
     run = Trajectory(
         steps=(
-            _step(0, "get_order", {"id": "Z"}, "z"),  # pairs with A, arguments differ
-            _step(1, "get_order", {"id": "A"}, "a"),  # nothing left to pair with
-            _step(2, "cancel", {"id": "A"}, "ok"),  # never recorded at all
+            _step(0, "get_order", {"id": "Z"}, "z"),  # no recording of these arguments
+            _step(1, "get_order", {"id": "A"}, "a"),  # still pairs with A's recording
+            _step(2, "get_order", {"id": "A"}, "a"),  # no recording of get_order left
+            _step(3, "cancel", {"id": "A"}, "ok"),  # never recorded at all
         )
     )
 
     report = tool_drift(run, cassette)
 
-    assert report == DriftReport(compared=0, arguments_differ=1, unrecorded=2)
+    assert report == DriftReport(compared=1, arguments_differ=1, unrecorded=2)
     assert report.ok
     assert describe(report) == (
-        "0 live tool result(s) matched the recording (1 with other arguments, 2 unrecorded "
+        "1 live tool result(s) matched the recording (1 with other arguments, 2 unrecorded "
         "not compared)"
     )
+
+
+def test_an_extra_call_does_not_take_a_later_calls_recording() -> None:
+    """A read before and after a write: an added lookup must not shift the pairing."""
+    cassette = _cassette(
+        _envelope(0, "get_order", {"id": "A"}, {"status": "pending"}),
+        _envelope(1, "cancel", {"id": "A"}, "ok"),
+        _envelope(2, "get_order", {"id": "A"}, {"status": "cancelled"}),
+    )
+    run = Trajectory(
+        steps=(
+            _step(0, "get_order", {"id": "C"}, {"status": "delivered"}),
+            _step(1, "get_order", {"id": "A"}, {"status": "pending"}),
+            _step(2, "cancel", {"id": "A"}, "ok"),
+            _step(3, "get_order", {"id": "A"}, {"status": "cancelled"}),
+        )
+    )
+
+    assert tool_drift(run, cassette) == DriftReport(compared=3, arguments_differ=1)
+
+
+def test_a_dropped_read_before_a_write_reads_as_drift_on_a_stateful_tool() -> None:
+    """The documented limit: the same call returns something else, so it is drift, even
+    though the agent (which skipped the first read) is what changed."""
+    cassette = _cassette(
+        _envelope(0, "get_order", {"id": "A"}, {"status": "pending"}),
+        _envelope(1, "cancel", {"id": "A"}, "ok"),
+        _envelope(2, "get_order", {"id": "A"}, {"status": "cancelled"}),
+    )
+    run = Trajectory(
+        steps=(
+            _step(0, "cancel", {"id": "A"}, "ok"),
+            _step(1, "get_order", {"id": "A"}, {"status": "cancelled"}),
+        )
+    )
+
+    [drift] = tool_drift(run, cassette).drifted
+    assert (drift.path, drift.recorded, drift.live) == ("$.status", "pending", "cancelled")
 
 
 def test_served_and_fallback_steps_are_not_compared() -> None:
