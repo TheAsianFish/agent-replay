@@ -65,6 +65,7 @@ from agent_replay.ci import (
     RunSink,
     Scenario,
     ScenarioReport,
+    check_identify_tools,
     git_sha,
     load_baselines,
     load_suite,
@@ -411,6 +412,10 @@ def flake_suite(
             )
     chosen = [s for s in suite.scenario if not scenarios or s.name in scenarios]
     base_dir = path.parent
+    try:
+        check_identify_tools(suite, overrides, base_dir)
+    except ConfigError as exc:
+        raise ConfigError(f"{path}: {exc}") from exc
     baselines = load_baselines(suite, overrides, base_dir)
     if limiter is None and settings.runs_per_minute is not None:
         limiter = RateLimiter(settings.runs_per_minute)

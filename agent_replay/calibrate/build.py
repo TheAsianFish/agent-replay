@@ -34,7 +34,14 @@ from agent_replay.calibrate.golden import (
 )
 from agent_replay.cassette import Cassette
 from agent_replay.checks.base import CheckResult
-from agent_replay.ci import Overrides, Scenario, load_baselines, load_suite, run_scenario
+from agent_replay.ci import (
+    Overrides,
+    Scenario,
+    check_identify_tools,
+    load_baselines,
+    load_suite,
+    run_scenario,
+)
 from agent_replay.errors import ConfigError
 from agent_replay.judge.transcript import DEFAULT_MAX_CHARS, JudgeInput
 from agent_replay.runner import RunResult
@@ -100,6 +107,10 @@ def golden_from_suite(
     loaded = load_suite(suite)
     overrides = Overrides(agent=agent, mode=mode, client=client)
     base_dir = suite.parent
+    try:
+        check_identify_tools(loaded, overrides, base_dir)
+    except ConfigError as exc:
+        raise ConfigError(f"{suite}: {exc}") from exc
     baselines = load_baselines(loaded, overrides, base_dir)
     defaults = loaded.defaults.model_copy(update={"checks": _without_judge(loaded.defaults.checks)})
     items: dict[str, GoldenItem] = {}

@@ -604,7 +604,9 @@ instead of the agent being handed another order's details. A call that differs
 in other arguments is still served `approximate`. Paths use the
 `ignore_fields` syntax without wildcards (`customer.id`, `items[0].sku`).
 Values compare exactly. A path that no recording of the tool has is a typo,
-and the scenario fails to run with the recorded argument names. A scenario's
+and the scenario fails to run with the recorded argument names; a tool name
+that no scenario's cassette recorded fails the whole suite the same way (in a
+scenario's own table, a tool its cassette never recorded). A scenario's
 `identify` replaces the defaults' entry for the same tool (`[]` switches it
 off). Without the keys, the two seeded mutations that read the wrong user or
 order pass every non-strict configuration; with them they fail

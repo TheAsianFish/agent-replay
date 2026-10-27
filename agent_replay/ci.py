@@ -58,7 +58,7 @@ import structlog
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from agent_replay.baseline import BaselineFile, RunMetrics, ScenarioBaseline, aggregate, measure
-from agent_replay.cassette import Cassette, ErrorInfo
+from agent_replay.cassette import Cassette, ErrorInfo, Kind
 from agent_replay.checks.base import Check, CheckResult
 from agent_replay.checks.budget import RELATIVE_LIMITS
 from agent_replay.checks.spec import build_check
@@ -282,6 +282,10 @@ def run_suite(
     parse_identify(overrides.identify)  # a bad override is one error, not one per scenario
     sink = sink or RunSink()
     base_dir = path.parent
+    try:
+        check_identify_tools(suite, overrides, base_dir)
+    except ConfigError as exc:
+        raise ConfigError(f"{path}: {exc}") from exc
     baselines = load_baselines(suite, overrides, base_dir)
     started_at = clock()
     started = timer()
@@ -352,11 +356,7 @@ def run_scenario(
     baseline = baselines.file.scenarios.get(scenario.name) if baselines is not None else None
     mode = overrides.mode or scenario.mode or defaults.mode
     policy = overrides.policy or scenario.policy or defaults.policy
-    cassette_path = (
-        overrides.cassette_dir / Path(scenario.cassette).name
-        if overrides.cassette_dir is not None
-        else base_dir / scenario.cassette
-    )
+    cassette_path = _cassette_path(scenario, overrides, base_dir)
     agent_ref = overrides.agent or scenario.agent or defaults.agent
     started = timer()
 
@@ -462,6 +462,53 @@ def _ignore_fields(scenario: Scenario, defaults: Defaults) -> dict[str, tuple[st
     for tool, paths in scenario.ignore_fields.items():
         merged[tool] = (*merged.get(tool, ()), *paths)
     return merged
+
+
+def _cassette_path(scenario: Scenario, overrides: Overrides, base_dir: Path) -> Path:
+    if overrides.cassette_dir is not None:
+        return overrides.cassette_dir / Path(scenario.cassette).name
+    return base_dir / scenario.cassette
+
+
+def check_identify_tools(suite: Suite, overrides: Overrides, base_dir: Path) -> None:
+    """Fail on an ``identify`` entry for a tool no cassette recorded: almost always a typo.
+
+    Such an entry does nothing (a tool that was never recorded is never served), so a
+    misspelt tool name would switch the protection off as silently as a misspelt path
+    (which :func:`agent_replay.identify.check_recorded` catches). The defaults (or the
+    override) are checked against every scenario's cassette, a scenario's own table
+    against its cassette. A cassette that does not load is reported by its scenario;
+    the defaults are then not checked, since the missing cassette may be the one that
+    records the tool.
+    """
+    recorded: dict[str, set[str]] = {}
+    for scenario in suite.scenario:
+        try:
+            cassette = Cassette.load(_cassette_path(scenario, overrides, base_dir))
+        except ReplayError:
+            continue
+        recorded[scenario.name] = {e.name for e in cassette.envelopes if e.kind is Kind.TOOL}
+    every = set().union(*recorded.values())
+    complete = len(recorded) == len(suite.scenario)
+
+    def check(table: dict[str, tuple[str, ...]], tools: set[str], where: str) -> None:
+        for tool, paths in table.items():
+            if paths and tool not in tools:
+                raise ConfigError(
+                    f"identify: {where}: no recorded call of tool {tool!r} (recorded tools: "
+                    f"{', '.join(sorted(tools)) or 'none'}); fix the tool name, or remove it"
+                )
+
+    if overrides.identify is not None:
+        if complete:
+            check(overrides.identify, every, "the identify override, in any scenario's cassette")
+        return
+    if complete:
+        check(suite.defaults.identify, every, "[defaults.identify], in any scenario's cassette")
+    for scenario in suite.scenario:
+        if scenario.name in recorded:
+            where = f"scenario {scenario.name!r}, in its cassette"
+            check(scenario.identify, recorded[scenario.name], where)
 
 
 def _identify(

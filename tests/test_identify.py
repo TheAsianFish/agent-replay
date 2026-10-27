@@ -439,3 +439,70 @@ def test_tools_live_drift_reports_a_read_of_an_unrecorded_entity(tmp_path: Path)
 
     without = run_suite(suite, overrides=overrides.model_copy(update={"identify": {}}))
     assert without.passed
+
+
+def _two_scenario_suite(tmp_path: Path, defaults: str, second: str = "") -> Path:
+    record("#W1").dump(tmp_path / "orders.jsonl")
+    record(summary="refund").dump(tmp_path / "transfer.jsonl")
+    return _suite(
+        tmp_path,
+        f"""
+        [defaults]
+        agent = "tests.test_identify:reads_w9"
+        [defaults.identify]
+        {defaults}
+        [[scenario]]
+        name = "orders"
+        cassette = "orders.jsonl"
+        task = "t"
+        [[scenario]]
+        name = "transfer"
+        cassette = "transfer.jsonl"
+        task = "t"
+        {second}
+        """,
+    )
+
+
+def test_a_misspelt_tool_name_in_the_defaults_fails_the_suite(tmp_path: Path) -> None:
+    """A tool no cassette recorded is never served, so the entry would do nothing."""
+    suite = _two_scenario_suite(tmp_path, 'get_orders = ["order_id"]')
+
+    with pytest.raises(
+        ConfigError,
+        match=r"replay.toml: identify: \[defaults.identify\], in any scenario's cassette: "
+        r"no recorded call of tool 'get_orders' \(recorded tools: get_order, transfer\)",
+    ):
+        run_suite(suite)
+
+
+def test_defaults_may_name_a_tool_only_some_scenarios_recorded(tmp_path: Path) -> None:
+    suite = _two_scenario_suite(tmp_path, 'get_order = ["order_id"]')
+
+    report = run_suite(suite)
+
+    assert [s.ran for s in report.scenarios] == [True, True]
+
+
+def test_a_scenario_entry_for_a_tool_its_cassette_lacks_fails_the_suite(tmp_path: Path) -> None:
+    suite = _two_scenario_suite(
+        tmp_path, 'get_order = ["order_id"]', 'identify = { get_order = ["order_id"] }'
+    )
+
+    with pytest.raises(
+        ConfigError, match=r"scenario 'transfer', in its cassette: no recorded call of tool"
+    ):
+        run_suite(suite)
+    # Switching a default off for that scenario is not a mistake.
+    off = _two_scenario_suite(tmp_path, 'get_order = ["order_id"]', "identify = { get_order = [] }")
+    assert [s.ran for s in run_suite(off).scenarios] == [True, True]
+
+
+def test_the_defaults_are_not_checked_when_a_cassette_is_missing(tmp_path: Path) -> None:
+    """The missing cassette may be the one that records the tool; its scenario says so."""
+    suite = _two_scenario_suite(tmp_path, 'get_order = ["order_id"]')
+    (tmp_path / "orders.jsonl").unlink()
+
+    report = run_suite(suite)
+
+    assert [s.ran for s in report.scenarios] == [False, True]
