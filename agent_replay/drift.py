@@ -7,18 +7,21 @@ served, and unless a later check observes the effect the run passes. The
 cassette already holds what each tool returned when the run was recorded; this
 module compares the two.
 
-Alignment. Each live tool step is paired with the first unpaired recorded
-tool envelope (in starting order) of the same name, at the same nesting level
-(top-level calls with top-level ones, calls made inside another call with
-nested ones) and with the same request fingerprint, i.e. the same arguments.
-Only such pairs are compared: when the arguments differ, a different result is
-expected and says nothing about the tool (the agent or the model changed, which
-other checks see). A live call with no such envelope is counted, not compared,
-and consumes nothing, so an extra or changed call cannot take the recording a
-later identical call is paired with. A tool whose result depends on earlier
-calls (a read after a write) can still differ when the agent reorders, adds or
-drops a write before it: that is reported as drift, since the same call
-returned something else.
+Alignment. Each live tool step is paired with an unpaired recorded tool
+envelope of the same name, at the same nesting level (top-level calls with
+top-level ones, calls made inside another call with nested ones) and with the
+same request fingerprint, i.e. the same arguments: the first such envelope (in
+starting order) whose result it equals, else the first such envelope, and then
+it is drift. Only such pairs are compared: when the arguments differ, a
+different result is expected and says nothing about the tool (the agent or the
+model changed, which other checks see). A live call with no such envelope is
+counted, not compared, and consumes nothing, so an extra or changed call cannot
+take the recording a later identical call is paired with; and a repeated read
+(the same call before and after a write) that the agent adds or drops still
+finds the recording with its result. A tool whose result depends on earlier
+calls can still differ when the agent reorders, adds or drops a *write* before
+a read: that is reported as drift, since the same call returned something no
+recording of it holds.
 
 Comparison. Results are compared as canonical JSON (keys sorted, so key order
 never matters; ``1`` and ``1.0`` differ, as do ``true`` and ``1``). A call that
@@ -236,14 +239,19 @@ def tool_drift(
         if not queue:
             unrecorded += 1
             continue
-        same = next((i for i, e in enumerate(queue) if e.fingerprint == step.fingerprint), None)
-        if same is None:
+        same = [i for i, e in enumerate(queue) if e.fingerprint == step.fingerprint]
+        if not same:
             arguments_differ += 1
             continue
         compared += 1
-        drift = compare(step, queue.pop(same), ignore.get(step.name, ()))
-        if drift is not None:
-            drifted.append(drift)
+        # A repeated call (a read before and after a write) has several recordings; a
+        # result equal to any of them is no drift, else it is reported against the first.
+        paths = ignore.get(step.name, ())
+        drifts = [compare(step, queue[i], paths) for i in same]
+        match = next((i for i, d in zip(same, drifts, strict=True) if d is None), None)
+        queue.pop(same[0] if match is None else match)
+        if match is None and drifts[0] is not None:
+            drifted.append(drifts[0])
     return DriftReport(
         compared=compared,
         drifted=tuple(drifted),

@@ -601,12 +601,15 @@ fail_on_tool_drift = true
 get_order_details = ["fulfillments[*].tracking_id", "fetched_at"]
 ```
 
-Each live call is paired with the first unused recorded call of the same
-tool made with the same arguments; a call with no such recording is counted
+Each live call is paired with an unused recorded call of the same tool made
+with the same arguments: the first one whose result it equals, else the
+first one, and then it is drift. A call with no such recording is counted
 and not compared, so an agent that changed its arguments is left to the
-other checks. One limit: a tool whose result depends on earlier calls (a
-read after a write) can return something else when the agent adds, drops or
-reorders the write, and that is reported as drift. Results are compared as canonical
+other checks, and a repeated read the agent drops still finds its recording.
+One limit: a tool whose result depends on earlier calls (a read after a
+write) can return something else when the agent adds, drops or reorders the
+write, or adds a repeated read before it, and that is reported as drift (the
+same pairing is what catches a stale read after a write). Results are compared as canonical
 JSON (key order never matters, `1` and `1.0` differ), and a call that raised
 is compared by exception type and message. A failure names the first
 differing path, for example `get_order_details (step 5) at $.status: recorded

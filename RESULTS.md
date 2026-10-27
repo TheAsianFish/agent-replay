@@ -1507,9 +1507,10 @@ only by `no_approximate_steps`, at the price of failing the benign
 `compact_tool_json` refactor.
 
 - **Check:** `fail_on_tool_drift` (`agent_replay/drift.py`). In `tools-live`,
-  each live tool call is paired with the first unused recorded call of the
-  same tool, at the same nesting level, with the same request fingerprint
-  (arguments). Those pairs are compared as canonical JSON; a call with no
+  each live tool call is paired with an unused recorded call of the same
+  tool, at the same nesting level, with the same request fingerprint
+  (arguments): the first one whose result it equals, else the first one.
+  Those pairs are compared as canonical JSON; a call with no
   such recording is counted, consumes nothing and is not compared. A difference fails the scenario as
   `no_tool_drift` with the first differing path. Per-tool `ignore_fields`
   skip paths that legitimately vary (none were needed here).
@@ -1617,9 +1618,15 @@ What this shows:
   are complementary, not one replacing the other. The separation is not
   complete: for a tool whose result depends on earlier calls, an agent that
   drops or reorders a write before a read with the same arguments gets a
-  different read result, and that is reported as drift (a unit test pins
-  this down, `test_a_dropped_read_before_a_write_reads_as_drift_on_a_stateful_tool`);
-  no mutation in this study does that.
+  different read result, and that is reported as drift; so is an added
+  repeated read before the write, which takes the recording of the read
+  after it (unit tests pin both down: `test_a_dropped_write_before_a_read_reads_as_drift_on_a_stateful_tool`,
+  `test_an_added_repeated_read_before_a_write_reads_as_drift`). A dropped
+  repeated read is not drift: the remaining read pairs with the recording of
+  the same result. No mutation in this study does any of these. (The
+  review found the dropped-read false alarm in the first pairing, which took
+  the first same-argument recording whatever its result; the mutation table
+  is unchanged by the fix.)
 - **Caveats.** The live tools here are deterministic over a fixed, vendored
   database, so `ignore_fields` was never exercised on real data. A tool that
   reads a clock or a remote service will drift every run until its varying

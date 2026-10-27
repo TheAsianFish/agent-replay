@@ -857,14 +857,17 @@ first item.
 - [x] M10: Tool-result drift check — `fail_on_tool_drift` beside `fail_on_approximate` in suites and `replay ci`: in `tools-live`, each live tool step is aligned with the cassette's tool envelopes by name and order and its result compared with the recorded response as canonical JSON (per-tool `ignore_fields` for values that legitimately vary); drift is reported like `no_approximate_steps`, with the first differing path; `eval/mutation_study.py` gains the configuration `tools-live+drift`. Done when `make eval-mutations` shows the sixth column beside the five v1 columns (hypothesis: 8/8 tool bugs, 0/5 false alarms), `replay ci examples/retail_agent/replay-live.toml --mode tools-live` with the flag reports 0 drift on the six live cassettes, RESULTS.md and the README results table carry the number beside the v1 ones, and the roadmap entry is removed.
   - *M10 as built (2026-10-27).* Done as specified, with three refinements.
     (a) Alignment is by name and order, restricted to the same arguments: a
-    live call pairs with the first unused recording of the same tool and
-    nesting level with the same request fingerprint. Calls without one are
+    live call pairs with an unused recording of the same tool and nesting
+    level with the same request fingerprint, the first whose result it
+    equals, else the first (so a dropped repeated read is no drift; review
+    found that false alarm too). Calls without one are
     counted (`arguments_differ`, `unrecorded`) and consume nothing, so an
     extra call cannot shift a later call onto the wrong recording (review
     found that false alarm in a first version that took the oldest left).
     Comparing a result produced from other arguments would report an agent
     change as tool drift; a stateful read after an added, dropped or
-    reordered write still can be, and that limit is documented.
+    reordered write, or after an added repeated read, still can be, and that
+    limit is documented.
     (b) `no_tool_drift` is reported when it passes too, with the counts, so a
     suite run shows what was compared; it only runs in `tools-live`. (c) A bad
     `ignore_fields` path is a suite error at load time. Result:
