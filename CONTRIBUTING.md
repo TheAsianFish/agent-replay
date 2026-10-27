@@ -55,7 +55,9 @@ make bench-sprt   simulate the sequential CI gate over true pass rates (offline;
 make flake-demo   replay flake offline: the fake model passes; a seeded flaky model must exit 1
 make eval-judge-smoke  judge vs deterministic checks on 24 retail runs, from the committed verdict cache
 make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in six replay
-                       configurations; detection per check type and mode (offline, byte-stable JSON)
+                       configurations; detection per check type and mode; again with the suite's
+                       identify keys plus 2 identity mutations; 5 correct-but-different paths in
+                       model-live under strict and fallback (offline, byte-stable JSON)
 make golden       rebuild eval/golden/retail from the live recordings and mutants (offline; 21 items from 24 runs)
 make record-golden  D1: 120 model-live retail runs (Opus and Haiku) into eval/golden/retail-d1
                   (needs ANTHROPIC_API_KEY; ~$2.19 estimated)
