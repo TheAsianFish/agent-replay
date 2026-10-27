@@ -489,10 +489,17 @@ does a verdict need** (question 4; steer item 2). *Question:* does
 changing? *Hypothesis:* at most 2 of 20 `strict` runs per scenario end for a
 world reason (an unrecorded call or an approximate step), `fallback` changes
 the pass count by at most 1 in 20, and `cheapest_fare_in_euros` fails at
-least once in 40 further runs (the committed 10/10 is not 100%). Offline,
-resampling the committed outcomes: a single run false-passes
-`book_earliest_flight` about 20% of the time and three runs under 1%; ten
-runs agree with the full-data verdict on every committed scenario. The
+least once in its 40 new runs (20 per arm; the committed 10/10 is not
+100%). Offline, drawing run subsets without replacement from each report's
+recorded outcomes, five runs agree with the all-runs fixed-threshold verdict
+in at least 95% of draws on every scenario. That is close to arithmetic: 13
+of the 15 committed scenarios pass 0% or 100% of their runs, and the other two
+(`transfer_swapped_refunds` 19/20 on Haiku, `book_earliest_flight` 2/10) sit
+far from the 0.75 threshold (the fixed-k rule the committed reports ran,
+`(p_fail + p_pass) / 2`). So the curve's finding is how far these pass rates
+sit from the threshold, and RESULTS.md says so rather than presenting a "runs
+needed" figure as general. A single run's false-pass rate is the
+observed pass rate by construction, so it is reported, not hypothesised. The
 offline curve uses the fixed-threshold gate and counting only; `stats.py`
 stays untouched. *Measured as:* `make eval-pydantic-ai-arms` (qwen2.5:7b
 through Ollama, locally or from `ollama.yml`, never on PRs; raw reports
@@ -502,16 +509,78 @@ committed, every run classified by cause) and `make eval-verdict-curve`
 **M13: cassette bytes at scale, and the cheapest fix that the numbers
 justify** (steer item 3: large cassettes, long runs, measured storage).
 *Question:* what does a 100-turn run cost in cassette bytes, load and replay
-time and store bytes, and does plain compression already recover what a
+time and store bytes, and does a stdlib compressor already recover what a
 shared-prefix encoding would? *Hypothesis:* bytes fit an exponent near 2 in
-turns; gzip of the JSONL recovers at least 5× at 100 turns because every
-envelope repeats the prefix; a shared-prefix encoding (each model request
-stored as what it appends to the previous one) beats gzip by less than 3×,
-so no schema change is justified; `full` replay stays under 2 s at 200 turns.
-The decision rule is fixed before the run: transparent `.jsonl.gz` cassettes
-if gzip reaches 5×, cassette v2 only if the prefix encoding beats gzip by
-more than 3×. *Measured as:* `make bench-scale` (sizes byte-stable, timings
+turns. gzip collapses once one envelope outgrows DEFLATE's 32 KB window,
+because it can no longer see the previous envelope's copy of the prefix. xz
+(stdlib `lzma`, with a window of megabytes) keeps recovering more as runs
+grow. A shared-prefix encoding (each model request stored as what it appends
+to the previous one) beats xz by less than 3×, so no schema change is
+justified. `full` replay stays under 3 s at 200 turns, and compression does
+not change load time (parsing stays quadratic). The tool results and the
+system prompt are seeded, non-repeating text, because repeated filler
+flatters every compressor: the review's pilot measured gzip at 32× at 200
+turns on repeated characters and 3.2× on seeded text. The decision rule is
+fixed before the run: transparent compressed cassettes with the best stdlib
+codec that recovers at least 10× at 100 turns, and cassette v2 with the
+prefix encoding only if it beats that codec by more than 3×. *Measured as:* `make bench-scale` (sizes byte-stable, timings
 machine-dependent like `bench-replay`) and the chosen fix with tests.
+
+### Review of this round (2026-10-27)
+
+Re-ran:
+- `make check`: 1238 passed, 22 skipped, 58 xfailed in 93 s.
+- The committed pydantic-ai cassettes on pydantic-ai-slim 2.58.0 and 2.62.0
+  (`uv pip install`, then `UV_NO_SYNC=1 make eval-pydantic-ai-offline`): 6/6
+  pass with 0 approximate steps on each, with the installed version checked.
+- The cause of every failed run in `eval/results/m9_flake_qwen.json`: 6
+  answered without booking, 1 `UnrecordedCallError` on `convert_currency`, 1
+  approximate booking that failed `writes_match`, and 10
+  `cancel_refundable_booking` failures with no world cause. That is 2 of 30
+  runs touched by the frozen world.
+- `Session._take`'s fallback to the oldest unused envelope of the same tool.
+- The five refactors' approximate counts in `eval/results/mutations.json`:
+  only `compact_tool_json` has any (17).
+- `.replay/demo.db` after `make demo-data`: 39.1 MB, 480 runs, 4,422 steps,
+  34.56 MB of it step request and response.
+- A scale script of my own (one tool call a turn, a 3.5 KB system prompt):
+  35 KB at 5 turns, 2.9 MB at 100 and 10.6 MB at 200, every step `exact`;
+  `full` replay took 0.6 s at 100 turns and 2.0 s at 200. With repeated
+  filler, gzip recovered 21× to 59×. With seeded random text it recovered 33×
+  at 50 turns (largest line 28 KB), 4.3× at 100 (52 KB) and 3.2× at 200
+  (100 KB), while xz recovered 51×, 94× and 177×. These pilot numbers do not
+  enter RESULTS.md until `make bench-scale` reproduces them.
+
+Changed:
+- M13's hypothesis and decision rule now name the DEFLATE window, add xz from
+  the standard library and require non-repeating content. As written, gzip
+  would most likely have missed its 5× bar at 100 turns on realistic text,
+  and the rule would then have justified a cassette v2 that a stdlib codec
+  makes unnecessary.
+- M13's CI check asserts raw and prefix-encoded sizes exactly. It records
+  compressed sizes with the zlib and liblzma versions, because those can
+  differ by a few bytes between builds.
+- M11 no longer adds a reason to every approximate step. That needs a store
+  column, a migration and dashboard work, and it answers no question here, so
+  cutting it keeps M11 one PR.
+- M11's `identify` keys also go on the pydantic-ai suites, so M12's `strict`
+  arm can tell another entity's recording apart from the model's own failure.
+- M12 names its two scenarios and samples subsets without replacement.
+- M12's offline curve is now framed as close to arithmetic on the committed
+  reports (13 of 15 scenarios at 0% or 100%). The single-run false-pass rate
+  is no longer a hypothesis, because it equals the observed pass rate by
+  construction. The real measurement in M12 is the per-arm qwen2.5:7b runs.
+- The 40 new `cheapest_fare_in_euros` runs are both arms' 20. They pool with
+  the committed 10 only if the arms do not differ.
+- M13 also measures the committed real recordings (the six live retail
+  cassettes and the qwen2.5:7b ones), so a synthetic workload is not the only
+  evidence for the fix it chooses.
+
+Remaining concern: M11 and M13 are measured mostly on fake-model runs. M11's
+real-run test is the six live cassettes plus M12's `strict` arm, which runs
+with its `identify` keys on qwen2.5:7b. M13 is a storage benchmark, so
+synthetic turns are the right instrument there, and the real recordings check
+it. M12 depends on M11's `identify` keys and is built after it.
 
 ### Considered and not chosen this round
 
@@ -523,7 +592,8 @@ machine-dependent like `bench-replay`) and the chosen fix with tests.
   as "drift").** Rejected: a system-prompt edit is exactly the change that
   makes a recorded model reply stale, and relabelling those steps `exact`
   hides it. The reporting half, a reason on every approximate step
-  (`context`, `history`, `arguments`), goes into M11.
+  (`context`, `history`, `arguments`), was cut from M11 in review: it needs a
+  store column and dashboard work and answers no question this round.
 - **Six kinds of benign tool noise with `ignore_fields`.** Four of the six
   are readable off `drift.py` (key order never drifts, timestamps and ids are
   what `ignore_fields` is for, JSON floats have one form); the two it cannot
@@ -1019,6 +1089,6 @@ machine-dependent like `bench-replay`) and the chosen fix with tests.
     database rule, not drift, because their results are unchanged. 0 drift in
     34 live tool results on the six live recordings. The README roadmap entry
     is struck through as done, like items 8 and 9.
-- [ ] M11: Identifying arguments and correct-but-different paths — a per-tool `identify` list in suites (`[defaults.identify] get_order_details = ["order_id"]`, validated at load like `ignore_fields`): a served tool call whose identifying arguments match no unused recording is `unrecorded`, so the policy decides (`strict` fails the run, `fallback` calls the real tool, `synth` stubs), instead of being served another entity's result as `approximate`; in `tools-live` with `fail_on_tool_drift` a live call whose identity no recording has is reported as drift (`identity_unrecorded`); every approximate step carries a reason (`context` when only `system` or `tools` changed, `history`, `arguments`), shown in reports and the trace viewer; two new mutations (`guesses_user_id`, `reads_wrong_order`) and five correct-but-different path variants of the fake policy (one order instead of three, two lookups in parallel, a repeated lookup, a verifying read after the write, a reworded transfer summary) in `eval/mutation_study.py`, the variants run in `model-live` under `strict` and `fallback` with a column per check type and a termination-cause column. Done when `make eval-mutations` shows the two mutations caught 0/2 in every non-strict configuration without keys and 2/2 in `full`, `model-live` and `tools-live+drift` with keys, the five benign refactors unchanged (0/5 false alarms, 1/5 strict), the six live cassettes still passing in `tools-live --fail-on-tool-drift` with the summary step approximate, the path-variant table with its hypothesis answered, and RESULTS.md and the README results table carry the numbers beside the v1 and M10 ones.
-- [ ] M12: Frozen-world bias and the verdict-stability curve — `eval/verdict_curve.py` (stdlib and counting only; `stats.py` untouched): for every committed flake report (Haiku 120, Opus 30, qwen2.5:7b 30, plus this milestone's) the share of seeded random run subsets of size n (2000 draws per n) whose fixed-threshold verdict agrees with the verdict on all runs, and the single-run false-pass and false-fail rates, as `make eval-verdict-curve` (offline, byte-stable, in `make eval`); `eval/pydantic_ai.py --arms strict,fallback` running 20 `model-live` runs per arm of the two qwen2.5:7b scenarios through Ollama as `make eval-pydantic-ai-arms` (an `ollama.yml` input; never on pull requests), every run classified by termination cause (passed; unrecorded call; approximate step then a failed check; the model's own failure) in a committed raw report, the harness tested offline against the fake model. Done when RESULTS.md holds the per-arm pass and cause counts with wall time and CPU beside the M9 rows, the 40 further `cheapest_fare_in_euros` runs pooled with the committed 10, the curve table with its hypothesis answered, and every v1 and M9 number unchanged.
-- [ ] M13: Cassette bytes at scale — `eval/bench_scale.py` as `make bench-scale`: fake-model runs of 5, 20, 50, 100 and 200 turns with the retail-sized system prompt and 10 and 100 runs: cassette bytes with the fitted exponent, bytes new per turn, `Cassette.load` and `full` replay time, `save_run` time and database bytes, `get_run` payload bytes, and gzip of the JSONL against a shared-prefix encoding prototype kept inside `eval/`; the upstream-release matrix of the pydantic-ai cassettes (2.58.0 to 2.62.0) as a row; then the fix the rule chooses: transparent `.jsonl.gz` cassettes (`replay record --out x.jsonl.gz`, `Cassette.load`, `replay ci`) if gzip recovers at least 5× at 100 turns, cassette schema v2 with the prefix encoding only if it beats gzip by more than 3×. Done when `make bench-scale` writes the table (sizes byte-stable and checked in CI, timings machine-dependent like `bench-replay`), RESULTS.md holds it with the decision and its reason, and whichever fix the rule chose is in with tests and documented in the README.
+- [ ] M11: Identifying arguments and correct-but-different paths — a per-tool `identify` list in suites (`[defaults.identify] get_order_details = ["order_id"]`, validated at load like `ignore_fields`): a served tool call whose identifying arguments match no unused recording is `unrecorded`, so the policy decides (`strict` fails the run, `fallback` calls the real tool, `synth` stubs), instead of being served another entity's result as `approximate`; in `tools-live` with `fail_on_tool_drift` a live call whose identity no recording has is reported as drift (`identity_unrecorded`); the retail and pydantic-ai suites declare their identifying arguments; two new mutations (`guesses_user_id`, `reads_wrong_order`) and five correct-but-different path variants of the fake policy (one order instead of three, two lookups in parallel, a repeated lookup, a verifying read after the write, a reworded transfer summary) in `eval/mutation_study.py`, the variants run in `model-live` under `strict` and `fallback` with a column per check type and a termination-cause column. Done when `make eval-mutations` shows the two mutations caught 0/2 in every non-strict configuration without keys and 2/2 in `full`, `model-live` and `tools-live+drift` with keys, the five benign refactors unchanged (0/5 false alarms, 1/5 strict), the six live cassettes still passing in `tools-live --fail-on-tool-drift` with the summary step approximate, every committed pydantic-ai cassette still replaying in `full` with 0 approximate steps under its `identify` keys, the path-variant table with its hypothesis answered, and RESULTS.md and the README results table carry the numbers beside the v1 and M10 ones.
+- [ ] M12: Frozen-world bias and the verdict-stability curve — `eval/verdict_curve.py` (stdlib and counting only; `stats.py` untouched): for every committed flake report (Haiku 120, Opus 30, qwen2.5:7b 30, plus this milestone's) the share of seeded run subsets of size n, drawn without replacement (2000 draws per n, n from 1 to runs − 1), whose fixed-threshold verdict (pass rate at least `(p_fail + p_pass) / 2`, 0.75, the rule the committed reports ran; no interval) agrees with the verdict on all runs, and the single-run false-pass and false-fail rates (reported; equal to the observed rates by construction), as `make eval-verdict-curve` (offline, byte-stable, in `make eval`); `eval/pydantic_ai.py --arms strict,fallback` running 20 `model-live` runs per arm of the two qwen2.5:7b-recorded scenarios (`cheapest_fare_in_euros`, `book_earliest_flight`; the suite's M11 `identify` keys on) through Ollama as `make eval-pydantic-ai-arms` (an `ollama.yml` input; never on pull requests), every run classified by termination cause (passed; unrecorded call or identity; approximate step then a failed check; the model's own failure) in a committed raw report, the harness tested offline against the fake model. Done when RESULTS.md holds the per-arm pass and cause counts with wall time and CPU beside the M9 rows, the 40 new `cheapest_fare_in_euros` runs (20 per arm), pooled with the committed 10 only if the arms' pass counts differ by at most one, the curve table with its hypothesis answered and the distance of each pass rate from the threshold stated beside it, and every v1 and M9 number unchanged.
+- [ ] M13: Cassette bytes at scale — `eval/bench_scale.py` as `make bench-scale`: fake-model runs of 5, 20, 50, 100 and 200 turns with the retail-sized system prompt, and store measurements on 100 runs of 20 turns and 10 runs of 100 turns: cassette bytes with the fitted exponent, bytes new per turn, `Cassette.load` and `full` replay time, `save_run` time and database bytes, `get_run` payload bytes, with seeded, non-repeating tool results and system prompt, and gzip and xz (stdlib `zlib`, `lzma`) of the JSONL against a shared-prefix encoding prototype kept inside `eval/`, with the largest envelope's size beside each ratio; the bytes and bytes per turn of every committed real recording (the six live retail cassettes and the qwen2.5:7b ones) beside the synthetic fit, and the codecs' ratios on them, so the fit is checked against real traces; the upstream-release matrix of the pydantic-ai cassettes (2.58.0 to 2.62.0) as a row; then the fix the rule chooses: transparent compressed cassettes chosen by suffix (`replay record --out x.jsonl.xz`, `Cassette.load`, `replay ci`) with the best stdlib codec that recovers at least 10× at 100 turns, cassette schema v2 with the prefix encoding only if it beats that codec by more than 3×. Done when `make bench-scale` writes the table (raw and prefix-encoded sizes byte-stable and checked in CI; compressed sizes recorded with the zlib and liblzma versions; timings machine-dependent like `bench-replay`), the gzip-window hypothesis is answered, RESULTS.md holds it with the decision and its reason, and whichever fix the rule chose is in with tests and documented in the README.

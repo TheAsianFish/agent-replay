@@ -1163,13 +1163,13 @@ Next (evolution round 2, 2026-10-27; evidence and hypotheses in
 
 11. Identifying arguments for the matcher (`identify` keys, so a read for an
     entity the cassette never saw is `unrecorded` rather than served another
-    entity's result), a reason on every approximate step, and a mutation-study
-    table of correct-but-different paths per check type
+    entity's result), and a mutation-study table of correct-but-different
+    paths per check type
 12. Frozen-world bias: `model-live` with `strict` against `fallback` tools on
     qwen2.5:7b, every run classified by cause, and the verdict-stability curve
     resampled from the committed flake runs
 13. Cassette bytes at scale: a bytes-per-turn benchmark to 200 turns, gzip
-    against a shared-prefix encoding, and the fix the numbers justify
+    and xz against a shared-prefix encoding, and the fix the numbers justify
 
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and running a flake suite's scenarios in parallel as well
