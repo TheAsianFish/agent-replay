@@ -19,6 +19,11 @@ every older version.
 - `examples/pydantic_ai_agent`: a tool-using pydantic-ai agent with fake-model and
   qwen2.5:7b (Ollama) cassettes; `make eval-pydantic-ai` replays them and, with
   Ollama running, gates them with `replay flake` in `model-live`.
+- `fail_on_tool_drift` in suites (and `replay ci --fail-on-tool-drift`): in `tools-live`,
+  every live tool result is compared with the one recorded for the same call, and a
+  difference fails the scenario as `no_tool_drift`, naming the first differing path.
+  Per-tool `ignore_fields` skip values that legitimately vary.
+- The mutation study's sixth configuration, `tools-live+drift`.
 
 ### Changed
 

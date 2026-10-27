@@ -20,6 +20,7 @@ byte-stable ones and fails on any change.
 | Fixed-sample gate at α = β = 0.05 | 24 runs (pass on ≥ 19); fixed-20 majority false-passes 13.4% at p = 0.6 | Sequential gate simulation | `make bench-sprt` | measured, offline |
 | SPRT runs saved vs the fixed-sample test | — | Sequential gate simulation | `make bench-sprt` once `stats.py` exists | **to measure** |
 | Mutation detection, per mode | `full` 7/32; `model-live` 12/12 model regressions; `tools-live` 5/8 tool bugs (8/8 with `fail_on_approximate`); false alarms 0/5 (1/5) | Mutation study (M4) | `make eval-mutations` | measured, offline |
+| Tool-result drift check | `tools-live+drift` 8/8 tool bugs, false alarms 0/5 (beside 8/8 and 1/5 with `fail_on_approximate`); 0 drift in 34 live tool results on the six live recordings | Tool-result drift check (M10) | `make eval-mutations`; `replay ci examples/retail_agent/replay-live.toml --mode tools-live --fail-on-tool-drift` | measured, offline |
 | Live flakiness | Haiku 5.5 119/120; Opus 5.5 30/30 at 41× Haiku's cost per run | `replay flake` on live models (M4) | commands in that section | measured (key) |
 | Wilson intervals for those runs | — | `replay flake` on live models | `REPLAY_STATS_IMPL=core` re-run | **to measure** |
 | Offline flake gate | fake model passes every scenario; seeded flaky model fails the gate | `replay flake` offline (M4) | `make flake-demo` | measured, offline |
@@ -1495,6 +1496,132 @@ the example itself was committed; the example code that ran is the one
 committed in the next three commits (it was not changed after the run). The
 teardown fix (row 6) came after this run and changes no outcome; it only
 removes the traceback.
+
+## Tool-result drift check (M10, offline)
+
+Can `tools-live` catch a tool that returns something else without the false
+alarm `fail_on_approximate` raises on a refactor that only changes request
+bytes? In the M4 study three read-only tool bugs (`user_lookup_builds_id`,
+`product_details_all_unavailable`, `order_details_stale_status`) were caught
+only by `no_approximate_steps`, at the price of failing the benign
+`compact_tool_json` refactor.
+
+- **Check:** `fail_on_tool_drift` (`agent_replay/drift.py`). In `tools-live`,
+  each live tool call is paired with an unused recorded call of the same tool
+  at the same nesting level: the one with the same request fingerprint
+  (arguments), else the oldest left. Same-argument pairs are compared as
+  canonical JSON; a pair whose arguments differ, or a call with no recording
+  left, is counted and not compared. A difference fails the scenario as
+  `no_tool_drift` with the first differing path. Per-tool `ignore_fields`
+  skip paths that legitimately vary (none were needed here).
+- **Hypothesis (PLAN.md, written before the run):** `tools-live+drift` 8/8 tool bugs, 0/5
+  false alarms, 0 drift on the six live cassettes replayed `tools-live`;
+  `drops_error_flag` still survives.
+- **Dataset and method:** the M4 mutation study unchanged (D4: 32 mutations,
+  5 benign refactors, the six-scenario fake-model suite), with a sixth
+  configuration `tools-live+drift`. The five M4 columns were re-run in the
+  same command and are identical to the committed M4 results (0 cells
+  differ). Then the six live `claude-opus-5-5` recordings
+  (`examples/retail_agent/replay-live.toml`), replayed `tools-live` with the
+  flag: the model replies come from the recordings, the τ-bench tools run
+  for real.
+- **Commands:** `make eval-mutations` (55.6 s on 4 vCPU, AMD EPYC 7763;
+  byte-stable, a second run left `eval/results/mutations.json` unchanged)
+  and `REPLAY_JUDGE_OFFLINE=1 uv run replay ci examples/retail_agent/replay-live.toml --mode tools-live --fail-on-tool-drift --no-store --json report.json`
+  (2.2 s). Both now also run in `make ci-demo`. $0.
+
+Raw output of `make eval-mutations`: the tables, with only the check types
+and mutations this section is about (the full matrix is in
+`eval/results/mutations.json` and printed by the command):
+
+```
+### Detection rate by configuration
+
+| configuration | all | agent | model | tool |
+|---|---|---|---|---|
+| full | 7/32 (22%) | 7/12 (58%) | 0/12 (0%) | 0/8 (0%) |
+| tools-live | 12/32 (38%) | 7/12 (58%) | 0/12 (0%) | 5/8 (62%) |
+| model-live | 22/32 (69%) | 10/12 (83%) | 12/12 (100%) | 0/8 (0%) |
+| model-live+fallback | 22/32 (69%) | 10/12 (83%) | 12/12 (100%) | 0/8 (0%) |
+| tools-live+strict | 19/32 (59%) | 11/12 (92%) | 0/12 (0%) | 8/8 (100%) |
+| tools-live+drift | 15/32 (47%) | 7/12 (58%) | 0/12 (0%) | 8/8 (100%) |
+
+### Mutations caught per check type (caught / all mutations, alone)
+
+| check type | full | tools-live | model-live | model-live+fallback | tools-live+strict | tools-live+drift |
+|---|---|---|---|---|---|---|
+| `no_approximate_steps` | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 14/32 (alone 7) | 0/32 (alone 0) |
+| `no_tool_drift` | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 0/32 (alone 0) | 6/32 (alone 3) |
+| `rule:db_matches_ground_truth` | 0/32 (alone 0) | 7/32 (alone 5) | 0/32 (alone 0) | 0/32 (alone 0) | 7/32 (alone 2) | 7/32 (alone 2) |
+
+### Per mutation (check types that caught it; — survived)
+
+| mutation | target | full | tools-live | model-live | model-live+fallback | tools-live+strict | tools-live+drift |
+|---|---|---|---|---|---|---|---|
+| `cancel_keeps_status` | tool | — | `rule:db_matches_ground_truth` | — | — | `rule:db_matches_ground_truth` | `rule:db_matches_ground_truth` |
+| `cancel_skips_gift_card_refund` | tool | — | `rule:db_matches_ground_truth` | — | — | `rule:db_matches_ground_truth` | `rule:db_matches_ground_truth` |
+| `address_drops_address2` | tool | — | `rule:db_matches_ground_truth` | — | — | `no_approximate_steps`, `rule:db_matches_ground_truth` | `no_tool_drift`, `rule:db_matches_ground_truth` |
+| `return_ignores_item_ids` | tool | — | `rule:db_matches_ground_truth` | — | — | `no_approximate_steps`, `rule:db_matches_ground_truth` | `no_tool_drift`, `rule:db_matches_ground_truth` |
+| `exchange_flips_price_difference` | tool | — | `rule:db_matches_ground_truth` | — | — | `no_approximate_steps`, `rule:db_matches_ground_truth` | `no_tool_drift`, `rule:db_matches_ground_truth` |
+| `user_lookup_builds_id` | tool | — | — | — | — | `no_approximate_steps` | `no_tool_drift` |
+| `product_details_all_unavailable` | tool | — | — | — | — | `no_approximate_steps` | `no_tool_drift` |
+| `order_details_stale_status` | tool | — | — | — | — | `no_approximate_steps` | `no_tool_drift` |
+
+### Benign refactors (false alarms; approximate steps)
+
+| refactor | full | tools-live | model-live | model-live+fallback | tools-live+strict | tools-live+drift |
+|---|---|---|---|---|---|---|
+| `extracted_loop` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| `parallel_tools` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| `compact_tool_json` | pass; 17 approx | pass; 17 approx | pass; 0 approx | pass; 0 approx | FALSE ALARM: no_approximate_steps; 17 approx | pass; 17 approx |
+| `more_turns` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+| `async_agent` | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx | pass; 0 approx |
+
+False alarms: full 0/5, tools-live 0/5, model-live 0/5, model-live+fallback 0/5, tools-live+strict 1/5, tools-live+drift 0/5.
+Survived every configuration: `drops_error_flag`.
+```
+
+The live recordings, `no_tool_drift` per scenario from `report.json`
+(every scenario passed, 6/6):
+
+```
+cancel_pending_laptop       6 live tool result(s) matched the recording
+modify_address_suite        3 live tool result(s) matched the recording
+return_damaged_bicycle      7 live tool result(s) matched the recording
+exchange_waterproof_boots   8 live tool result(s) matched the recording
+lookup_latest_order_total   5 live tool result(s) matched the recording
+transfer_swapped_refunds    5 live tool result(s) matched the recording
+```
+
+What this shows:
+
+- **The hypothesis held on every count.** `tools-live+drift` caught 8/8 tool
+  bugs with 0/5 false alarms; `tools-live+strict` also catches 8/8 but fails
+  `compact_tool_json`. The live recordings show 0 drift in 34 live tool
+  results. `drops_error_flag` still survives every configuration.
+- **It catches what the tool returns, not what it does.** `no_tool_drift`
+  caught 6 tool bugs, 3 of them alone (the three read-only ones). The two
+  cancel bugs (`cancel_keeps_status`, `cancel_skips_gift_card_refund`) return
+  exactly what the real tool returns and only corrupt the database
+  afterwards, so their results match the recording; the database rule catches
+  them, as in M4. Drift is a check on results, and a side effect needs a
+  state check.
+- **It adds nothing on agent mutations, by design.** `tools-live+drift`
+  detects 7/12 agent mutations, the same 7 as plain `tools-live`;
+  `tools-live+strict` detects 11/12, because a changed agent changes model
+  requests. Drift compares only calls made with the arguments that produced
+  the recording. With `wrong_write_argument` (a separate run of the six
+  fake-model scenarios with the flag), 29 live tool results were compared,
+  0 drifted, and 4 write calls with other arguments were not compared; the
+  ground-truth rules fail it. A changed argument is the agent's fault, and
+  reporting it as tool drift would blame the wrong component. So the two flags
+  are complementary, not one replacing the other.
+- **Caveats.** The live tools here are deterministic over a fixed, vendored
+  database, so `ignore_fields` was never exercised on real data. A tool that
+  reads a clock or a remote service will drift every run until its varying
+  paths are listed. The same flag on the pydantic-ai suites (the fake-model
+  and the qwen2.5:7b recordings, `--mode tools-live --fail-on-tool-drift`)
+  compared 2 live tool results per scenario, 0 drifted.
 
 ## To measure
 

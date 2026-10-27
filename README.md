@@ -79,7 +79,10 @@ Measured so far ([RESULTS.md](RESULTS.md)):
   `model-live` caught all 12 model regressions, `tools-live` 5 of 8 tool
   bugs, with no false alarm on the 5 benign refactors. Failing on
   `approximate` steps in `tools-live` caught all 8 tool bugs and the
-  stripped policy, and one benign refactor with them.
+  stripped policy, and one benign refactor with them. Comparing each live
+  tool's result with the recorded one (`fail_on_tool_drift`) also caught all
+  8 tool bugs, with no false alarm: it looks at what the tools returned, not
+  at request bytes.
 - **Flakiness on live models.** Replayed 20 times per task, the retail agent
   on `claude-haiku-5-5` passed 119 of 120 runs. The one failure was a refund
   to the wrong payment method, a policy breach. On `claude-opus-5-5` it
@@ -117,8 +120,9 @@ the rows still to measure.
 | What | Result | Command |
 |---|---|---|
 | Regressions caught, stub everything (`full`) | 7 / 32 injected mutations; 0 of 12 model and 0 of 8 tool regressions | `make eval-mutations` |
-| Regressions caught, cut-point replay | `model-live` 12 / 12 model regressions; `tools-live` 5 / 8 tool bugs (8 / 8 with `fail_on_approximate`) | `make eval-mutations` |
-| False alarms on benign refactors | 0 / 5 (1 / 5 with `fail_on_approximate` in `tools-live`) | `make eval-mutations` |
+| Regressions caught, cut-point replay | `model-live` 12 / 12 model regressions; `tools-live` 5 / 8 tool bugs (8 / 8 with `fail_on_approximate`; 8 / 8 with `fail_on_tool_drift`) | `make eval-mutations` |
+| False alarms on benign refactors | 0 / 5 (1 / 5 with `fail_on_approximate` in `tools-live`; 0 / 5 with `fail_on_tool_drift`) | `make eval-mutations` |
+| Tool drift on the six live recordings, `tools-live` | 0 of 34 live tool results differ from the recording | `replay ci examples/retail_agent/replay-live.toml --mode tools-live --fail-on-tool-drift` |
 | Live flakiness, retail agent | `claude-haiku-5-5` 119 / 120 runs passed; `claude-opus-5-5` 30 / 30 at 41× Haiku's cost per run | `replay flake` (RESULTS.md, M4) |
 | Cost gate, live `model-live` | unchanged agent within 5% of baseline; prompt caching removed: 6 / 6 tasks failed the 25% limit (+76% to +155%) | `replay ci --baseline` (RESULTS.md, M3) |
 | Judge vs objective labels, 21 golden items | 20 / 21 agree (95%); always-"fail" baseline 71% | `make eval-judge-objective` |
@@ -581,6 +585,32 @@ tool instead. Set `fail_on_approximate = true` (or pass `--strict` to `replay
 run`) when a wrong answer there would make the rest of the run meaningless;
 leave it off when the drift is in free text, such as a summary argument.
 
+In `tools-live` the tools run for real, but a tool that now returns something
+else is invisible unless a later check happens to observe it: the next model
+reply is served from the recording either way. `fail_on_tool_drift = true`
+(or `--fail-on-tool-drift`) adds a `no_tool_drift` check that compares every
+live tool result with the result recorded for the same call:
+
+```toml
+[defaults]
+mode = "tools-live"
+fail_on_tool_drift = true
+
+[defaults.ignore_fields]
+# Per tool, result paths that legitimately differ between runs.
+get_order_details = ["fulfillments[*].tracking_id", "fetched_at"]
+```
+
+Each live call is paired with an unused recorded call of the same tool:
+the one with the same arguments if there is one, otherwise the oldest left.
+Only pairs with the same arguments are compared, so an agent that changed
+its arguments is left to the other checks. Results are compared as canonical
+JSON (key order never matters, `1` and `1.0` differ), and a call that raised
+is compared by exception type and message. A failure names the first
+differing path, for example `get_order_details (step 5) at $.status: recorded
+"delivered", live "pending"`. A scenario's `ignore_fields` add to the
+defaults' for the same tool; `*` matches any one key or index.
+
 ## GitHub Action
 
 `action.yml` is a composite action that runs `replay ci` on a pull request:
@@ -778,7 +808,7 @@ back. Stores created before migrations are adopted in place.
 |---|---|
 | `replay record AGENT -t TASK -o FILE [--client anthropic\|module:factory] [--force]` | Run the agent for real and write a cassette |
 | `replay run CASSETTE [--mode full\|model-live\|tools-live] [--policy strict\|fallback\|synth] [--client REF] [--agent REF] [--expect a,b] [--strict] [--save FILE] [--json]` | Replay one cassette and run `tool_sequence`; `--strict` also fails on `approximate` steps |
-| `replay ci SUITE [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR] [--baseline FILE] [--json FILE] [--markdown FILE] [--no-store] [--db URL]` | Replay a suite and gate on it |
+| `replay ci SUITE [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR] [--baseline FILE] [--fail-on-tool-drift] [--json FILE] [--markdown FILE] [--no-store] [--db URL]` | Replay a suite and gate on it |
 | `replay baseline SUITE -o FILE [--runs N] [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR]` | Measure every scenario (no checks) and write median cost, tokens, model calls and p95 latency; exit 2 if a scenario cannot run, 1 if the agent errors (nothing written) |
 | `replay flake SUITE [--gate sprt\|wilson] [--max-runs N] [--p-fail P] [--p-pass P] [--alpha A] [--beta B] [--min-pass-rate R] [--concurrency N] [--runs-per-minute R] [--seed S] [-s SCENARIO] [--mode] [--agent] [--client] [--cassette-dir DIR] [--json FILE] [--markdown FILE] [--no-store]` | Replay each scenario repeatedly, gate on its pass rate, classify passing / flaky / failing |
 | `replay runs [RUN_ID] [--limit N] [--scenario NAME] [--db URL]` | List stored runs, or show one |
@@ -909,6 +939,13 @@ verdict is what gates, and a fork's read-only token must not turn a passing
 suite red. The wheel bundles the dashboard build, which is gitignored, and CI
 installs it in a clean venv outside the repo, so a packaging mistake fails
 there instead of on a user's machine. PLAN.md has the full component map.
+
+M10 closes the gap the mutation study left in `tools-live`. Three tool bugs
+only change what a read-only tool returns, so no check saw them, and the one
+signal that did, `approximate` model steps, also fires when a refactor merely
+changes request bytes. The drift check compares the tool's own output with
+the recording, and only for a call made with the arguments that produced the
+recording, which is what keeps an agent change from reading as a tool change.
 
 ## Design decisions
 
@@ -1108,11 +1145,8 @@ Next (evolution round 1, 2026-10-21; evidence and hypotheses in
    measure its pass rate over 10 `model-live` runs~~ (done:
    [examples/pydantic_ai_agent](examples/pydantic_ai_agent), results in
    [RESULTS.md](RESULTS.md))
-10. A tool-result drift check (`fail_on_tool_drift`): in `tools-live`, compare
-    each live tool's result with the recorded one, so that the three tool bugs
-    only `fail_on_approximate` catches today are caught without failing the
-    benign JSON-layout refactor, or the live task whose free-text argument is
-    reworded on every run
+10. ~~A tool-result drift check (`fail_on_tool_drift`)~~ (done: 8 / 8 tool
+    bugs, 0 / 5 false alarms, see [RESULTS.md](RESULTS.md))
 
 Still to do, in order: implement `agent_replay/stats.py` so kappa and the
 SPRT run for real; label the retail golden set and record D1 to measure
