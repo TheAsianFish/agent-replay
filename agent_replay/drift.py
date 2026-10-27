@@ -14,7 +14,11 @@ same request fingerprint, i.e. the same arguments: the first such envelope (in
 starting order) whose result it equals, else the first such envelope, and then
 it is drift. Only such pairs are compared: when the arguments differ, a
 different result is expected and says nothing about the tool (the agent or the
-model changed, which other checks see). A live call with no such envelope is
+model changed, which other checks see). The exception is a tool with
+identifying arguments (``identify``): a live call whose identity no recording of
+it has, used or not, is drift with reason ``identity_unrecorded``, because the
+agent asked about an entity the recorded run never touched and the model reply
+served next was written for another one. A live call with no such envelope is
 counted, not compared, and consumes nothing, so an extra or changed call cannot
 take the recording a later identical call is paired with; and a repeated read
 (the same call before and after a write) that the agent adds or drops still
@@ -37,61 +41,30 @@ whole.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping, Sequence
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 from agent_replay._json import canonical_json
+from agent_replay._paths import WILDCARD, Path, Segment, format_path, parse_path
 from agent_replay.cassette import Cassette, Envelope, ErrorInfo, Kind
-from agent_replay.errors import ConfigError
+from agent_replay.identify import identity, parse_identify, values
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
-type Segment = str | int
-type Path = tuple[Segment, ...]
-
-WILDCARD = "*"
-_TOKEN = re.compile(r"\.?([^.\[\]]+)|\[(\*|\d+)\]")
-
-
-def parse_path(text: str) -> Path:
-    """``items[*].price`` -> ``("items", "*", "price")``; raises :class:`ConfigError`.
-
-    Keys are separated by ``.``; ``[n]`` is a list index and ``[*]`` (or a bare
-    ``*`` key) matches any one key or index.
-    """
-    segments: list[Segment] = []
-    pos = 0
-    while pos < len(text):
-        match = _TOKEN.match(text, pos)
-        # A key is dotted everywhere but at the start: "a.b", never ".a" or "[0]b".
-        misplaced_key = (
-            match is not None
-            and match.group(1) is not None
-            and text.startswith(".", pos) == (pos == 0)
-        )
-        if match is None or misplaced_key:
-            raise ConfigError(
-                f"ignore_fields: cannot parse {text!r} at character {pos + 1}; write paths "
-                "like 'created_at', 'items[*].updated_at' or 'items[0].id'"
-            )
-        key, index = match.groups()
-        if key is not None:
-            segments.append(key)
-        else:
-            segments.append(WILDCARD if index == WILDCARD else int(index))
-        pos = match.end()
-    if not segments:
-        raise ConfigError("ignore_fields: an empty path ignores nothing; remove it")
-    return tuple(segments)
-
-
-def format_path(path: Path) -> str:
-    """``("items", 0, "status")`` -> ``$.items[0].status``; the root is ``$``."""
-    out = "$"
-    for segment in path:
-        out += f"[{segment}]" if isinstance(segment, int) else f".{segment}"
-    return out
+__all__ = [
+    "WILDCARD",
+    "DriftReport",
+    "Path",
+    "Segment",
+    "ToolDrift",
+    "compare",
+    "describe",
+    "first_difference",
+    "format_path",
+    "parse_path",
+    "tool_drift",
+]
 
 
 def _ignored(path: Path, patterns: Sequence[Path]) -> bool:
@@ -137,21 +110,27 @@ def _walk(a: JsonValue, b: JsonValue, path: Path, ignore: Sequence[Path]) -> Pat
 
 
 class ToolDrift(BaseModel):
-    """One live tool call whose result differs from its recording."""
+    """One live tool call whose result differs from its recording, or whose identity
+    no recording has."""
 
     model_config = ConfigDict(frozen=True)
 
     tool: str
     step: int
     """The live step's index in the replayed trajectory."""
-    envelope_seq: int
-    """The recorded envelope it was compared with."""
+    envelope_seq: int | None
+    """The recorded envelope it was compared with (``None`` for ``identity_unrecorded``)."""
     path: str
     """The first differing path, ``$`` for the whole result."""
     recorded: JsonValue
     live: JsonValue
     """The two values at ``path`` (an error as ``{"error": type, "message": ...}``;
-    ``null`` where the path is missing on that side)."""
+    ``null`` where the path is missing on that side). For ``identity_unrecorded``,
+    ``live`` holds the call's identifying values and ``recorded`` is ``null``."""
+    reason: Literal["result", "identity_unrecorded"] = "result"
+    """``result``: the result differs from the recording of the same call.
+    ``identity_unrecorded``: the tool has identifying arguments (``identify``) and
+    no recording of it was made for this entity."""
 
 
 class DriftReport(BaseModel):
@@ -167,6 +146,11 @@ class DriftReport(BaseModel):
     not compared."""
     unrecorded: int = 0
     """Live calls of a tool with no unpaired recording at all: not compared."""
+
+    @property
+    def identity_unrecorded(self) -> int:
+        """Drifts that are a call for an entity no recording has."""
+        return sum(1 for d in self.drifted if d.reason == "identity_unrecorded")
 
     @property
     def ok(self) -> bool:
@@ -215,27 +199,56 @@ def tool_drift(
     trajectory: Trajectory,
     cassette: Cassette,
     ignore_fields: Mapping[str, Sequence[str]] | None = None,
+    identify: Mapping[str, Sequence[str]] | None = None,
 ) -> DriftReport:
     """Align the live tool steps of a replay with the cassette's tool envelopes and compare.
 
     ``ignore_fields`` maps a tool name to paths (:func:`parse_path`) left out of
-    its comparison. Steps served from the cassette are not compared: they *are*
-    the recording.
+    its comparison. ``identify`` maps a tool name to its identifying argument
+    paths (:mod:`agent_replay.identify`): a live call of such a tool, recorded at
+    its nesting level, whose identity none of those recordings has (used or not)
+    is drift with reason ``identity_unrecorded``, since the agent asked about an entity
+    the recorded run never touched. Steps served from the cassette are not
+    compared: they *are* the recording.
     """
     ignore = {
         name: tuple(parse_path(p) for p in paths) for name, paths in (ignore_fields or {}).items()
     }
+    identifying = {name: paths for name, paths in parse_identify(identify).items() if paths}
     queues: dict[tuple[str, bool], list[Envelope]] = {}
     for envelope in cassette.in_start_order():
         if envelope.kind is Kind.TOOL:
             nested = envelope.parent_span_id is not None
             queues.setdefault((envelope.name, nested), []).append(envelope)
+    recorded_identities = {
+        key: {identity(e.request, identifying[key[0]]) for e in queue}
+        for key, queue in queues.items()
+        if key[0] in identifying
+    }
     compared = arguments_differ = unrecorded = 0
     drifted: list[ToolDrift] = []
     for step in trajectory.steps:
         if step.kind is not Kind.TOOL or step.status is not StepStatus.LIVE:
             continue
-        queue = queues.get((step.name, step.parent_span_id is not None), [])
+        key = (step.name, step.parent_span_id is not None)
+        paths = identifying.get(step.name)
+        known = recorded_identities.get(key)
+        # A tool this recording never made at this level is counted as unrecorded below,
+        # with or without keys: a suite's defaults name tools some scenarios never use.
+        if paths and known and identity(step.request, paths) not in known:
+            drifted.append(
+                ToolDrift(
+                    tool=step.name,
+                    step=step.index,
+                    envelope_seq=None,
+                    path="$",
+                    recorded=None,
+                    live=values(step.request, paths),
+                    reason="identity_unrecorded",
+                )
+            )
+            continue
+        queue = queues.get(key, [])
         if not queue:
             unrecorded += 1
             continue
@@ -275,9 +288,21 @@ def describe(report: DriftReport) -> str:
     not_compared = f" ({', '.join(skipped)} not compared)" if skipped else ""
     if report.ok:
         return f"{report.compared} live tool result(s) matched the recording{not_compared}"
-    first = report.drifted[0]
-    return (
-        f"{len(report.drifted)} of {report.compared} live tool result(s) differ from the "
-        f"recording{not_compared}; first: {first.tool} (step {first.step}) at {first.path}: "
-        f"recorded {_preview(first.recorded)}, live {_preview(first.live)}"
-    )
+    results = [d for d in report.drifted if d.reason == "result"]
+    parts = []
+    if results:
+        first = results[0]
+        parts.append(
+            f"{len(results)} of {report.compared} live tool result(s) differ from the "
+            f"recording{not_compared}; first: {first.tool} (step {first.step}) at {first.path}: "
+            f"recorded {_preview(first.recorded)}, live {_preview(first.live)}"
+        )
+    if report.identity_unrecorded:
+        first = next(d for d in report.drifted if d.reason == "identity_unrecorded")
+        live = first.live if isinstance(first.live, dict) else {}
+        parts.append(
+            f"{report.identity_unrecorded} live tool call(s) for an entity no recording has "
+            f"(identity_unrecorded); first: {first.tool} (step {first.step}) with "
+            + (", ".join(f"{k}={_preview(v)}" for k, v in live.items()) or "no identifying value")
+        )
+    return "; ".join(parts)

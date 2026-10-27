@@ -140,6 +140,50 @@ class TruncatesHistory(_CopiedLoop):
         return messages[-4:]
 
 
+# --- reads of an entity the recording never saw (M11) ------------------------------
+#
+# Both change only a read's identifying argument, never a write's, so the request
+# rules (every written order fetched first) still see the right ids. Without
+# identifying arguments the replay serves the right recording to the wrong call.
+
+
+class GuessesUserId(RetailAgent):
+    """Fetches the profile with an id guessed from the name (``emma_smith``) instead of
+    the one the lookup returned (``emma_smith_8564``)."""
+
+    def handle_tool_uses(self, blocks: list[ToolUseBlock]) -> list[ToolResultBlockParam]:
+        return [
+            self.call_tool(
+                b.id, b.name, {**b.input, "user_id": str(b.input["user_id"]).rsplit("_", 1)[0]}
+            )
+            if b.name == "get_user_details"
+            else self.execute(b)
+            for b in blocks
+        ]
+
+
+def _mistyped(order_id: str) -> str:
+    """``#W2417020`` -> ``#W2417021``: the last digit off by one."""
+    return order_id[:-1] + str((int(order_id[-1]) + 1) % 10)
+
+
+class ReadsWrongOrder(RetailAgent):
+    """When it reads several orders at once, asks for the last one with its last digit off
+    by one (an indexing slip in the code that fans the reads out)."""
+
+    def handle_tool_uses(self, blocks: list[ToolUseBlock]) -> list[ToolResultBlockParam]:
+        reads = [b for b in blocks if b.name == "get_order_details"]
+        last = reads[-1] if len(reads) > 1 else None
+        return [
+            self.call_tool(
+                b.id, b.name, {**b.input, "order_id": _mistyped(str(b.input["order_id"]))}
+            )
+            if b is last
+            else self.execute(b)
+            for b in blocks
+        ]
+
+
 drops_error_flag = DropsErrorFlag().run
 truncates_tool_results = TruncatesToolResults().run
 max_turns_too_low = MaxTurnsTooLow().run
@@ -149,3 +193,5 @@ mismatches_tool_use_ids = MismatchesToolUseIds().run
 unregisters_product_tool = UnregistersProductTool().run
 strips_policy = StripsPolicy().run
 truncates_history = TruncatesHistory().run
+guesses_user_id = GuessesUserId().run
+reads_wrong_order = ReadsWrongOrder().run

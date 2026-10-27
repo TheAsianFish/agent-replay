@@ -123,6 +123,8 @@ the rows still to measure.
 | Regressions caught, cut-point replay | `model-live` 12 / 12 model regressions; `tools-live` 5 / 8 tool bugs (8 / 8 with `fail_on_approximate`; 8 / 8 with `fail_on_tool_drift`) | `make eval-mutations` |
 | False alarms on benign refactors | 0 / 5 (1 / 5 with `fail_on_approximate` in `tools-live`; 0 / 5 with `fail_on_tool_drift`) | `make eval-mutations` |
 | Tool drift on the six live recordings, `tools-live` | 0 of 34 live tool results differ from the recording | `replay ci examples/retail_agent/replay-live.toml --mode tools-live --fail-on-tool-drift` |
+| Reads of an entity the recording never saw | 2 seeded mutations: 0 / 2 caught in every non-strict configuration without `identify` keys; 2 / 2 with them in `full`, `model-live` and `tools-live` with `fail_on_tool_drift`; the keys change none of the v1 results (false alarms still 0 / 5) | `make eval-mutations` |
+| Correct agents on another path, `model-live` | 5 variants: exact `tool_sequence` fails 4 / 5, ground-truth rules 0 / 5 under `fallback`; under `strict` 2 / 5 end on an unrecorded repeated read | `make eval-mutations` |
 | Live flakiness, retail agent | `claude-haiku-5-5` 119 / 120 runs passed; `claude-opus-5-5` 30 / 30 at 41× Haiku's cost per run | `replay flake` (RESULTS.md, M4) |
 | Cost gate, live `model-live` | unchanged agent within 5% of baseline; prompt caching removed: 6 / 6 tasks failed the 25% limit (+76% to +155%) | `replay ci --baseline` (RESULTS.md, M3) |
 | Judge vs objective labels, 21 golden items | 20 / 21 agree (95%); always-"fail" baseline 71% | `make eval-judge-objective` |
@@ -585,6 +587,31 @@ tool instead. Set `fail_on_approximate = true` (or pass `--strict` to `replay
 run`) when a wrong answer there would make the rest of the run meaningless;
 leave it off when the drift is in free text, such as a summary argument.
 
+Between the two sits `identify`: per tool, the arguments that name the entity
+a call reads or writes.
+
+```toml
+[defaults.identify]
+get_user_details = ["user_id"]
+get_order_details = ["order_id"]
+# transfer_to_human_agents has none: a reworded summary is the same transfer
+```
+
+A served call then only falls back to a recording of the same entity. A read
+of an order no unused recording has is `unrecorded`, and the policy decides
+(`strict` fails the run, `fallback` calls the real tool, `synth` stubs it),
+instead of the agent being handed another order's details. A call that differs
+in other arguments is still served `approximate`. Paths use the
+`ignore_fields` syntax without wildcards (`customer.id`, `items[0].sku`).
+Values compare exactly. A path that no recording of the tool has is a typo,
+and the scenario fails to run with the recorded argument names; a tool name
+that no scenario's cassette recorded fails the whole suite the same way (in a
+scenario's own table, a tool its cassette never recorded). A scenario's
+`identify` replaces the defaults' entry for the same tool (`[]` switches it
+off). Without the keys, the two seeded mutations that read the wrong user or
+order pass every non-strict configuration; with them they fail
+(RESULTS.md, M11).
+
 In `tools-live` the tools run for real, but a tool that now returns something
 else is invisible unless a later check happens to observe it: the next model
 reply is served from the recording either way. `fail_on_tool_drift = true`
@@ -614,7 +641,12 @@ JSON (key order never matters, `1` and `1.0` differ), and a call that raised
 is compared by exception type and message. A failure names the first
 differing path, for example `get_order_details (step 5) at $.status: recorded
 "delivered", live "pending"`. A scenario's `ignore_fields` add to the
-defaults' for the same tool; `*` matches any one key or index.
+defaults' for the same tool; `*` matches any one key or index. For a tool with
+`identify` keys that the recording called, a live call whose identity none of
+its recordings has (used or not) is also drift, reported as
+`identity_unrecorded`: the agent asked about an entity
+the recorded run never touched, and the model reply served next was written
+for another one.
 
 ## GitHub Action
 
@@ -1161,10 +1193,11 @@ judge-human kappa; the real judge on LLMBar; `make bench-flake` (D3).
 Next (evolution round 2, 2026-10-27; evidence and hypotheses in
 [PLAN.md](PLAN.md), "Evolution round 2"):
 
-11. Identifying arguments for the matcher (`identify` keys, so a read for an
+11. ~~Identifying arguments for the matcher (`identify` keys, so a read for an
     entity the cassette never saw is `unrecorded` rather than served another
     entity's result), and a mutation-study table of correct-but-different
-    paths per check type
+    paths per check type~~ (done: the two identity mutations go from 0 / 2 to
+    2 / 2 caught with no v1 result changed; see [RESULTS.md](RESULTS.md))
 12. Frozen-world bias: `model-live` with `strict` against `fallback` tools on
     qwen2.5:7b, every run classified by cause, and the verdict-stability curve
     resampled from the committed flake runs

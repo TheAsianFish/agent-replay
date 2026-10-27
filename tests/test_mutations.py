@@ -14,9 +14,11 @@ from typing import Any
 import pytest
 
 from agent_replay import Cassette
+from agent_replay.cassette import ErrorInfo
 from agent_replay.runner import load_agent, make_client, replay
 from eval import mutation_study as study
-from eval.mutations import FAKE_MODEL, MUTATIONS, REFACTORS, Mutation, Refactor
+from eval.mutations import FAKE_MODEL, IDENTITY_MUTATIONS, MUTATIONS, REFACTORS, Mutation, Refactor
+from eval.mutations.paths import PATH_VARIANTS
 from eval.mutations.tools import MUTANT_TOOLS
 from examples.retail_agent import agent as retail
 from examples.retail_agent import rules, tools
@@ -31,7 +33,11 @@ COMMITTED: dict[str, Any] = json.loads(
 )
 COMMITTED_ROWS = {row["id"]: row for row in [*COMMITTED["mutations"], *COMMITTED["refactors"]]}
 CONFIG = {c.id: c for c in study.CONFIGS}
-CATALOGUE = {m.id: m for m in MUTATIONS}
+CATALOGUE = {m.id: m for m in [*MUTATIONS, *IDENTITY_MUTATIONS]}
+IDENTIFY: dict[str, Any] = COMMITTED["identify"]
+KEYED_ROWS = {row["id"]: row for row in [*IDENTIFY["mutations"], *IDENTIFY["refactors"]]}
+UNKEYED_ROWS = {row["id"]: row for row in IDENTIFY["identity_mutations_without_keys"]}
+PATHS: dict[str, Any] = COMMITTED["path_variants"]
 REFACTOR = {r.id: r for r in REFACTORS}
 
 
@@ -139,7 +145,8 @@ def test_every_run_starts_from_the_vendored_database():
 def test_catalogue_has_enough_mutations_of_every_kind_and_five_refactors():
     assert len(MUTATIONS) >= 25
     assert len(REFACTORS) == 5
-    ids = [m.id for m in MUTATIONS] + [r.id for r in REFACTORS]
+    assert [m.id for m in IDENTITY_MUTATIONS] == ["guesses_user_id", "reads_wrong_order"]
+    ids = [m.id for m in [*MUTATIONS, *IDENTITY_MUTATIONS]] + [r.id for r in REFACTORS]
     assert len(ids) == len(set(ids))
     assert all(re.fullmatch(r"[a-z][a-z0-9_]*", i) for i in ids)
     assert {m.target for m in MUTATIONS} == {"agent", "model", "tool"}
@@ -147,9 +154,16 @@ def test_catalogue_has_enough_mutations_of_every_kind_and_five_refactors():
     assert {m.id for m in MUTATIONS if m.target == "tool"} == set(MUTANT_TOOLS)
 
 
-@pytest.mark.parametrize("variant", [*MUTATIONS, *REFACTORS], ids=lambda v: v.id)
+@pytest.mark.parametrize(
+    "variant", [*MUTATIONS, *IDENTITY_MUTATIONS, *REFACTORS], ids=lambda v: v.id
+)
 def test_every_reference_loads(variant: Mutation | Refactor):
     assert callable(load_agent(variant.agent))
+    assert make_client(variant.client) is not None
+
+
+@pytest.mark.parametrize("variant", PATH_VARIANTS, ids=lambda v: v.id)
+def test_every_path_variant_client_loads(variant: Any):
     assert make_client(variant.client) is not None
 
 
@@ -282,7 +296,9 @@ def test_committed_results_cover_the_catalogue_and_summarise_consistently():
     markdown = study.to_markdown(COMMITTED)
     assert "stub-everything baseline" in markdown
     rows = len(MUTATIONS) + len(REFACTORS) + len(summary["check_types"])
-    assert markdown.count("\n| `") == rows
+    identity_rows = 2 * len(IDENTITY_MUTATIONS)
+    path_rows = len(PATH_VARIANTS) * len(study.PATH_POLICIES) * 2
+    assert markdown.count("\n| `") == rows + identity_rows + path_rows
 
 
 def test_every_configured_check_type_has_a_row_even_without_catches():
@@ -292,3 +308,114 @@ def test_every_configured_check_type_has_a_row_even_without_catches():
     assert set(configured) <= set(COMMITTED["summary"]["check_types"])
     zero = COMMITTED["summary"]["check_types"]["forbidden_tools"]
     assert all(cell == {"caught": 0, "alone": 0} for cell in zero.values())
+
+
+# --- identifying arguments (M11) ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("mutation_id", "config", "identify", "caught_by"),
+    [
+        # Without the keys the replay serves the right recording to the wrong call...
+        ("guesses_user_id", "full", False, []),
+        ("reads_wrong_order", "model-live", False, []),
+        ("reads_wrong_order", "tools-live+drift", False, []),
+        # ...with them the call is unrecorded, or in tools-live identity drift.
+        ("reads_wrong_order", "full", True, ["run_error:UnrecordedCallError"]),
+        ("guesses_user_id", "tools-live+drift", True, ["no_tool_drift"]),
+        # Only the identity drift sees it in tools-live: the strict flag sees the bytes.
+        ("guesses_user_id", "tools-live", True, []),
+        ("guesses_user_id", "tools-live+strict", False, ["no_approximate_steps"]),
+    ],
+)
+def test_identity_mutations(mutation_id: str, config: str, identify: bool, caught_by: list[str]):
+    mutation = CATALOGUE[mutation_id]
+
+    outcome = study.replay_suite(mutation.agent, mutation.client, CONFIG[config], identify=identify)
+
+    assert list(outcome.caught_by) == caught_by
+    committed = (KEYED_ROWS if identify else UNKEYED_ROWS)[mutation_id]
+    assert committed["results"][config] == outcome.to_json()
+
+
+def test_the_keys_leave_every_refactor_passing_outside_strict():
+    for refactor in REFACTORS:
+        outcome = study.replay_suite(refactor.agent, refactor.client, CONFIG["full"], identify=True)
+        assert outcome.passed, refactor.id
+    assert IDENTIFY["summary"]["false_alarms"] == {
+        **{config: [] for config in CONFIG},
+        "tools-live+strict": ["compact_tool_json"],
+    }
+
+
+def test_committed_identify_section_is_consistent():
+    assert IDENTIFY["keys"] == study.suite_identify()
+    keyed = IDENTIFY["mutations"]
+    assert [m["id"] for m in keyed] == [m.id for m in [*MUTATIONS, *IDENTITY_MUTATIONS]]
+    summary = study.summarise(keyed, IDENTIFY["refactors"], list(CONFIG), study.suite_check_types())
+    assert summary == IDENTIFY["summary"]
+    # The keys changed no cell of the v1 tables: identity only bites where an entity differs.
+    assert IDENTIFY["changed_by_keys"] == []
+    for row in COMMITTED["mutations"]:
+        assert KEYED_ROWS[row["id"]]["results"] == row["results"]
+
+
+# --- correct-but-different paths (M11) ----------------------------------------------
+
+
+def _path_row(variant: str, policy: str, identify: bool) -> dict[str, Any]:
+    return next(
+        r
+        for r in PATHS["rows"]
+        if (r["variant"], r["policy"], r["identify"]) == (variant, policy, identify)
+    )
+
+
+@pytest.mark.parametrize(
+    ("variant_id", "policy"),
+    [("verifies_after_write", "strict"), ("verifies_after_write", "fallback")],
+)
+def test_path_variant_row_reproduces(variant_id: str, policy: Any):
+    variant = next(v for v in PATH_VARIANTS if v.id == variant_id)
+
+    row = study.path_row(variant, policy, identify=True)
+
+    assert row == _path_row(variant_id, policy, True)
+
+
+def test_a_verifying_read_ends_on_an_unrecorded_call_only_under_strict():
+    strict = _path_row("verifies_after_write", "strict", True)
+    fallback = _path_row("verifies_after_write", "fallback", True)
+
+    assert strict["causes"] == {"passed": 2, "unrecorded": 4}
+    assert fallback["causes"] == {"checks": 4, "passed": 2}
+    assert fallback["fallback_steps"] == 4
+    assert fallback["check_types"]["tool_sequence"] == 4
+    assert fallback["check_types"]["rule:matches_ground_truth"] == 0
+
+
+def test_the_reworded_summary_is_still_served_approximately_and_passes():
+    for policy in study.PATH_POLICIES:
+        row = _path_row("rewords_transfer_summary", policy, True)
+        assert row["causes"] == {"passed": 6}
+        assert row["approximate_steps"] == 1
+
+
+def test_termination_names_how_a_scenario_ended():
+    passed = study.ScenarioReport(
+        name="a", cassette="a", agent="a", mode="model-live", policy="strict", passed=True
+    )
+    unrecorded = passed.model_copy(
+        update={"passed": False, "error": ErrorInfo(type="UnrecordedCallError", message="")}
+    )
+    crashed = passed.model_copy(
+        update={"passed": False, "error": ErrorInfo(type="KeyError", message="")}
+    )
+    checks = passed.model_copy(update={"passed": False})
+
+    assert [study.termination(s) for s in (passed, unrecorded, crashed, checks)] == [
+        "passed",
+        "unrecorded",
+        "run_error:KeyError",
+        "checks",
+    ]

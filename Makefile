@@ -139,7 +139,9 @@ eval-judge-objective:
 # The mutation study: 32 known-bad variants and 5 benign refactors of the retail agent,
 # replayed in full, tools-live, model-live, model-live with fallback, tools-live with
 # fail_on_approximate and tools-live with fail_on_tool_drift; detection rate per check type
-# and per configuration (offline, about a minute). The JSON is byte-stable across runs.
+# and per configuration. Then everything again with the suite's identify keys, plus the two
+# identity mutations, and five correct-but-different paths of the fake model in model-live
+# under strict and fallback (offline, about two minutes). The JSON is byte-stable across runs.
 eval-mutations:
 	uv run python eval/mutation_study.py --out eval/results/mutations.json
 

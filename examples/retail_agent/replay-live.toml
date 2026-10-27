@@ -31,6 +31,23 @@ checks = [
   { type = "judge", rubric = "rubric.yaml", cache_dir = "judge-cache" },
 ]
 
+
+# The arguments that name what each tool reads or writes. A served call is only
+# ever given a recording of the same entity: a read of an order the recording
+# never fetched is unrecorded (the policy decides) instead of being served
+# another order's details. transfer_to_human_agents and calculate have none: a
+# reworded summary is the same transfer.
+[defaults.identify]
+find_user_id_by_email = ["email"]
+find_user_id_by_name_zip = ["first_name", "last_name", "zip"]
+get_user_details = ["user_id"]
+get_order_details = ["order_id"]
+get_product_details = ["product_id"]
+cancel_pending_order = ["order_id"]
+modify_pending_order_address = ["order_id"]
+return_delivered_order_items = ["order_id"]
+exchange_delivered_order_items = ["order_id"]
+
 [[scenario]]
 name = "cancel_pending_laptop"
 cassette = "cassettes/live/cancel_pending_laptop.jsonl"

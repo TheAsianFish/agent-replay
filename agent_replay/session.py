@@ -20,7 +20,7 @@ import platform
 import threading
 import time
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -32,6 +32,7 @@ import structlog
 from pydantic import JsonValue
 
 from agent_replay._json import canonical_json, to_jsonable
+from agent_replay._paths import Path
 from agent_replay.cassette import (
     Cassette,
     Envelope,
@@ -47,6 +48,7 @@ from agent_replay.errors import (
     UnrecordedCallError,
     rebuild_exception,
 )
+from agent_replay.identify import check_recorded, describe, identity, parse_identify
 from agent_replay.pricing import cost_usd
 from agent_replay.trajectory import Step, StepStatus, Trajectory
 
@@ -163,7 +165,10 @@ class Session:
     another call) is served and the step is ``approximate``. A nested call
     never takes a top-level recording as an approximation, or the reverse: a
     tool that runs live under ``fallback`` would otherwise answer its inner
-    calls with data recorded for unrelated top-level ones. A call with
+    calls with data recorded for unrelated top-level ones. A tool with
+    identifying arguments (``identify``, :mod:`agent_replay.identify`) only takes
+    an approximation with the same values at those paths: a call for an entity
+    no unused recording has is not served another entity's result. A call with
     nothing left to serve follows the policy: ``strict`` fails the run,
     ``fallback`` performs it for real, ``synth`` answers a tool call with a stub
     built from its return type (clock and random calls run for real; a model
@@ -181,6 +186,7 @@ class Session:
         mode: Mode = "record",
         cassette: Cassette | None = None,
         policy: Policy = "strict",
+        identify: Mapping[str, Sequence[str]] | None = None,
         agent: str | None = None,
         task: str | None = None,
         metadata: dict[str, JsonValue] | None = None,
@@ -212,6 +218,9 @@ class Session:
         self._envelopes: list[Envelope] = []
         self._spans = 0
         self._queues = _servable(cassette, self._served) if cassette is not None else {}
+        self._identify = {tool: paths for tool, paths in parse_identify(identify).items() if paths}
+        if cassette is not None:
+            check_recorded(cassette, self._identify)
 
     def __enter__(self) -> Self:
         if _current.get() is not None:
@@ -317,18 +326,28 @@ class Session:
         if status is StepStatus.UNRECORDED:
             raise self.fail(
                 UnrecordedCallError(
-                    call.kind.value, call.name, _preview(call.request), hint=self._hint(call)
+                    call.kind.value,
+                    call.name,
+                    _preview(call.request),
+                    hint=self._hint(call),
+                    identity=self._identity_note(call, nested=plan.parent is not None),
                 )
             )
         if envelope is not None:
             log.debug("replay.step", seq=envelope.seq, name=call.name, status=status.value)
         return plan
 
+    def _paths[T](self, call: Call[T]) -> tuple[Path, ...]:
+        return self._identify.get(call.name, ()) if call.kind is Kind.TOOL else ()
+
     def _take[T](self, call: Call[T], *, nested: bool) -> Envelope | None:
-        """Pop the envelope serving ``call``: an exact match, else the oldest at its level."""
+        """Pop the envelope serving ``call``: an exact match, else the oldest at its level
+        (with the same identity, when its tool has identifying arguments)."""
         queue = self._queues.get((call.kind, call.name))
         if not queue:
             return None
+        paths = self._paths(call)
+        wanted = identity(call.request, paths) if paths else None
 
         def same_level(envelope: Envelope) -> bool:
             return (envelope.parent_span_id is not None) == nested
@@ -336,10 +355,13 @@ class Session:
         def exact(envelope: Envelope) -> bool:
             return envelope.fingerprint == call.fingerprint
 
+        def same_identity(envelope: Envelope) -> bool:
+            return wanted is None or identity(envelope.request, paths) == wanted
+
         for accept in (
             lambda e: exact(e) and same_level(e),
             exact,
-            same_level,
+            lambda e: same_level(e) and same_identity(e),
         ):
             for i, envelope in enumerate(queue):
                 if accept(envelope):
@@ -355,6 +377,20 @@ class Session:
             if call.kind in _WORLD:
                 return StepStatus.FALLBACK
         return StepStatus.UNRECORDED
+
+    def _identity_note[T](self, call: Call[T], *, nested: bool) -> str | None:
+        """Why an identified call found nothing to serve, when other recordings were left
+        at its nesting level."""
+        paths = self._paths(call)
+        with self._lock:
+            queue = self._queues.get((call.kind, call.name), ())
+            left = sum(1 for e in queue if (e.parent_span_id is not None) == nested)
+        if not paths or not left:
+            return None
+        return (
+            f"{left} unused recording(s) of {call.name!r} remain, none for "
+            f"{describe(call.request, paths)} (the suite's identify keys)"
+        )
 
     def _hint[T](self, call: Call[T]) -> str | None:
         if self.policy == "synth" and call.kind is Kind.MODEL:
@@ -608,7 +644,9 @@ class ReplaySession(Session):
 
     ``full`` serves every call (offline, bit-stable), ``model-live`` runs the
     model for real against recorded tools, ``tools-live`` runs the tools for
-    real against recorded model replies. See :class:`Session` for matching.
+    real against recorded model replies. ``identify`` maps a tool to its
+    identifying argument paths (:mod:`agent_replay.identify`). See
+    :class:`Session` for matching.
     """
 
     def __init__(
@@ -617,6 +655,7 @@ class ReplaySession(Session):
         *,
         mode: ReplayMode = "full",
         policy: Policy = "strict",
+        identify: Mapping[str, Sequence[str]] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         timer: Callable[[], float] = time.perf_counter,
     ) -> None:
@@ -626,6 +665,7 @@ class ReplaySession(Session):
             mode=mode,
             cassette=cassette,
             policy=policy,
+            identify=identify,
             agent=cassette.header.agent,
             task=cassette.header.task,
             metadata={

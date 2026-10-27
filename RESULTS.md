@@ -21,6 +21,8 @@ byte-stable ones and fails on any change.
 | SPRT runs saved vs the fixed-sample test | — | Sequential gate simulation | `make bench-sprt` once `stats.py` exists | **to measure** |
 | Mutation detection, per mode | `full` 7/32; `model-live` 12/12 model regressions; `tools-live` 5/8 tool bugs (8/8 with `fail_on_approximate`); false alarms 0/5 (1/5) | Mutation study (M4) | `make eval-mutations` | measured, offline |
 | Tool-result drift check | `tools-live+drift` 8/8 tool bugs, false alarms 0/5 (beside 8/8 and 1/5 with `fail_on_approximate`); 0 drift in 34 live tool results on the six live recordings | Tool-result drift check (M10) | `make eval-mutations`; `replay ci examples/retail_agent/replay-live.toml --mode tools-live --fail-on-tool-drift` | measured, offline |
+| Identifying arguments | 2 identity mutations caught 0/2 without keys in every non-strict configuration, 2/2 with keys in `full`, `model-live`, `model-live+fallback` and `tools-live+drift`; 0 v1 cells changed by the keys; false alarms 0/5 (1/5 strict) | Identifying arguments (M11) | `make eval-mutations` | measured, offline |
+| Correct-but-different paths | 5 variants in `model-live`: `tool_sequence` false alarms 4/5, ground-truth rules 0/5 under `fallback`; `strict` ends 2/5 on an unrecorded call (1/5 then fails the ground truth too) | Identifying arguments (M11) | `make eval-mutations` | measured, offline |
 | Live flakiness | Haiku 5.5 119/120; Opus 5.5 30/30 at 41× Haiku's cost per run | `replay flake` on live models (M4) | commands in that section | measured (key) |
 | Wilson intervals for those runs | — | `replay flake` on live models | `REPLAY_STATS_IMPL=core` re-run | **to measure** |
 | Offline flake gate | fake model passes every scenario; seeded flaky model fails the gate | `replay flake` offline (M4) | `make flake-demo` | measured, offline |
@@ -1633,6 +1635,218 @@ What this shows:
   paths are listed. The same flag on the pydantic-ai suites (the fake-model
   and the qwen2.5:7b recordings, `--mode tools-live --fail-on-tool-drift`)
   compared 2 live tool results per scenario, 0 drifted.
+
+## Identifying arguments and correct-but-different paths (M11, offline)
+
+When no recording matches a served tool call exactly, the session serves the
+oldest unused recording of the same tool and flags the step `approximate`.
+That is right for a reworded `transfer_to_human_agents` summary and wrong for
+a read of another order, which gets the recorded order's details. Can a suite
+name the arguments that identify a recording, so a call for an entity the
+cassette never saw is `unrecorded` and the policy decides, without breaking
+the reworded summary? And which check types raise a false alarm when a correct
+agent takes another path?
+
+- **Mechanism:** `[defaults.identify]` in a suite (`agent_replay/identify.py`,
+  used by `Session._take` and `drift.tool_drift`). A served call only falls
+  back to a recording with the same values at the named argument paths;
+  with none left it is `unrecorded`. In `tools-live` with
+  `fail_on_tool_drift`, a live call of a recorded tool whose identity none of
+  its recordings has, used or not, is drift with reason `identity_unrecorded`
+  (a tool the scenario never recorded stays counted as unrecorded). The retail suites declare
+  the user, order and product ids of their nine entity tools;
+  `transfer_to_human_agents` and `calculate` declare none. The pydantic-ai
+  suites declare all five tools (`search_flights` by route and date,
+  `convert_currency` by amount and currencies, the booking tools by
+  reference, `book_flight` by flight and passenger).
+- **Hypothesis (PLAN.md, written before the run):** `guesses_user_id` and
+  `reads_wrong_order` are caught 0/2 in the five non-strict configurations
+  without keys and 2/2 in `full`, `model-live` and `tools-live+drift` with
+  them. The five refactors stay at 0/5 false alarms (1/5 strict), and the six
+  live cassettes still pass. Of the five path variants in `model-live`, the
+  exact `tool_sequence` fails 4/5 and the ground-truth rules 0/5. Under
+  `strict` the repeated lookup and the verifying read end as `unrecorded`,
+  and under `fallback` none do.
+- **Dataset and method:** the M4 study (D4: six fake-model retail
+  scenarios), unchanged. The v1 tables still run without the keys
+  (`Overrides(identify={})`), and their 37 rows in
+  `eval/results/mutations.json` are byte-identical to M10's. The study then
+  re-runs all 32 mutations and 5 refactors with the keys, plus the two new
+  agent mutations, in the six configurations. Both new mutations change only
+  a *read's* identifying argument: `guesses_user_id` fetches the profile as
+  `emma_smith` instead of `emma_smith_8564`, and `reads_wrong_order` mistypes
+  the last id when it reads several orders at once, which is never the order
+  later written. So the request rule `checked_before_writing` still sees the
+  right ids, and only the replay's choice of recording decides. (A wrong read
+  of the written order is already caught by that rule.) The five path variants
+  (`eval/mutations/paths.py`) wrap the fake model, and each reaches the same
+  database and answer. They run in `model-live` against the six recordings
+  under `strict` and `fallback`, with and without the keys. Per scenario they
+  record the failed check types and how the run ended.
+- **Commands:** `make eval-mutations` (117 s on 4 vCPU, AMD EPYC 7763; a
+  second run left `eval/results/mutations.json` unchanged); the live suite as
+  in M10, now with its keys:
+  `REPLAY_JUDGE_OFFLINE=1 uv run replay ci examples/retail_agent/replay-live.toml --mode tools-live --fail-on-tool-drift --no-store --json report.json`;
+  and both pydantic-ai suites in `full` and in `tools-live --fail-on-tool-drift`
+  (`uv run replay ci examples/pydantic_ai_agent/replay.toml --no-store`, and
+  the same for `replay-qwen.toml`). $0.
+
+Raw output of `make eval-mutations`, the M11 sections (the v1 tables above
+it are unchanged and not repeated):
+
+```
+### Mutations only identity can see (caught by; — survived)
+
+| mutation | identify | full | tools-live | model-live | model-live+fallback | tools-live+strict | tools-live+drift |
+|---|---|---|---|---|---|---|---|
+| `guesses_user_id` | without | — | — | — | — | `no_approximate_steps` | — |
+| `guesses_user_id` | with | `output_schema`, `run_error:UnrecordedCallError` | — | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `no_approximate_steps` | `no_tool_drift` |
+| `reads_wrong_order` | without | — | — | — | — | `no_approximate_steps` | — |
+| `reads_wrong_order` | with | `run_error:UnrecordedCallError` | — | `run_error:UnrecordedCallError`, `tool_sequence` | `tool_sequence` | `no_approximate_steps` | `no_tool_drift` |
+
+Detected (of 2) without → with the keys: full 0 → 2, tools-live 0 → 0, model-live 0 → 2, model-live+fallback 0 → 2, tools-live+strict 2 → 2, tools-live+drift 0 → 2.
+
+### Detection rate with the keys (34 mutations)
+
+| configuration | all | agent | model | tool |
+|---|---|---|---|---|
+| full | 9/34 (26%) | 9/14 (64%) | 0/12 (0%) | 0/8 (0%) |
+| tools-live | 12/34 (35%) | 7/14 (50%) | 0/12 (0%) | 5/8 (62%) |
+| model-live | 24/34 (71%) | 12/14 (86%) | 12/12 (100%) | 0/8 (0%) |
+| model-live+fallback | 24/34 (71%) | 12/14 (86%) | 12/12 (100%) | 0/8 (0%) |
+| tools-live+strict | 21/34 (62%) | 13/14 (93%) | 0/12 (0%) | 8/8 (100%) |
+| tools-live+drift | 17/34 (50%) | 9/14 (64%) | 0/12 (0%) | 8/8 (100%) |
+
+False alarms with the keys: full 0/5, tools-live 0/5, model-live 0/5, model-live+fallback 0/5, tools-live+strict 1/5, tools-live+drift 0/5.
+
+Cells of the v1 tables the keys changed:
+
+- none
+```
+
+```
+| variant | policy | identify | affected | termination | approx | fallback | `arg_schema` | `budget` | `forbidden_tools` | `max_tool_calls` | `output_schema` | `required_tools` | `rule:checked_before_writing` | `rule:db_matches_ground_truth` | `rule:matches_ground_truth` | `tool_sequence` |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `reads_only_needed_orders` | strict | on | 3/6 | 3 checks, 3 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 3 |
+| `reads_only_needed_orders` | strict | off | 3/6 | 3 checks, 3 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 3 |
+| `reads_only_needed_orders` | fallback | on | 3/6 | 3 checks, 3 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 3 |
+| `reads_only_needed_orders` | fallback | off | 3/6 | 3 checks, 3 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 3 |
+| `swaps_parallel_lookups` | strict | on | 5/6 | 1 checks, 5 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 1 |
+| `swaps_parallel_lookups` | strict | off | 5/6 | 1 checks, 5 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 1 |
+| `swaps_parallel_lookups` | fallback | on | 5/6 | 1 checks, 5 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 1 |
+| `swaps_parallel_lookups` | fallback | off | 5/6 | 1 checks, 5 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 1 |
+| `repeats_order_lookup` | strict | on | 4/6 | 2 passed, 4 unrecorded | 0 | 0 | 2 | 4 | · | 4 | · | 2 | · | · | 4 | 4 |
+| `repeats_order_lookup` | strict | off | 4/6 | 2 passed, 4 unrecorded | 0 | 0 | 2 | 4 | · | 4 | · | 2 | · | · | 4 | 4 |
+| `repeats_order_lookup` | fallback | on | 4/6 | 4 checks, 2 passed | 0 | 4 | · | · | · | · | · | · | · | · | · | 4 |
+| `repeats_order_lookup` | fallback | off | 4/6 | 4 checks, 2 passed | 0 | 4 | · | · | · | · | · | · | · | · | · | 4 |
+| `verifies_after_write` | strict | on | 4/6 | 2 passed, 4 unrecorded | 0 | 0 | · | · | · | · | · | · | · | · | · | 4 |
+| `verifies_after_write` | strict | off | 4/6 | 2 passed, 4 unrecorded | 0 | 0 | · | · | · | · | · | · | · | · | · | 4 |
+| `verifies_after_write` | fallback | on | 4/6 | 4 checks, 2 passed | 0 | 4 | · | · | · | · | · | · | · | · | · | 4 |
+| `verifies_after_write` | fallback | off | 4/6 | 4 checks, 2 passed | 0 | 4 | · | · | · | · | · | · | · | · | · | 4 |
+| `rewords_transfer_summary` | strict | on | 1/6 | 6 passed | 1 | 0 | · | · | · | · | · | · | · | · | · | · |
+| `rewords_transfer_summary` | strict | off | 1/6 | 6 passed | 1 | 0 | · | · | · | · | · | · | · | · | · | · |
+| `rewords_transfer_summary` | fallback | on | 1/6 | 6 passed | 1 | 0 | · | · | · | · | · | · | · | · | · | · |
+| `rewords_transfer_summary` | fallback | off | 1/6 | 6 passed | 1 | 0 | · | · | · | · | · | · | · | · | · | · |
+
+Per policy (variants out of 5):
+
+- strict, identify on: 4 raise a false alarm; 2 end on an unrecorded call (`repeats_order_lookup`, `verifies_after_write`); failing check types: `arg_schema` 1, `budget` 1, `max_tool_calls` 1, `required_tools` 1, `rule:matches_ground_truth` 1, `tool_sequence` 4.
+- strict, identify off: 4 raise a false alarm; 2 end on an unrecorded call (`repeats_order_lookup`, `verifies_after_write`); failing check types: `arg_schema` 1, `budget` 1, `max_tool_calls` 1, `required_tools` 1, `rule:matches_ground_truth` 1, `tool_sequence` 4.
+- fallback, identify on: 4 raise a false alarm; 0 end on an unrecorded call (none); failing check types: `tool_sequence` 4.
+- fallback, identify off: 4 raise a false alarm; 0 end on an unrecorded call (none); failing check types: `tool_sequence` 4.
+```
+
+The live recordings with their keys, `no_tool_drift` per scenario from
+`report.json` (6/6 passed, every step `exact` or `live`):
+
+```
+cancel_pending_laptop       6 live tool result(s) matched the recording
+modify_address_suite        3 live tool result(s) matched the recording
+return_damaged_bicycle      7 live tool result(s) matched the recording
+exchange_waterproof_boots   8 live tool result(s) matched the recording
+lookup_latest_order_total   5 live tool result(s) matched the recording
+transfer_swapped_refunds    5 live tool result(s) matched the recording
+```
+
+The pydantic-ai suites with their keys, in `full`:
+
+```
+$ uv run replay ci examples/pydantic_ai_agent/replay.toml --no-store
+PASS cheapest_fare_in_euros (full; 5 exact)
+PASS book_earliest_flight (full; 5 exact)
+PASS cancel_refundable_booking (full; 5 exact)
+3/3 scenario(s) passed: passed
+$ uv run replay ci examples/pydantic_ai_agent/replay-qwen.toml --no-store
+PASS cheapest_fare_in_euros (full; 5 exact)
+PASS book_earliest_flight (full; 5 exact)
+PASS cancel_refundable_booking (full; 5 exact)
+3/3 scenario(s) passed: passed
+```
+
+In `tools-live --fail-on-tool-drift`, every scenario of both suites passed
+with "2 live tool result(s) matched the recording".
+
+What this shows:
+
+- **Mutation half: the hypothesis held, with one addition.** Without keys
+  both identity mutations survive every non-strict configuration (0/2). In
+  `full` and `model-live` the misdirected read is served the right entity's
+  recording, and in `tools-live` the live call has other arguments, so
+  drift does not compare it. With keys they are caught 2/2 in `full`,
+  `model-live` and `tools-live+drift`. They are also caught 2/2 in
+  `model-live+fallback`, which the plan did not predict. There the real tool
+  runs for the unrecorded identity. `reads_wrong_order` then needs one extra
+  lookup, which `tool_sequence` sees. For `guesses_user_id`, the real tool
+  rejects the guessed id and the fake model crashes on the error result
+  (`run_error:JSONDecodeError`). The fake model never saw an error there; a
+  real model would answer it, and the ground-truth rule fails either way.
+  Plain `tools-live` stays at 0/2 by construction: no tool call is served
+  there. `tools-live+strict` catches both with or without keys, through the
+  approximate model step that follows.
+- **The keys cost nothing measurable here.** No cell of the v1 tables
+  changed with the keys: all 32 mutations and 5 refactors give the same
+  outcome and the same approximate count. False alarms stay at 0/5 (1/5
+  under `fail_on_approximate`, `compact_tool_json` as before). The six live
+  recordings pass `tools-live --fail-on-tool-drift` with 0 drift in 34 live
+  tool results, and every committed pydantic-ai cassette replays in `full`
+  with 0 approximate steps. Detection with the keys is 9/34 in `full`, 24/34
+  in `model-live` and 17/34 in `tools-live+drift`: the v1 counts (7, 22, 15
+  of 32) plus the two new mutations.
+- **The summary step stays approximate where it can be.** The reworded
+  summary (`rewords_transfer_summary`) passes in all 4 arms with 1
+  approximate step: `transfer_to_human_agents` has no key, so it is still
+  served. On the six live recordings in `tools-live` the transfer runs live,
+  so there is no approximate step to keep. The approximate summary in
+  RESULTS.md M2 came from a live Opus run in `model-live`, which needs a key
+  to repeat.
+- **Path half: `tool_sequence` raises the false alarms, and `strict` adds
+  its own.** Under `fallback` the exact `tool_sequence` fails 4/5 variants
+  and every other check type 0/5: the ground-truth rules passed every
+  correct path. Under `strict` the repeated lookup and the verifying read end
+  as `unrecorded` in 4 scenarios each, as predicted, and `fallback` ends none
+  that way. The predicted 0/5 for the ground-truth rules fails under
+  `strict`. `repeats_order_lookup` loses its run to the unrecorded re-read
+  before it writes, and the scenario then also fails
+  `rule:matches_ground_truth`, `budget`, `max_tool_calls`, `arg_schema` and
+  `required_tools`. That is the frozen world deciding, not the agent.
+  `swaps_parallel_lookups` changes 5 scenarios but fails `tool_sequence` in 1
+  (`modify_address_suite`), because the check compares tool names. Reversing
+  several `get_order_details` calls keeps the name sequence. Only the
+  user/order pair changes it.
+- **Keys and the frozen world are separate problems.** The keys changed
+  none of the 20 path-variant rows. Every `unrecorded` ending here is a
+  second call to an entity whose one recording was already used, which is
+  unrecorded with or without the keys. The keys decide something else: which
+  recording a call for a *different* entity may take. So a team that reads
+  an entity twice should replay `model-live` under `fallback`, or record the
+  second read. The keys do not help, and they do not hurt.
+- **Caveats.** Everything here is the fake model on fake-model recordings.
+  The real-model test of the keys is M12's `strict` arm on qwen2.5:7b. M9's
+  one approximate booking (a `book_flight` with other arguments) would now
+  be `unrecorded` under `book_flight`'s keys, but the committed M9 report
+  keeps no step arguments to confirm it offline. Identity values compare
+  exactly, so a model that writes `"sfo"` for `"SFO"` reads as another
+  entity.
 
 ## To measure
 

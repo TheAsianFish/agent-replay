@@ -27,6 +27,16 @@ paths left out of that comparison)::
     [defaults.ignore_fields]
     get_order_details = ["fulfillments[*].tracking_id"]
 
+``identify`` maps a tool to the arguments that name the entity it reads or
+writes (:mod:`agent_replay.identify`). A served call is then never given a
+recording made for another entity: with no unused recording of the same
+identity it is unrecorded and the policy decides. In ``tools-live`` with
+``fail_on_tool_drift``, a live call for an entity no recording has is drift
+(``identity_unrecorded``)::
+
+    [defaults.identify]
+    get_order_details = ["order_id"]
+
 The suite passes when every scenario does.
 """
 
@@ -48,12 +58,13 @@ import structlog
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from agent_replay.baseline import BaselineFile, RunMetrics, ScenarioBaseline, aggregate, measure
-from agent_replay.cassette import Cassette, ErrorInfo
+from agent_replay.cassette import Cassette, ErrorInfo, Kind
 from agent_replay.checks.base import Check, CheckResult
 from agent_replay.checks.budget import RELATIVE_LIMITS
 from agent_replay.checks.spec import build_check
 from agent_replay.drift import describe, parse_path, tool_drift
 from agent_replay.errors import ConfigError, JudgeCacheMiss, MeasurementError, ReplayError
+from agent_replay.identify import parse_identify
 from agent_replay.pricing import format_cost
 from agent_replay.runner import RunResult, load_agent, make_client, replay
 from agent_replay.session import Policy, ReplayMode
@@ -78,6 +89,8 @@ class Defaults(_Config):
     """In ``tools-live``, fail when a live tool's result differs from its recording."""
     ignore_fields: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     """Per tool, result paths the drift comparison skips (values that legitimately vary)."""
+    identify: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    """Per tool, the argument paths that identify the entity a call reads or writes."""
     baseline: str | None = None
     """Baseline file (``replay baseline``) that budget checks' relative limits compare
     against, relative to the suite file."""
@@ -96,6 +109,8 @@ class Scenario(_Config):
     fail_on_tool_drift: bool | None = None
     ignore_fields: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     """Added to the defaults' paths for the same tool."""
+    identify: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    """Replaces the defaults' paths for the same tool (``[]`` switches it off)."""
     checks: tuple[dict[str, Any], ...] = ()
 
 
@@ -115,6 +130,8 @@ class Overrides(_Config):
     """Fail every scenario on a served step whose request differs from the recording."""
     fail_on_tool_drift: bool | None = None
     """Fail every scenario on a live tool result that differs from the recording."""
+    identify: dict[str, tuple[str, ...]] | None = None
+    """Replaces every scenario's identify table (``{}``: no identifying arguments)."""
     cassette_dir: Path | None = None
     """Read every scenario's cassette (by file name) from this directory instead."""
     baseline: Path | None = None
@@ -148,6 +165,11 @@ def load_suite(path: Path) -> Suite:
                     parse_path(field)
                 except ConfigError as exc:
                     raise ConfigError(f"{path}: tool {tool!r}: {exc}") from exc
+    for identify in (suite.defaults.identify, *(s.identify for s in suite.scenario)):
+        try:
+            parse_identify(identify)
+        except ConfigError as exc:
+            raise ConfigError(f"{path}: {exc}") from exc
     return suite
 
 
@@ -257,8 +279,13 @@ def run_suite(
     """
     suite = load_suite(path)
     overrides = overrides or Overrides()
+    parse_identify(overrides.identify)  # a bad override is one error, not one per scenario
     sink = sink or RunSink()
     base_dir = path.parent
+    try:
+        check_identify_tools(suite, overrides, base_dir)
+    except ConfigError as exc:
+        raise ConfigError(f"{path}: {exc}") from exc
     baselines = load_baselines(suite, overrides, base_dir)
     started_at = clock()
     started = timer()
@@ -329,11 +356,7 @@ def run_scenario(
     baseline = baselines.file.scenarios.get(scenario.name) if baselines is not None else None
     mode = overrides.mode or scenario.mode or defaults.mode
     policy = overrides.policy or scenario.policy or defaults.policy
-    cassette_path = (
-        overrides.cassette_dir / Path(scenario.cassette).name
-        if overrides.cassette_dir is not None
-        else base_dir / scenario.cassette
-    )
+    cassette_path = _cassette_path(scenario, overrides, base_dir)
     agent_ref = overrides.agent or scenario.agent or defaults.agent
     started = timer()
 
@@ -364,6 +387,7 @@ def run_scenario(
         checks = _checks(scenario, defaults, base_dir, cassette, baselines) if with_checks else []
         client_ref = overrides.client or scenario.client or defaults.client
         client = make_client(client_ref, seed=seed) if client_ref is not None else None
+        identify = _identify(scenario, defaults, overrides)
         result = replay(
             cassette,
             agent,
@@ -372,6 +396,7 @@ def run_scenario(
             task=scenario.task,
             client=client,
             close_client=client is not None,
+            identify=identify,
         )
     except ReplayError as exc:
         return failed(exc, agent_ref or "?")
@@ -397,7 +422,9 @@ def run_scenario(
         overrides.fail_on_tool_drift, scenario.fail_on_tool_drift, defaults.fail_on_tool_drift
     )
     if drift and mode == "tools-live":
-        check_results += (_drift_check(result, cassette, _ignore_fields(scenario, defaults)),)
+        check_results += (
+            _drift_check(result, cassette, _ignore_fields(scenario, defaults), identify),
+        )
     elif drift:
         log.warning(
             "ci.tool_drift_skipped",
@@ -437,11 +464,70 @@ def _ignore_fields(scenario: Scenario, defaults: Defaults) -> dict[str, tuple[st
     return merged
 
 
+def _cassette_path(scenario: Scenario, overrides: Overrides, base_dir: Path) -> Path:
+    if overrides.cassette_dir is not None:
+        return overrides.cassette_dir / Path(scenario.cassette).name
+    return base_dir / scenario.cassette
+
+
+def check_identify_tools(suite: Suite, overrides: Overrides, base_dir: Path) -> None:
+    """Fail on an ``identify`` entry for a tool no cassette recorded: almost always a typo.
+
+    Such an entry does nothing (a tool that was never recorded is never served), so a
+    misspelt tool name would switch the protection off as silently as a misspelt path
+    (which :func:`agent_replay.identify.check_recorded` catches). The defaults (or the
+    override) are checked against every scenario's cassette, a scenario's own table
+    against its cassette. A cassette that does not load is reported by its scenario;
+    the defaults are then not checked, since the missing cassette may be the one that
+    records the tool.
+    """
+    recorded: dict[str, set[str]] = {}
+    for scenario in suite.scenario:
+        try:
+            cassette = Cassette.load(_cassette_path(scenario, overrides, base_dir))
+        except ReplayError:
+            continue
+        recorded[scenario.name] = {e.name for e in cassette.envelopes if e.kind is Kind.TOOL}
+    every = set().union(*recorded.values())
+    complete = len(recorded) == len(suite.scenario)
+
+    def check(table: dict[str, tuple[str, ...]], tools: set[str], where: str) -> None:
+        for tool, paths in table.items():
+            if paths and tool not in tools:
+                raise ConfigError(
+                    f"identify: {where}: no recorded call of tool {tool!r} (recorded tools: "
+                    f"{', '.join(sorted(tools)) or 'none'}); fix the tool name, or remove it"
+                )
+
+    if overrides.identify is not None:
+        if complete:
+            check(overrides.identify, every, "the identify override, in any scenario's cassette")
+        return
+    if complete:
+        check(suite.defaults.identify, every, "[defaults.identify], in any scenario's cassette")
+    for scenario in suite.scenario:
+        if scenario.name in recorded:
+            where = f"scenario {scenario.name!r}, in its cassette"
+            check(scenario.identify, recorded[scenario.name], where)
+
+
+def _identify(
+    scenario: Scenario, defaults: Defaults, overrides: Overrides
+) -> dict[str, tuple[str, ...]]:
+    if overrides.identify is not None:
+        return dict(overrides.identify)
+    return {**defaults.identify, **scenario.identify}
+
+
 def _drift_check(
-    result: RunResult, cassette: Cassette, ignore_fields: dict[str, tuple[str, ...]]
+    result: RunResult,
+    cassette: Cassette,
+    ignore_fields: dict[str, tuple[str, ...]],
+    identify: dict[str, tuple[str, ...]],
 ) -> CheckResult:
-    """``no_tool_drift``: every live tool result equals its recording (see :mod:`drift`)."""
-    report = tool_drift(result.trajectory, cassette, ignore_fields)
+    """``no_tool_drift``: every live tool result equals its recording and every identified
+    call names an entity the recording has (see :mod:`drift`)."""
+    report = tool_drift(result.trajectory, cassette, ignore_fields, identify)
     return CheckResult(
         check="no_tool_drift",
         passed=report.ok,

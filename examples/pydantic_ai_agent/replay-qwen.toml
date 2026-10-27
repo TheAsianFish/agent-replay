@@ -15,6 +15,18 @@ checks = [
   { type = "budget", max_model_calls = 6 },
 ]
 
+
+# The arguments that name what each tool reads or writes: a served call is only
+# ever given a recording of the same entity (a booking of another flight is
+# unrecorded, and the policy decides). Values compare exactly, so "sfo" is not
+# "SFO".
+[defaults.identify]
+search_flights = ["origin", "destination", "date"]
+convert_currency = ["amount", "from_currency", "to_currency"]
+get_booking = ["booking_ref"]
+book_flight = ["flight_id", "passenger"]
+cancel_booking = ["booking_ref"]
+
 [[scenario]]
 name = "cheapest_fare_in_euros"
 cassette = "cassettes/qwen/cheapest_fare_in_euros.jsonl"
