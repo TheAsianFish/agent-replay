@@ -1101,7 +1101,9 @@ it. M12 depends on M11's `identify` keys and is built after it.
     recording of the tool has fails the scenario as a config error naming the
     recorded arguments, since a typo would silently switch the protection
     off. `identity_unrecorded` counts every recording of the tool, used or
-    not: a second read of a recorded entity is not drift. The path helpers
+    not: a second read of a recorded entity is not drift; a tool the scenario
+    never recorded stays `unrecorded` (review: the defaults name tools some
+    scenarios never use, and failing those would be a false alarm). The path helpers
     moved to `agent_replay/_paths.py` so `drift` and `identify` share them.
     (b) The two mutations change only a read's identifying argument (the
     profile id, the last of several parallel order reads), so the request

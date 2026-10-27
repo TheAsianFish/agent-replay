@@ -209,6 +209,13 @@ def test_an_empty_list_switches_a_tool_off() -> None:
     assert [s.status for s in replay.trajectory.steps] == [StepStatus.APPROXIMATE]
 
 
+def test_a_bad_identify_override_is_one_config_error(tmp_path: Path) -> None:
+    suite = _identify_suite(tmp_path)
+
+    with pytest.raises(ConfigError, match="wildcard"):
+        run_suite(suite, overrides=Overrides(identify={"get_order": ("lines[*].sku",)}))
+
+
 def test_a_typo_in_the_keys_fails_before_the_run() -> None:
     with pytest.raises(ConfigError, match="no recorded call has 'id'"):
         ReplaySession(record("#W1"), identify={"get_order": ["id"]})
@@ -292,13 +299,25 @@ def test_identity_drift_counts_recordings_already_paired() -> None:
     assert report == DriftReport(compared=1, arguments_differ=1, unrecorded=1)
 
 
-def test_a_tool_never_recorded_is_identity_drift_when_it_has_keys() -> None:
+def test_a_tool_never_recorded_stays_unrecorded_with_keys() -> None:
+    """A suite's default keys name tools some scenarios never record; those calls are
+    counted as unrecorded, as without keys, not failed as identity drift."""
     cassette = _cassette(_envelope(0, "get_order", {"order_id": "A"}, "a"))
     run = Trajectory(steps=(_live(0, "get_user", {"user_id": "u"}, "u"),))
 
     assert tool_drift(run, cassette) == DriftReport(unrecorded=1)
-    report = tool_drift(run, cassette, identify={"get_user": ["user_id"]})
-    assert [d.reason for d in report.drifted] == ["identity_unrecorded"]
+    assert tool_drift(run, cassette, identify={"get_user": ["user_id"]}) == DriftReport(
+        unrecorded=1
+    )
+
+
+def test_identity_drift_without_identifying_values_says_so() -> None:
+    cassette = _cassette(_envelope(0, "get_order", {"order_id": "A"}, "a"))
+    run = Trajectory(steps=(_live(0, "get_order", {"id": "A"}, "a"),))
+
+    report = tool_drift(run, cassette, identify={"get_order": ["order_id"]})
+
+    assert describe(report).endswith("get_order (step 0) with no identifying value")
 
 
 def test_result_and_identity_drift_are_both_described() -> None:

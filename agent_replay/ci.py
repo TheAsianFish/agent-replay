@@ -279,6 +279,7 @@ def run_suite(
     """
     suite = load_suite(path)
     overrides = overrides or Overrides()
+    parse_identify(overrides.identify)  # a bad override is one error, not one per scenario
     sink = sink or RunSink()
     base_dir = path.parent
     baselines = load_baselines(suite, overrides, base_dir)

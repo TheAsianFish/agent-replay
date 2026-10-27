@@ -133,5 +133,5 @@ def check_recorded(cassette: Cassette, identify: Identify) -> None:
                 raise ConfigError(
                     f"identify: tool {tool!r}: no recorded call has {label(path)!r} "
                     f"(its recorded arguments: {', '.join(arguments) or 'none'}); fix the path "
-                    "in the suite's identify table"
+                    "in the suite's identify table, or name an argument every call sets"
                 )

@@ -1651,8 +1651,9 @@ agent takes another path?
   used by `Session._take` and `drift.tool_drift`). A served call only falls
   back to a recording with the same values at the named argument paths;
   with none left it is `unrecorded`. In `tools-live` with
-  `fail_on_tool_drift`, a live call whose identity no recording has, used or
-  not, is drift with reason `identity_unrecorded`. The retail suites declare
+  `fail_on_tool_drift`, a live call of a recorded tool whose identity none of
+  its recordings has, used or not, is drift with reason `identity_unrecorded`
+  (a tool the scenario never recorded stays counted as unrecorded). The retail suites declare
   the user, order and product ids of their nine entity tools;
   `transfer_to_human_agents` and `calculate` declare none. The pydantic-ai
   suites declare all five tools (`search_flights` by route and date,

@@ -205,9 +205,9 @@ def tool_drift(
 
     ``ignore_fields`` maps a tool name to paths (:func:`parse_path`) left out of
     its comparison. ``identify`` maps a tool name to its identifying argument
-    paths (:mod:`agent_replay.identify`): a live call of such a tool whose
-    identity no recording of it at its nesting level has (used or not) is drift
-    with reason ``identity_unrecorded``, since the agent asked about an entity
+    paths (:mod:`agent_replay.identify`): a live call of such a tool, recorded at
+    its nesting level, whose identity none of those recordings has (used or not)
+    is drift with reason ``identity_unrecorded``, since the agent asked about an entity
     the recorded run never touched. Steps served from the cassette are not
     compared: they *are* the recording.
     """
@@ -232,7 +232,10 @@ def tool_drift(
             continue
         key = (step.name, step.parent_span_id is not None)
         paths = identifying.get(step.name)
-        if paths and identity(step.request, paths) not in recorded_identities.get(key, set()):
+        known = recorded_identities.get(key)
+        # A tool this recording never made at this level is counted as unrecorded below,
+        # with or without keys: a suite's defaults name tools some scenarios never use.
+        if paths and known and identity(step.request, paths) not in known:
             drifted.append(
                 ToolDrift(
                     tool=step.name,
@@ -300,6 +303,6 @@ def describe(report: DriftReport) -> str:
         parts.append(
             f"{report.identity_unrecorded} live tool call(s) for an entity no recording has "
             f"(identity_unrecorded); first: {first.tool} (step {first.step}) with "
-            + ", ".join(f"{k}={_preview(v)}" for k, v in live.items())
+            + (", ".join(f"{k}={_preview(v)}" for k, v in live.items()) or "no identifying value")
         )
     return "; ".join(parts)

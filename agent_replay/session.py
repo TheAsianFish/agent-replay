@@ -330,7 +330,7 @@ class Session:
                     call.name,
                     _preview(call.request),
                     hint=self._hint(call),
-                    identity=self._identity_note(call),
+                    identity=self._identity_note(call, nested=plan.parent is not None),
                 )
             )
         if envelope is not None:
@@ -378,11 +378,13 @@ class Session:
                 return StepStatus.FALLBACK
         return StepStatus.UNRECORDED
 
-    def _identity_note[T](self, call: Call[T]) -> str | None:
-        """Why an identified call found nothing to serve, when other recordings were left."""
+    def _identity_note[T](self, call: Call[T], *, nested: bool) -> str | None:
+        """Why an identified call found nothing to serve, when other recordings were left
+        at its nesting level."""
         paths = self._paths(call)
         with self._lock:
-            left = len(self._queues.get((call.kind, call.name), ()))
+            queue = self._queues.get((call.kind, call.name), ())
+            left = sum(1 for e in queue if (e.parent_span_id is not None) == nested)
         if not paths or not left:
             return None
         return (

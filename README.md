@@ -640,8 +640,9 @@ is compared by exception type and message. A failure names the first
 differing path, for example `get_order_details (step 5) at $.status: recorded
 "delivered", live "pending"`. A scenario's `ignore_fields` add to the
 defaults' for the same tool; `*` matches any one key or index. For a tool with
-`identify` keys, a live call whose identity no recording has (used or not) is
-also drift, reported as `identity_unrecorded`: the agent asked about an entity
+`identify` keys that the recording called, a live call whose identity none of
+its recordings has (used or not) is also drift, reported as
+`identity_unrecorded`: the agent asked about an entity
 the recorded run never touched, and the model reply served next was written
 for another one.
 
