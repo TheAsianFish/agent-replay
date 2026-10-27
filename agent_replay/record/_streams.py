@@ -14,10 +14,12 @@ accumulates to a message equal to the original, so ``text_stream``,
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator, Iterable, Iterator
+from collections.abc import AsyncIterator, Iterable, Iterator, Sequence
+from dataclasses import dataclass
 from types import TracebackType
 from typing import Any, NoReturn, Self
 
+import httpx2
 from anthropic.types import (
     Message,
     RawContentBlockDeltaEvent,
@@ -28,9 +30,23 @@ from anthropic.types import (
     RawMessageStopEvent,
     RawMessageStreamEvent,
 )
+from anthropic.types.beta import (
+    BetaMessage,
+    BetaRawContentBlockDeltaEvent,
+    BetaRawContentBlockStartEvent,
+    BetaRawContentBlockStopEvent,
+    BetaRawMessageDeltaEvent,
+    BetaRawMessageStartEvent,
+    BetaRawMessageStopEvent,
+    BetaRawMessageStreamEvent,
+)
+from pydantic import BaseModel
 
 from agent_replay._json import to_jsonable
 from agent_replay.errors import ReplayError
+
+StreamEvent = RawMessageStreamEvent | BetaRawMessageStreamEvent
+"""A raw stream event of either surface."""
 
 # Block types whose input arrives as ``input_json_delta`` (the SDK's TRACKS_TOOL_INPUT).
 _TOOL_INPUT_BLOCKS = frozenset({"tool_use", "server_tool_use"})
@@ -45,8 +61,45 @@ _DELTA_USAGE = (
 )
 
 
-def events_from_message(message: Message) -> list[RawMessageStreamEvent]:
-    """The raw stream events that accumulate to ``message``.
+@dataclass(frozen=True)
+class EventTypes:
+    """The six raw stream event classes of one API surface (``messages`` or ``beta.messages``).
+
+    The two surfaces send the same events under different classes, and code
+    such as pydantic-ai checks ``isinstance(event, BetaRawMessageStartEvent)``,
+    so a rebuilt stream must use the classes of the surface that was called.
+    """
+
+    message_start: type[BaseModel]
+    block_start: type[BaseModel]
+    block_delta: type[BaseModel]
+    block_stop: type[BaseModel]
+    message_delta: type[BaseModel]
+    message_stop: type[BaseModel]
+
+
+MESSAGE_EVENTS = EventTypes(
+    RawMessageStartEvent,
+    RawContentBlockStartEvent,
+    RawContentBlockDeltaEvent,
+    RawContentBlockStopEvent,
+    RawMessageDeltaEvent,
+    RawMessageStopEvent,
+)
+BETA_MESSAGE_EVENTS = EventTypes(
+    BetaRawMessageStartEvent,
+    BetaRawContentBlockStartEvent,
+    BetaRawContentBlockDeltaEvent,
+    BetaRawContentBlockStopEvent,
+    BetaRawMessageDeltaEvent,
+    BetaRawMessageStopEvent,
+)
+
+
+def events_from_message(
+    message: Message | BetaMessage, types: EventTypes = MESSAGE_EVENTS
+) -> list[StreamEvent]:
+    """The raw stream events that accumulate to ``message``, as ``types``' classes.
 
     ``message_start`` carries the message with no content, no stop reason and
     zero output tokens; each content block opens empty and receives its whole
@@ -69,25 +122,25 @@ def events_from_message(message: Message) -> list[RawMessageStreamEvent]:
         "stop_details": None,
         "usage": {**usage, "output_tokens": 0},
     }
-    events: list[RawMessageStreamEvent] = [
-        RawMessageStartEvent.model_validate({"type": "message_start", "message": start})
+    events: list[Any] = [
+        types.message_start.model_validate({"type": "message_start", "message": start})
     ]
     for index, block in enumerate(blocks):
         assert isinstance(block, dict)
         opened, deltas = _split_block(block)
         events.append(
-            RawContentBlockStartEvent.model_validate(
+            types.block_start.model_validate(
                 {"type": "content_block_start", "index": index, "content_block": opened}
             )
         )
         events.extend(
-            RawContentBlockDeltaEvent.model_validate(
+            types.block_delta.model_validate(
                 {"type": "content_block_delta", "index": index, "delta": delta}
             )
             for delta in deltas
         )
         events.append(
-            RawContentBlockStopEvent.model_validate({"type": "content_block_stop", "index": index})
+            types.block_stop.model_validate({"type": "content_block_stop", "index": index})
         )
     delta: dict[str, Any] = {
         "stop_reason": data.get("stop_reason"),
@@ -96,16 +149,15 @@ def events_from_message(message: Message) -> list[RawMessageStreamEvent]:
     for key in ("stop_details", "container"):
         if key in data:
             delta[key] = data[key]
-    events.append(
-        RawMessageDeltaEvent.model_validate(
-            {
-                "type": "message_delta",
-                "delta": delta,
-                "usage": {k: usage[k] for k in _DELTA_USAGE if k in usage},
-            }
-        )
-    )
-    events.append(RawMessageStopEvent.model_validate({"type": "message_stop"}))
+    message_delta: dict[str, Any] = {
+        "type": "message_delta",
+        "delta": delta,
+        "usage": {k: usage[k] for k in _DELTA_USAGE if k in usage},
+    }
+    if data.get("context_management") is not None:  # beta only; the stream copies it over
+        message_delta["context_management"] = data["context_management"]
+    events.append(types.message_delta.model_validate(message_delta))
+    events.append(types.message_stop.model_validate({"type": "message_stop"}))
     return events
 
 
@@ -149,20 +201,48 @@ def _no_response() -> NoReturn:
     )
 
 
-class SyntheticStream:
-    """A finished list of events with the interface of the SDK's ``Stream``."""
+class _RebuiltRequest:
+    def __init__(self, headers: httpx2.Headers) -> None:
+        self.headers = headers
 
-    def __init__(self, events: Iterable[RawMessageStreamEvent]) -> None:
-        self._iterator: Iterator[RawMessageStreamEvent] = iter(list(events))
+
+class RebuiltResponse:
+    """The stand-in HTTP response of a rebuilt ``beta.messages`` stream.
+
+    The SDK's ``BetaMessageStream`` reads ``response.request.headers`` on every
+    event, to see whether the ``anthropic-beta`` header asked for fine-grained
+    tool streaming, so a beta stream cannot work without one. It carries the
+    recorded ``betas`` as that header and nothing else: no status, no response
+    headers (so ``request_id`` is ``None``).
+    """
+
+    def __init__(self, betas: Sequence[str]) -> None:
+        request_headers = {"anthropic-beta": ",".join(betas)} if betas else {}
+        self.request = _RebuiltRequest(httpx2.Headers(request_headers))
+        self.headers = httpx2.Headers()
+
+
+class SyntheticStream:
+    """A finished list of events with the interface of the SDK's ``Stream``.
+
+    ``betas`` (``None`` for the plain ``messages`` surface) gives a beta stream
+    its :class:`RebuiltResponse`; a plain one has no response at all.
+    """
+
+    def __init__(self, events: Iterable[StreamEvent], betas: Sequence[str] | None = None) -> None:
+        self._iterator: Iterator[StreamEvent] = iter(list(events))
+        self._response = RebuiltResponse(betas) if betas is not None else None
 
     @property
-    def response(self) -> NoReturn:
-        _no_response()
+    def response(self) -> RebuiltResponse:
+        if self._response is None:
+            _no_response()
+        return self._response
 
-    def __iter__(self) -> Iterator[RawMessageStreamEvent]:
+    def __iter__(self) -> Iterator[StreamEvent]:
         return self
 
-    def __next__(self) -> RawMessageStreamEvent:
+    def __next__(self) -> StreamEvent:
         return next(self._iterator)
 
     def close(self) -> None:
@@ -183,17 +263,20 @@ class SyntheticStream:
 class AsyncSyntheticStream:
     """A finished list of events with the interface of the SDK's ``AsyncStream``."""
 
-    def __init__(self, events: Iterable[RawMessageStreamEvent]) -> None:
-        self._iterator: Iterator[RawMessageStreamEvent] = iter(list(events))
+    def __init__(self, events: Iterable[StreamEvent], betas: Sequence[str] | None = None) -> None:
+        self._iterator: Iterator[StreamEvent] = iter(list(events))
+        self._response = RebuiltResponse(betas) if betas is not None else None
 
     @property
-    def response(self) -> NoReturn:
-        _no_response()
+    def response(self) -> RebuiltResponse:
+        if self._response is None:
+            _no_response()
+        return self._response
 
-    def __aiter__(self) -> AsyncIterator[RawMessageStreamEvent]:
+    def __aiter__(self) -> AsyncIterator[StreamEvent]:
         return self
 
-    async def __anext__(self) -> RawMessageStreamEvent:
+    async def __anext__(self) -> StreamEvent:
         try:
             return next(self._iterator)
         except StopIteration:

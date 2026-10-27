@@ -67,7 +67,21 @@ def test_a_flake_report_round_trips(store: Store, flake_report: FlakeReport):
         assert got.classification == want.classification
         assert got.failures == dict(want.failures)
         assert tuple(got.outcomes) == want.outcomes
+        assert got.unpriced_calls == want.unpriced_calls
+    assert stored.unpriced_calls == flake_report.unpriced_calls
     assert store.list_flake_reports()[0].id == report_id
+
+
+def test_a_flake_reports_unpriced_calls_round_trip(store: Store, flake_report: FlakeReport):
+    scenarios = tuple(
+        s.model_copy(update={"unpriced_calls": i + 2}) for i, s in enumerate(flake_report.scenarios)
+    )
+    report_id = store.save_flake(flake_report.model_copy(update={"scenarios": scenarios}))
+
+    stored = store.get_flake_report(report_id)
+    assert [s.unpriced_calls for s in stored.scenarios] == [2, 3]
+    assert stored.unpriced_calls == 5
+    assert store.list_flake_reports()[0].unpriced_calls == 5
 
 
 def test_flake_trend_is_oldest_first_and_keeps_the_newest_points(
@@ -192,6 +206,42 @@ def test_run_filters_offset_and_counts(store: Store):
     assert store.scenarios() == ["s0", "s1"]
 
 
+def test_replay_runs_shows_unpriced_cost_as_unpriced(tmp_path: Path):
+    db = f"sqlite:///{tmp_path / 'r.db'}"
+    unpriced = replay(Cassette.load(TOY), toy.run)  # the toy's fake model has no price
+    models = [s for s in unpriced.trajectory.steps if s.kind.value == "model"]
+    first = models[0].index
+    steps = tuple(
+        s.model_copy(update={"cost_usd": 0.0123}) if s.index == first else s
+        for s in unpriced.trajectory.steps
+    )
+    mixed = unpriced.model_copy(
+        update={"trajectory": unpriced.trajectory.model_copy(update={"steps": steps})}
+    )
+    with Store.open(db) as store:
+        for i, (name, result) in enumerate([("all_unpriced", unpriced), ("mixed", mixed)]):
+            store.save_run(
+                result,
+                [],
+                scenario=name,
+                cassette_path=str(TOY),
+                agent="examples.toy_agent.agent:run",
+                passed=True,
+                started_at=T0 + timedelta(minutes=i),
+                duration_ms=1.0,
+            )
+
+    listed = runner.invoke(app, ["runs", "--db", db], env=ENV)
+
+    assert listed.exit_code == 0, listed.output
+    rows = {line.split()[3]: line for line in listed.output.splitlines()[1:]}
+    assert rows["all_unpriced"].rstrip().endswith(" unpriced")
+    assert "$0.0000" not in listed.output
+    calls = len(models) - 1
+    mixed_cost = f"$0.0123 + {calls} unpriced call{'s' if calls != 1 else ''}"
+    assert rows["mixed"].rstrip().endswith(mixed_cost)
+
+
 def test_replay_flake_stores_its_report(tmp_path: Path):
     db = f"sqlite:///{tmp_path / 'r.db'}"
     result = runner.invoke(
@@ -222,7 +272,7 @@ def test_db_upgrade_and_add_calibration(tmp_path: Path):
     db = f"sqlite:///{tmp_path / 'r.db'}"
     upgraded = runner.invoke(app, ["db", "upgrade", "--db", db], env=ENV)
     assert upgraded.exit_code == 0, upgraded.output
-    assert "schema revision 0002" in upgraded.output
+    assert "schema revision 0003" in upgraded.output
 
     path = tmp_path / "cal.json"
     path.write_text(calibration().model_dump_json(), encoding="utf-8")

@@ -8,7 +8,9 @@ budget code paths have something to work with; responses report the model as
 ``fake:<requested model>``, which has no price, so fake runs never show a cost.
 :class:`FakeAsyncAnthropic` is the same model behind ``await messages.create``.
 Both stream (``create(stream=True)`` and ``messages.stream(...)``), delivering
-the same message as raw events, so streaming agents record offline too.
+the same message as raw events, so streaming agents record offline too, and
+both answer on ``beta.messages.create`` with ``BetaMessage`` and beta stream
+events, the surface frameworks such as pydantic-ai call.
 """
 
 from __future__ import annotations
@@ -22,10 +24,16 @@ from anthropic import Anthropic, AsyncAnthropic
 from anthropic.lib._parse._response import parse_response
 from anthropic.lib.streaming import AsyncMessageStreamManager, MessageStreamManager
 from anthropic.types import Message, ParsedMessage
+from anthropic.types.beta import BetaMessage
 from pydantic import JsonValue
 
 from agent_replay._json import canonical_json, to_jsonable
-from agent_replay.record._streams import AsyncSyntheticStream, SyntheticStream, events_from_message
+from agent_replay.record._streams import (
+    BETA_MESSAGE_EVENTS,
+    AsyncSyntheticStream,
+    SyntheticStream,
+    events_from_message,
+)
 from agent_replay.record.anthropic import wire_output_format
 
 
@@ -216,6 +224,45 @@ class _FakeAsyncMessages:
         return parse_response(output_format=output_format, response=self._model.reply(wire))
 
 
+def _betas(kwargs: dict[str, Any]) -> list[str]:
+    betas = kwargs.get("betas")
+    return [str(b) for b in betas] if isinstance(betas, list | tuple) else []
+
+
+class _FakeBetaMessages:
+    """``beta.messages.create``: the same replies as :class:`BetaMessage` and beta events."""
+
+    def __init__(self, model: _FakeModel) -> None:
+        self._model = model
+
+    def create(self, **kwargs: Any) -> Any:
+        # ``betas`` is a header on the wire, not part of what the model is asked.
+        betas = _betas(kwargs)
+        kwargs = {k: v for k, v in kwargs.items() if k != "betas"}
+        message = BetaMessage.model_validate(to_jsonable(self._model.reply(kwargs)))
+        if kwargs.get("stream"):
+            return SyntheticStream(events_from_message(message, BETA_MESSAGE_EVENTS), betas)
+        return message
+
+
+class _FakeAsyncBetaMessages:
+    def __init__(self, model: _FakeModel) -> None:
+        self._model = model
+
+    async def create(self, **kwargs: Any) -> Any:
+        betas = _betas(kwargs)
+        kwargs = {k: v for k, v in kwargs.items() if k != "betas"}
+        message = BetaMessage.model_validate(to_jsonable(self._model.reply(kwargs)))
+        if kwargs.get("stream"):
+            return AsyncSyntheticStream(events_from_message(message, BETA_MESSAGE_EVENTS), betas)
+        return message
+
+
+class _FakeBeta:
+    def __init__(self, messages: object) -> None:
+        self.messages = messages
+
+
 class FakeAnthropic:
     """Deterministic fake of the ``anthropic.Anthropic`` client.
 
@@ -225,8 +272,15 @@ class FakeAnthropic:
     For ``parse``, the policy's reply text must be the JSON the output format expects.
     """
 
+    base_url = "https://fake.invalid"
+    """Read by frameworks (pydantic-ai's ``provider_url``); never contacted."""
+    _client = None
+    """Read by pydantic-ai when ``max_retries`` is set (the wrapper's copy is the fake)."""
+
     def __init__(self, policy: Policy) -> None:
-        self.messages = _FakeMessages(_FakeModel(policy))
+        model = _FakeModel(policy)
+        self.messages = _FakeMessages(model)
+        self.beta = _FakeBeta(_FakeBetaMessages(model))
 
     def as_anthropic(self) -> Anthropic:
         """This object, typed as the client it imitates, for agents annotated with it."""
@@ -239,8 +293,13 @@ class FakeAsyncAnthropic:
     Same policy contract, ids and token accounting as the sync fake.
     """
 
+    base_url = "https://fake.invalid"
+    _client = None
+
     def __init__(self, policy: Policy) -> None:
-        self.messages = _FakeAsyncMessages(_FakeModel(policy))
+        model = _FakeModel(policy)
+        self.messages = _FakeAsyncMessages(model)
+        self.beta = _FakeBeta(_FakeAsyncBetaMessages(model))
 
     def as_anthropic(self) -> AsyncAnthropic:
         """This object, typed as the client it imitates, for agents annotated with it."""

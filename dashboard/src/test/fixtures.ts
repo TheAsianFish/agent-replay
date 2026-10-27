@@ -30,6 +30,7 @@ export function runSummary(overrides: Partial<RunSummary> = {}): RunSummary {
     error_type: null,
     error_message: null,
     cost_usd: 0.0123,
+    unpriced_calls: 0,
     tokens: 18202,
     step_count: 3,
     approximate_count: 0,
@@ -112,6 +113,8 @@ export const diff: RunDiff = {
     counts: { same: 1, changed: 1, added: 1, removed: 1 },
     base_cost_usd: 0.01,
     head_cost_usd: 0.02,
+    base_unpriced_calls: 0,
+    head_unpriced_calls: 0,
     base_latency_ms: 1200,
     head_latency_ms: 900,
     rows: [
@@ -176,6 +179,7 @@ export const flakeSummaries: FlakeReportSummary[] = [
     flaky_count: 1,
     run_count: 16,
     cost_usd: 0,
+    unpriced_calls: 0,
   },
 ];
 
@@ -211,6 +215,7 @@ export const flakeReport: FlakeReportRecord = {
       ci_low: 0.29,
       ci_high: 0.96,
       cost_usd: 0,
+      unpriced_calls: 0,
       error: null,
       failures: { required_tools: 3 },
       outcomes: [],
@@ -231,6 +236,7 @@ export const flakeReport: FlakeReportRecord = {
       ci_low: 1,
       ci_high: 1,
       cost_usd: 0,
+      unpriced_calls: 0,
       error: null,
       failures: {},
       outcomes: [],

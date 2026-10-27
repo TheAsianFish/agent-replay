@@ -539,6 +539,11 @@ export interface components {
             suite: string;
             /** Suite Id */
             suite_id: string | null;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /** FlakeReportSummary */
         FlakeReportSummary: {
@@ -571,6 +576,11 @@ export interface components {
             suite: string;
             /** Suite Id */
             suite_id: string | null;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /** FlakeScenarioRecord */
         FlakeScenarioRecord: {
@@ -611,6 +621,11 @@ export interface components {
             policy: string;
             /** Runs */
             runs: number;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /**
          * FlakeSettings
@@ -804,6 +819,11 @@ export interface components {
              * @default 0
              */
             tokens: number;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /** RunPage */
         RunPage: {
@@ -860,6 +880,11 @@ export interface components {
             tokens: number;
             /** Unconsumed Count */
             unconsumed_count: number;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /** RunSummary */
         RunSummary: {
@@ -904,6 +929,11 @@ export interface components {
             tokens: number;
             /** Unconsumed Count */
             unconsumed_count: number;
+            /**
+             * Unpriced Calls
+             * @default 0
+             */
+            unpriced_calls: number;
         };
         /**
          * SelfConsistency
@@ -988,6 +1018,11 @@ export interface components {
             base_label?: string | null;
             /** Base Latency Ms */
             base_latency_ms: number;
+            /**
+             * Base Unpriced Calls
+             * @default 0
+             */
+            base_unpriced_calls: number;
             /** Counts */
             counts: {
                 [key: string]: number;
@@ -1000,6 +1035,11 @@ export interface components {
             head_label?: string | null;
             /** Head Latency Ms */
             head_latency_ms: number;
+            /**
+             * Head Unpriced Calls
+             * @default 0
+             */
+            head_unpriced_calls: number;
             /** Rows */
             rows: components["schemas"]["DiffRow"][];
         };

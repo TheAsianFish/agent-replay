@@ -20,7 +20,8 @@ agent_replay/migrations/  Alembic revisions for the run store (applied on open)
 agent_replay/server/ FastAPI app over the store (`replay serve`); the dashboard
                      build lands in agent_replay/server/static (untracked)
 dashboard/           React 19 + TypeScript strict (Vite, TanStack Query, Tailwind)
-examples/            retail_agent (τ-bench retail subset, MIT, attributed) and a toy agent
+examples/            retail_agent (τ-bench retail subset, MIT, attributed), a toy agent, and
+                     pydantic_ai_agent (a pydantic-ai travel desk; fake and qwen2.5:7b cassettes)
 eval/                datasets, mutation suite, SPRT simulation, eval scripts
 tests/               offline, deterministic; no network ever
 docs/                screenshots and the dashboard walkthrough (docs/walkthrough, `make walkthrough`)
@@ -67,6 +68,10 @@ make data-llmbar  re-download LLMBar at the pinned commit into eval/data/llmbar
 make eval-llmbar  the real judge on LLMBar (needs a key; 838 calls, ~$12.73 dry-run estimate)
 make eval-llmbar-dry  the calls eval-llmbar still needs and their estimated cost (offline)
 make eval-llmbar-heuristics  LLMBar floors: first / longer / shorter-output judges (offline)
+make pydantic-ai-cassettes  re-record the pydantic-ai example's fake-model cassettes
+make record-pydantic-ai  re-record its qwen2.5:7b cassettes through Ollama (local, CPU, minutes)
+make eval-pydantic-ai  replay ci in full on both of its suites; with Ollama, replay flake in
+                  model-live on qwen2.5:7b (10 runs per scenario) into eval/results/m9_flake_qwen*
 make demo-data    real replay ci / replay flake runs of the retail example into .replay/demo.db
 make openapi      regenerate dashboard/openapi.json (then `npm run gen:types` in dashboard/)
 make ui           npm ci + build the dashboard into agent_replay/server/static
@@ -102,6 +107,8 @@ that change the retail agent (`make regression-pr` opens one built to fail), and
 [act](https://github.com/nektos/act): `act pull_request -j action -W .github/workflows/ci.yml
 -P ubuntu-latest=catthehacker/ubuntu:act-latest --artifact-server-path /tmp/act-artifacts`
 (`-j replay -W .github/workflows/replay.yml` runs the real, failing job on a seeded suite).
+The local-model runs (`make record-pydantic-ai`, `make eval-pydantic-ai`) need `ollama serve`
+and `ollama pull qwen2.5:7b`; on GitHub they run only from the manual `ollama.yml` workflow.
 Release steps are in RELEASE.md; never publish by hand.
 
 Until a target exists, say so in the PR rather than inventing it.

@@ -1,0 +1,45 @@
+# The travel desk's regression suite over the fake-model recordings:
+# `uv run replay ci examples/pydantic_ai_agent/replay.toml`.
+# The agent is pydantic-ai; Replay records it through the Anthropic client it is
+# given (client.beta.messages.create). The checks judge outcomes, not the exact
+# path: `in_order` sequences allow extra lookups, and the rules check the writes
+# and the figures in the answer, so a different model (replay-qwen.toml) that
+# takes another reasonable route still passes. Paths are relative to this file.
+
+[defaults]
+agent = "examples.pydantic_ai_agent.agent:run"
+mode = "full"
+policy = "strict"
+checks = [
+  { type = "rule", ref = "examples.pydantic_ai_agent.rules:looked_up_before_writing" },
+  { type = "max_tool_calls", limit = 8 },
+  { type = "budget", max_model_calls = 6 },
+]
+
+[[scenario]]
+name = "cheapest_fare_in_euros"
+cassette = "cassettes/cheapest_fare_in_euros.jsonl"
+checks = [
+  { type = "tool_sequence", expected = ["search_flights", "convert_currency"], mode = "in_order" },
+  { type = "forbidden_tools", tools = ["book_flight", "cancel_booking"] },
+  { type = "rule", ref = "examples.pydantic_ai_agent.rules:answer_states", args = { task = "cheapest_fare_in_euros" } },
+]
+
+[[scenario]]
+name = "book_earliest_flight"
+cassette = "cassettes/book_earliest_flight.jsonl"
+checks = [
+  { type = "tool_sequence", expected = ["search_flights", "book_flight"], mode = "in_order" },
+  { type = "rule", ref = "examples.pydantic_ai_agent.rules:writes_match", args = { task = "book_earliest_flight" } },
+  { type = "rule", ref = "examples.pydantic_ai_agent.rules:answer_states", args = { task = "book_earliest_flight" } },
+]
+
+[[scenario]]
+name = "cancel_refundable_booking"
+cassette = "cassettes/cancel_refundable_booking.jsonl"
+checks = [
+  { type = "tool_sequence", expected = ["get_booking", "cancel_booking"], mode = "in_order" },
+  { type = "forbidden_tools", tools = ["book_flight"] },
+  { type = "rule", ref = "examples.pydantic_ai_agent.rules:writes_match", args = { task = "cancel_refundable_booking" } },
+  { type = "rule", ref = "examples.pydantic_ai_agent.rules:answer_states", args = { task = "cancel_refundable_booking" } },
+]

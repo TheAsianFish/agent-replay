@@ -8,6 +8,33 @@ every older version.
 
 ## [Unreleased]
 
+### Added
+
+- Records and replays `client.beta.messages.create` (plain and `stream=True`) and
+  `client.beta.messages.stream(...)` for `Anthropic` and `AsyncAnthropic`, under the
+  call name `anthropic.beta.messages.create`. `betas` is part of the fingerprint;
+  replays return `BetaMessage` and the beta stream event types. This is the surface
+  pydantic-ai calls, so a pydantic-ai agent records with
+  `AnthropicProvider(anthropic_client=replay.wrap(AsyncAnthropic(...)))`.
+- `examples/pydantic_ai_agent`: a tool-using pydantic-ai agent with fake-model and
+  qwen2.5:7b (Ollama) cassettes; `make eval-pydantic-ai` replays them and, with
+  Ollama running, gates them with `replay flake` in `model-live`.
+
+### Changed
+
+- A run whose model has no price is reported as `unpriced` (or `$x + N unpriced
+  calls`), not `$0.0000`.
+- `count_tokens`, message batches and the beta `parse` / `tool_runner` raise a
+  `ReplayError` that names them inside a session instead of going live.
+
+### Fixed
+
+- `client.with_options(...)` and `client.copy(...)` on a wrapped client return a
+  wrapped client; they used to return the bare client, so calls through the copy
+  (pydantic-ai makes them when `max_retries` is set) went live unrecorded.
+- Replaying with no client gave the offline stand-in no `base_url`, which
+  pydantic-ai reads on every response.
+
 ## [1.0.0] - 2026-10-16
 
 The first release: the SDK, the `replay` CLI, the GitHub Action and the

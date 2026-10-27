@@ -25,6 +25,20 @@ describe("formatCost", () => {
   });
 });
 
+describe("formatCost with unpriced calls", () => {
+  it("never shows an unpriced cost as free", () => {
+    expect(formatCost(0, 3)).toBe("unpriced");
+    expect(formatCost(0.0123, 3)).toBe("$0.0123 + 3 unpriced calls");
+    expect(formatCost(0.0123, 1)).toBe("$0.0123 + 1 unpriced call");
+    expect(formatCost(1.5, 2)).toBe("$1.50 + 2 unpriced calls");
+  });
+  it("is the plain cost when every call is priced", () => {
+    expect(formatCost(0.0123, 0)).toBe("$0.0123");
+    expect(formatCost(0, 0)).toBe("$0.00");
+    expect(formatCost(null, 2)).toBe("—");
+  });
+});
+
 describe("formatMs", () => {
   it("scales units with magnitude", () => {
     expect(formatMs(0.42)).toBe("0.42 ms");

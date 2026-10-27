@@ -567,6 +567,84 @@ def test_relative_limits_validation() -> None:
     assert result.details["cost_usd_delta_pct"] == 0.0
 
 
+# --- budget: unpriced model calls ----------------------------------------------------------
+
+
+def unpriced_step(index: int) -> Step:
+    """A model call that answered but whose model has no price (cost ``None``)."""
+    return step(
+        index,
+        "m",
+        Kind.MODEL,
+        request={"model": "qwen2.5:7b"},
+        usage=Usage(input_tokens=10, output_tokens=5),
+        latency=100.0,
+    )
+
+
+def test_unpriced_calls_count_answered_model_calls_without_a_cost() -> None:
+    run = make_run(
+        [
+            unpriced_step(0),
+            model_step(1, usage=Usage(input_tokens=1), cost=0.01),
+            model_step(2),  # never answered (no usage, no response): costs nothing
+            step(3, "tool"),
+            unpriced_step(4),
+        ]
+    )
+    assert run.unpriced_calls == 2
+    assert run.cost_usd == 0.01
+
+
+def test_an_absolute_cost_limit_fails_closed_on_unpriced_calls() -> None:
+    run = make_run([model_step(0, usage=Usage(input_tokens=1), cost=0.01), unpriced_step(1)])
+    result = budget(max_cost_usd=0.05)(run)
+    assert not result.passed
+    assert result.message.startswith(
+        "over budget: max_cost_usd cannot be checked: 1 model call (qwen2.5:7b) had no price"
+    )
+    assert "agent_replay/pricing.py" in result.message
+    assert "REPLAY_PRICES_FILE" in result.message
+    assert result.details["unpriced_calls"] == 1
+    # The priced calls alone already over the limit: that is the reported failure.
+    over = budget(max_cost_usd=0.001)(run)
+    assert not over.passed
+    assert "cost_usd 0.01 > max_cost_usd 0.001" in over.message
+    assert "cannot be checked" not in over.message
+
+
+def test_limits_other_than_cost_ignore_unpriced_calls() -> None:
+    run = make_run([unpriced_step(0), unpriced_step(1)])
+    result = budget(max_tokens=100, max_model_calls=2)(run)
+    assert result.passed, result.message
+    assert result.details["unpriced_calls"] == 2
+
+
+def test_a_relative_cost_limit_fails_closed_when_either_side_is_unpriced() -> None:
+    run_unpriced = budget(max_cost_increase_pct=20, baseline=base())(
+        make_run([unpriced_step(0), unpriced_step(1)])
+    )
+    assert not run_unpriced.passed
+    assert "max_cost_increase_pct cannot be checked: the run had model calls" in (
+        run_unpriced.message
+    )
+    assert run_unpriced.details["cost_usd_delta"] is None
+    assert run_unpriced.details["cost_usd_delta_pct"] is None
+
+    unpriced_base = base(cost=0).model_copy(update={"unpriced_calls": 2})
+    base_unpriced = budget(max_cost_increase_pct=20, baseline=unpriced_base)(priced_run(0.1))
+    assert not base_unpriced.passed
+    assert "cannot be checked: the baseline had model calls with no price" in (
+        base_unpriced.message
+    )
+    assert "replay baseline" in base_unpriced.message
+    assert base_unpriced.details["baseline_unpriced_calls"] == 2
+
+    # Without a cost limit the unpriced baseline does not matter.
+    tokens_only = budget(max_tokens_increase_pct=0, baseline=unpriced_base)(priced_run(0.1))
+    assert tokens_only.passed, tokens_only.message
+
+
 # --- build_check ------------------------------------------------------------------------------
 
 

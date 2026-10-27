@@ -12,7 +12,14 @@ from typer.testing import CliRunner
 from agent_replay.cassette import Usage
 from agent_replay.cli import app
 from agent_replay.errors import ConfigError
-from agent_replay.pricing import PRICES, PRICES_CAPTURED, ModelPrice, cost_usd, prices
+from agent_replay.pricing import (
+    PRICES,
+    PRICES_CAPTURED,
+    ModelPrice,
+    cost_usd,
+    format_cost,
+    prices,
+)
 
 USAGE = Usage(
     input_tokens=1000,
@@ -125,3 +132,22 @@ def test_the_cli_rejects_a_bad_prices_file_before_doing_anything(tmp_path: Path)
     )
     assert result.exit_code == 2
     assert "REPLAY_PRICES_FILE" in result.output
+
+
+@pytest.mark.parametrize(
+    ("cost", "unpriced", "expected"),
+    [
+        (0.0123, 0, "$0.0123"),
+        (0.0, 0, "$0.0000"),  # no model calls at all
+        (0.0, 2, "unpriced"),
+        (0.0123, 3, "$0.0123 + 3 unpriced calls"),
+        (0.0123, 1, "$0.0123 + 1 unpriced call"),
+    ],
+)
+def test_format_cost(cost: float, unpriced: int, expected: str) -> None:
+    assert format_cost(cost, unpriced) == expected
+
+
+def test_an_unknown_model_is_unpriced() -> None:
+    assert cost_usd("qwen2.5:7b", Usage(input_tokens=10)) is None
+    assert cost_usd("fake:claude-opus-5-5", Usage(input_tokens=10)) is None

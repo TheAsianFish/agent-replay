@@ -111,11 +111,13 @@ def _make_legacy(url: str, *, drop_advisory: bool) -> str:
     engine.dispose()
     with Store(create_engine(url)) as store:
         run_id = _save(store)
-    if drop_advisory:
-        engine = create_engine(url)
-        with engine.begin() as conn:
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        # 0003 adds it; a store from before migrations never had it.
+        conn.execute(text("ALTER TABLE runs DROP COLUMN unpriced_calls"))
+        if drop_advisory:
             conn.execute(text("ALTER TABLE check_results DROP COLUMN advisory"))
-        engine.dispose()
+    engine.dispose()
     return run_id
 
 
@@ -127,6 +129,7 @@ def test_an_older_store_is_adopted(url: str, drop_advisory: bool):
         assert _diffs(store._engine) == []
         old = store.get_run(run_id)
         assert [c.advisory for c in old.checks] == [False]
+        assert old.unpriced_calls == 0
         _save(store)
         assert store.count_runs() == 2
 

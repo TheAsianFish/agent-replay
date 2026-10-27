@@ -40,7 +40,7 @@ function RunDetail({ run }: { run: RunRecord }) {
           <span className="text-lg font-semibold">{run.scenario}</span>
           <span className="num text-sm text-slate-600">
             {formatTimestamp(run.started_at)} UTC · {formatInt(run.step_count)} steps · {formatInt(run.approximate_count)} approximate ·{" "}
-            {formatInt(run.unconsumed_count)} unconsumed · {formatInt(run.tokens)} tokens · {formatCost(run.cost_usd)} · {formatMs(run.duration_ms)}
+            {formatInt(run.unconsumed_count)} unconsumed · {formatInt(run.tokens)} tokens · {formatCost(run.cost_usd, run.unpriced_calls)} · {formatMs(run.duration_ms)}
           </span>
         </div>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">

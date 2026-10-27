@@ -2,9 +2,19 @@
 
 const DASH = "—";
 
-/** ``$0.0123``: four decimals below a dollar, two above; ``—`` for null. */
-export function formatCost(usd: number | null | undefined): string {
+/**
+ * ``$0.0123``: four decimals below a dollar, two above; ``—`` for null.
+ *
+ * ``unpriced`` counts model calls whose model has no price, which ``usd`` leaves out
+ * (as ``agent_replay.pricing.format_cost`` shows them): none priced is ``unpriced``,
+ * some of each is ``$0.0123 + 3 unpriced calls``, so an unknown cost never reads as free.
+ */
+export function formatCost(usd: number | null | undefined, unpriced = 0): string {
   if (usd === null || usd === undefined || !Number.isFinite(usd)) return DASH;
+  if (unpriced > 0) {
+    if (usd === 0) return "unpriced";
+    return `${formatCost(usd)} + ${unpriced} unpriced call${unpriced === 1 ? "" : "s"}`;
+  }
   if (usd === 0) return "$0.00";
   const sign = usd < 0 ? "-" : "";
   const abs = Math.abs(usd);

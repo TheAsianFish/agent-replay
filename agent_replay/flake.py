@@ -71,6 +71,7 @@ from agent_replay.ci import (
     run_scenario,
 )
 from agent_replay.errors import ConfigError, UnattributedCallError
+from agent_replay.pricing import format_cost
 from agent_replay.runner import RunResult
 from agent_replay.session import Policy, ReplayMode
 from agent_replay.stats import Decision
@@ -132,6 +133,8 @@ class RunOutcome(BaseModel):
     failed_checks: tuple[str, ...] = ()
     steps: dict[str, int] = {}
     cost_usd: float = 0.0
+    unpriced_calls: int = 0
+    """Model calls left out of ``cost_usd`` because their model has no price."""
     tokens: int = 0
     duration_ms: float = 0.0
     run_id: str | None = None
@@ -166,6 +169,8 @@ class ScenarioFlake(BaseModel):
     """Runs of this scenario that were allowed in flight at once."""
     cost_usd: float = 0.0
     """Over every executed run."""
+    unpriced_calls: int = 0
+    """Model calls over every executed run that ``cost_usd`` leaves out (no price)."""
     error: ErrorInfo | None = None
     """Why a broken scenario could not run."""
     outcomes: tuple[RunOutcome, ...] = ()
@@ -210,6 +215,10 @@ class FlakeReport(BaseModel):
     @property
     def cost_usd(self) -> float:
         return round(sum(s.cost_usd for s in self.scenarios), 8)
+
+    @property
+    def unpriced_calls(self) -> int:
+        return sum(s.unpriced_calls for s in self.scenarios)
 
 
 # --- gates ----------------------------------------------------------------------
@@ -348,6 +357,7 @@ def _outcome(index: int, seed: int, report: ScenarioReport) -> RunOutcome:
         failed_checks=tuple(c.check for c in report.failed_checks),
         steps=dict(report.steps.by_status),
         cost_usd=report.cost_usd,
+        unpriced_calls=report.unpriced_calls,
         tokens=report.tokens,
         duration_ms=report.duration_ms,
         run_id=report.run_id,
@@ -637,6 +647,7 @@ def _summarise(
         failures=_failure_counts(counted),
         executed=len(ordered),
         cost_usd=round(sum(o.cost_usd for o in ordered), 8),
+        unpriced_calls=sum(o.unpriced_calls for o in ordered),
         error=broken.error if broken is not None else None,
         outcomes=ordered,
     )
@@ -654,6 +665,7 @@ def to_json(report: FlakeReport) -> str:
     data["broken"] = [s.name for s in report.broken]
     data["runs"] = report.runs
     data["cost_usd"] = report.cost_usd
+    data["unpriced_calls"] = report.unpriced_calls
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -711,7 +723,8 @@ def to_markdown(report: FlakeReport) -> str:
         f"Suite `{report.suite}`"
         + (f" at `{report.git_sha[:12]}`" if report.git_sha else "")
         + f": {report.runs} runs in {report.duration_ms / 1000:.1f}s, "
-        f"${report.cost_usd:.4f}. Gate: {gate_summary(report.settings, report.stats_impl)}. "
+        f"{format_cost(report.cost_usd, report.unpriced_calls)}. "
+        f"Gate: {gate_summary(report.settings, report.stats_impl)}. "
         f"Interval: {report.settings.confidence:.0%} {interval_name(report.stats_impl)} "
         f"(`REPLAY_STATS_IMPL={report.stats_impl}`).",
         "",
@@ -726,9 +739,10 @@ def to_markdown(report: FlakeReport) -> str:
             passed = f"{s.passes}/{s.runs}"
             interval = f"[{s.interval[0]:.2f}, {s.interval[1]:.2f}]"
         runs = f"{s.runs}" + (f" (+{s.executed - s.runs})" if s.executed > s.runs else "")
+        cost = format_cost(s.cost_usd, s.unpriced_calls)
         lines.append(
             f"| `{_cell(s.name)}` | {s.mode} | {gate} | {_ICONS[s.classification]} "
-            f"{s.classification} | {passed} | {interval} | {runs} | ${s.cost_usd:.4f} |"
+            f"{s.classification} | {passed} | {interval} | {runs} | {cost} |"
         )
     noted = [s for s in report.scenarios if s.failures or s.error is not None]
     for s in noted:

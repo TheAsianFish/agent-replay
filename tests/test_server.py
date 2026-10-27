@@ -131,7 +131,7 @@ def test_health_names_the_backend_and_revision(client: TestClient, db: str):
     body = get(client, "/api/health")
     assert body["status"] == "ok"
     assert body["backend"] == db.split(":", maxsplit=1)[0].split("+", maxsplit=1)[0]
-    assert body["revision"] == "0002"
+    assert body["revision"] == "0003"
 
 
 def test_runs_page_filters_and_counts(client: TestClient):
@@ -376,7 +376,7 @@ def test_replay_serve_opens_the_store_and_runs_uvicorn(
     assert "API only" in result.output
     (call,) = calls
     assert call["port"] == 8123
-    assert call["health"]["revision"] == "0002"
+    assert call["health"]["revision"] == "0003"
 
 
 def test_replay_serve_rejects_a_dashboard_without_index(tmp_path: Path):

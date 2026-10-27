@@ -92,7 +92,7 @@ function Report({ report, scenario, onScenario }: { report: FlakeReportRecord; s
           <span className="font-mono text-xs">{report.suite}</span>
           <span className="num text-slate-600">
             {formatTimestamp(report.started_at)} UTC · {formatInt(report.scenario_count)} scenarios · {formatInt(report.flaky_count)} flaky ·{" "}
-            {formatInt(report.failed_count)} failed · {formatInt(report.run_count)} runs · {formatCost(report.cost_usd)} · {formatMs(report.duration_ms)}
+            {formatInt(report.failed_count)} failed · {formatInt(report.run_count)} runs · {formatCost(report.cost_usd, report.unpriced_calls)} · {formatMs(report.duration_ms)}
           </span>
         </div>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3 lg:grid-cols-5">

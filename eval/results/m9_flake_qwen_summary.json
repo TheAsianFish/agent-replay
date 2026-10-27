@@ -1,0 +1,121 @@
+{
+  "command": "uv run replay flake examples/pydantic_ai_agent/replay-qwen.toml --no-store --mode model-live --client examples.pydantic_ai_agent.agent:make_client --max-runs 10 --concurrency 1 --json eval/results/m9_flake_qwen.json",
+  "environment": {
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "logical_cpus": 4,
+    "model": "qwen2.5:7b",
+    "ollama": "0.40.11",
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39"
+  },
+  "scenarios": [
+    {
+      "approximate_steps_per_run": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "classification": "passing",
+      "failures": {},
+      "name": "cheapest_fare_in_euros",
+      "passes": 10,
+      "passes_with_an_approximate_step": 0,
+      "run_seconds": [
+        59.7,
+        58.0,
+        66.5,
+        49.5,
+        55.2,
+        45.0,
+        41.9,
+        41.5,
+        41.3,
+        41.4
+      ],
+      "runs": 10
+    },
+    {
+      "approximate_steps_per_run": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "classification": "flaky",
+      "failures": {
+        "error:UnrecordedCallError": 1,
+        "rule:answer_states": 7,
+        "rule:writes_match": 7,
+        "tool_sequence": 6
+      },
+      "name": "book_earliest_flight",
+      "passes": 2,
+      "passes_with_an_approximate_step": 0,
+      "run_seconds": [
+        55.6,
+        41.2,
+        34.9,
+        32.2,
+        37.4,
+        32.1,
+        44.4,
+        32.2,
+        32.2,
+        31.9
+      ],
+      "runs": 10
+    },
+    {
+      "approximate_steps_per_run": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "classification": "failing",
+      "failures": {
+        "rule:answer_states": 1,
+        "rule:looked_up_before_writing": 9,
+        "rule:writes_match": 1,
+        "tool_sequence": 10
+      },
+      "name": "cancel_refundable_booking",
+      "passes": 0,
+      "passes_with_an_approximate_step": 0,
+      "run_seconds": [
+        17.1,
+        15.2,
+        14.5,
+        14.4,
+        14.3,
+        14.5,
+        14.3,
+        14.6,
+        14.3,
+        16.5
+      ],
+      "runs": 10
+    }
+  ],
+  "stats_impl": "baseline",
+  "wall_s": 1026.3
+}

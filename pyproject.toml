@@ -103,6 +103,7 @@ dev = [
     "httpx>=0.28.1",
     "hypothesis>=6.168.5",
     "mypy>=2.4.0",
+    "pydantic-ai-slim[anthropic]>=2.58",
     "pytest>=9.1.1",
     "ruff>=0.16.10",
     "scikit-learn>=1.9.1",

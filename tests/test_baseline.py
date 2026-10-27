@@ -148,6 +148,22 @@ def test_dump_is_stable_and_round_trips(tmp_path: Path) -> None:
     assert path.read_text(encoding="utf-8") == text
 
 
+def test_unpriced_calls_are_the_max_over_runs_and_written_only_when_present(
+    tmp_path: Path,
+) -> None:
+    priced = metrics(cost=0.1)
+    unpriced = priced.model_copy(update={"unpriced_calls": 3})
+    assert aggregate([priced, priced]).unpriced_calls == 0
+    assert aggregate([priced, unpriced, priced]).unpriced_calls == 3
+    baseline = make_file(a=aggregate([priced]), b=aggregate([unpriced]))
+    path = tmp_path / "baseline.json"
+    baseline.dump(path)
+    scenarios = json.loads(path.read_text(encoding="utf-8"))["scenarios"]
+    assert "unpriced_calls" not in scenarios["a"]
+    assert scenarios["b"]["unpriced_calls"] == 3
+    assert BaselineFile.load(path) == baseline
+
+
 def test_load_errors_name_the_fix(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match=r"does not exist; record one with `replay baseline"):
         BaselineFile.load(tmp_path / "nope.json")

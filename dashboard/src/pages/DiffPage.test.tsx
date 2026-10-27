@@ -33,6 +33,13 @@ describe("DiffPage", () => {
     expect(call?.searchParams.get("head")).toBe("bbbbbb");
   });
 
+  it("shows an unpriced side as unpriced, not as free", async () => {
+    const body: RunDiff = { ...diff, diff: { ...diff.diff, base_cost_usd: 0, base_unpriced_calls: 2, head_unpriced_calls: 1 } };
+    mockApi({ "/api/diff": { body } });
+    renderAt("/diff?base=aaaaaa&head=bbbbbb");
+    expect(await screen.findByText("unpriced → $0.0200 + 1 unpriced call")).toBeInTheDocument();
+  });
+
   it("keeps the difference in view when two values share a long prefix", async () => {
     const changed = diff.diff.rows[1] as DiffRow;
     const prefix = "Please change the shipping address on order #W2378156 to 445 Maple Drive, Suite ";
