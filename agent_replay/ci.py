@@ -27,6 +27,14 @@ paths left out of that comparison)::
     [defaults.ignore_fields]
     get_order_details = ["fulfillments[*].tracking_id"]
 
+``identify`` maps a tool to the arguments that name the entity it reads or
+writes (:mod:`agent_replay.identify`). A served call is then never given a
+recording made for another entity: with no unused recording of the same
+identity it is unrecorded and the policy decides::
+
+    [defaults.identify]
+    get_order_details = ["order_id"]
+
 The suite passes when every scenario does.
 """
 
@@ -54,6 +62,7 @@ from agent_replay.checks.budget import RELATIVE_LIMITS
 from agent_replay.checks.spec import build_check
 from agent_replay.drift import describe, parse_path, tool_drift
 from agent_replay.errors import ConfigError, JudgeCacheMiss, MeasurementError, ReplayError
+from agent_replay.identify import parse_identify
 from agent_replay.pricing import format_cost
 from agent_replay.runner import RunResult, load_agent, make_client, replay
 from agent_replay.session import Policy, ReplayMode
@@ -78,6 +87,8 @@ class Defaults(_Config):
     """In ``tools-live``, fail when a live tool's result differs from its recording."""
     ignore_fields: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     """Per tool, result paths the drift comparison skips (values that legitimately vary)."""
+    identify: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    """Per tool, the argument paths that identify the entity a call reads or writes."""
     baseline: str | None = None
     """Baseline file (``replay baseline``) that budget checks' relative limits compare
     against, relative to the suite file."""
@@ -96,6 +107,8 @@ class Scenario(_Config):
     fail_on_tool_drift: bool | None = None
     ignore_fields: dict[str, tuple[str, ...]] = Field(default_factory=dict)
     """Added to the defaults' paths for the same tool."""
+    identify: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    """Replaces the defaults' paths for the same tool (``[]`` switches it off)."""
     checks: tuple[dict[str, Any], ...] = ()
 
 
@@ -115,6 +128,8 @@ class Overrides(_Config):
     """Fail every scenario on a served step whose request differs from the recording."""
     fail_on_tool_drift: bool | None = None
     """Fail every scenario on a live tool result that differs from the recording."""
+    identify: dict[str, tuple[str, ...]] | None = None
+    """Replaces every scenario's identify table (``{}``: no identifying arguments)."""
     cassette_dir: Path | None = None
     """Read every scenario's cassette (by file name) from this directory instead."""
     baseline: Path | None = None
@@ -148,6 +163,11 @@ def load_suite(path: Path) -> Suite:
                     parse_path(field)
                 except ConfigError as exc:
                     raise ConfigError(f"{path}: tool {tool!r}: {exc}") from exc
+    for identify in (suite.defaults.identify, *(s.identify for s in suite.scenario)):
+        try:
+            parse_identify(identify)
+        except ConfigError as exc:
+            raise ConfigError(f"{path}: {exc}") from exc
     return suite
 
 
@@ -364,6 +384,7 @@ def run_scenario(
         checks = _checks(scenario, defaults, base_dir, cassette, baselines) if with_checks else []
         client_ref = overrides.client or scenario.client or defaults.client
         client = make_client(client_ref, seed=seed) if client_ref is not None else None
+        identify = _identify(scenario, defaults, overrides)
         result = replay(
             cassette,
             agent,
@@ -372,6 +393,7 @@ def run_scenario(
             task=scenario.task,
             client=client,
             close_client=client is not None,
+            identify=identify,
         )
     except ReplayError as exc:
         return failed(exc, agent_ref or "?")
@@ -435,6 +457,14 @@ def _ignore_fields(scenario: Scenario, defaults: Defaults) -> dict[str, tuple[st
     for tool, paths in scenario.ignore_fields.items():
         merged[tool] = (*merged.get(tool, ()), *paths)
     return merged
+
+
+def _identify(
+    scenario: Scenario, defaults: Defaults, overrides: Overrides
+) -> dict[str, tuple[str, ...]]:
+    if overrides.identify is not None:
+        return dict(overrides.identify)
+    return {**defaults.identify, **scenario.identify}
 
 
 def _drift_check(

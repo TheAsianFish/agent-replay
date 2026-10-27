@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Literal
 
@@ -212,6 +212,7 @@ def replay(
     client: object = None,
     save_to: str | Path | None = None,
     close_client: bool = False,
+    identify: Mapping[str, Sequence[str]] | None = None,
 ) -> RunResult:
     """Re-run ``agent`` against ``cassette`` with the cut point ``mode``.
 
@@ -226,7 +227,10 @@ def replay(
     ``policy`` decides what happens to a call the cassette has no envelope for
     (``strict`` fails, ``fallback`` performs it, ``synth`` stubs a tool result;
     see :class:`agent_replay.session.Session`). In modes that serve the model,
-    ``client`` is only used by ``fallback``. The agent's exceptions end the
+    ``client`` is only used by ``fallback``. ``identify`` maps a tool to its
+    identifying argument paths: a call for an entity no unused recording has is
+    unrecorded rather than served another entity's result
+    (:mod:`agent_replay.identify`). The agent's exceptions end the
     run and are reported in ``RunResult.error`` rather than raised.
     ``save_to`` writes the replayed run as a cassette of its own.
     ``close_client`` closes an async ``client`` at the end of the run, on its event
@@ -254,7 +258,7 @@ def replay(
         model_client = wrap(client)
     except TypeError as exc:
         raise AgentLoadError(f"{exc}; --client must return a model client") from exc
-    session = ReplaySession(cassette, mode=mode, policy=policy)
+    session = ReplaySession(cassette, mode=mode, policy=policy, identify=identify)
     log.info("replay.start", mode=mode, policy=policy, cassette=cassette.header.cassette_id)
     output, failure = _run(session, agent, model_client, task, close_client=close_client)
     error = ErrorInfo.from_exception(failure) if failure is not None else None

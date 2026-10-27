@@ -34,7 +34,13 @@ class UnrecordedCallError(ReplayError):
     """During replay the agent made a call that the cassette has no envelope for."""
 
     def __init__(
-        self, kind: str, name: str, request_preview: str, *, hint: str | None = None
+        self,
+        kind: str,
+        name: str,
+        request_preview: str,
+        *,
+        hint: str | None = None,
+        identity: str | None = None,
     ) -> None:
         self.kind = kind
         self.name = name
@@ -42,9 +48,10 @@ class UnrecordedCallError(ReplayError):
             "If the change is intended, re-record the cassette with `replay record`, or "
             "replay with --policy fallback (perform it for real) or --policy synth (stub it)."
         )
+        why = f" {identity}." if identity else ""
         super().__init__(
             f"the agent made a {kind} call {name!r} that the cassette never recorded "
-            f"(or made it more times than recorded); request: {request_preview}. {fix}"
+            f"(or made it more times than recorded); request: {request_preview}.{why} {fix}"
         )
 
 
