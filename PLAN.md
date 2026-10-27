@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-26 (M9).
+definition of done is met and CI is green. Last updated: 2026-10-27 (evolution round 2).
 
 ## Goal
 
@@ -400,6 +400,148 @@ first item.
 - **An `openai` SDK adapter.** Not yet: pydantic-ai gets to the first real
   framework through the SDK Replay already wraps. The adapter becomes the
   question when the dogfood wants a second framework.
+
+## Evolution round 2 (2026-10-27)
+
+M8 to M10 are merged. This round asks again what is worth proving next, from
+the directions of 2026-10-20: each milestone ends in a measured result on
+real, non-mocked runs where a question needs one, free tools only, and Replay
+grows like a product real agent teams adopt (real workloads at scale,
+robustness on messy traces, the failure modes teams hit), with depth over
+feature count.
+
+### Where the project stands (measured in this round)
+
+- `make check` after `make setup`: ruff and mypy clean; 1238 passed, 22
+  skipped, 58 xfailed in 102 s (the xfails are still `agent_replay/stats.py`).
+  `make eval` (70 s) and `make bench` (19 s) leave the tree unchanged.
+- **Cassette bytes are quadratic in turns, and the store copies them.** A
+  40-line script recorded a fake-model agent that calls one tool a turn (a
+  250-byte result, a 3.5 KB system prompt) and replayed it in `full`: 5 turns
+  30 KB, 10 turns 73 KB, 50 turns 888 KB, 100 turns 3.1 MB, 200 turns 11.4 MB
+  (57 KB a turn, against 6 KB at 5 turns); recording took 2.7 s and the
+  replay 1.6 s at 200 turns with every step `exact`. Every model envelope
+  carries the whole conversation (the fingerprint is the request minus
+  `metadata` and `stream`), and model envelopes are 91 to 94% of the
+  committed retail cassettes. `make demo-data` writes 480 runs (4,422 steps)
+  into a 39.1 MB SQLite file of which 34.6 MB is `StepRow.request` and
+  `response`, and `GET /runs/{id}` returns every step in full. The retail and
+  pydantic-ai examples are 3 to 6 turns; a coding agent runs 50 to 100. These
+  numbers come from a throwaway script and enter RESULTS.md only once
+  `make bench-scale` reproduces them (M13).
+- **A cassette survives five upstream releases unchanged.** The committed
+  pydantic-ai cassettes, recorded on pydantic-ai-slim 2.61.0, replay in
+  `full` on 2.58.0, 2.59.0, 2.60.0 and 2.62.0 with 6/6 scenarios passing and
+  0 approximate steps (`uv pip install "pydantic-ai-slim[anthropic]==X"`,
+  then `UV_NO_SYNC=1 make eval-pydantic-ai-offline`). Round 1's "replay across
+  upstream releases to catch a regression" has a flat answer in this window:
+  the framework did not change what it sends for this agent, so there is no
+  regression to catch and the matrix is a table of zeros.
+- **The frozen world touched 2 of 30 local-model runs.** Classifying every
+  failed run in `eval/results/m9_flake_qwen.json` by cause:
+  `book_earliest_flight` failed 6 times because the model answered without
+  booking, once with `UnrecordedCallError` (a `convert_currency` call the
+  recording never made) and once with the booking served `approximate` for
+  different arguments (so `writes_match` failed); `cancel_refundable_booking`
+  failed 10 times for the model's own reasons. Whether `model-live` on a
+  frozen world misreports a real pass rate is still unmeasured; the prior
+  from these counts is "rarely".
+- **A wrong-argument read is invisible to every non-strict configuration.**
+  The matcher serves the oldest unused recording of the same tool when no
+  fingerprint matches (`Session._take`), so an agent that reads the wrong
+  order gets the right order's recorded result in `full` and `model-live`,
+  and in `tools-live` the live tool's different result makes the next model
+  step `approximate`, served the recorded reply, and the ground-truth rules
+  pass. Only `fail_on_approximate` sees it, and round 1 measured that flag
+  failing a healthy task in 25 of 25 live runs. The same mechanism served the
+  approximate booking above.
+- The five benign refactors in the mutation study send byte-identical
+  requests except `compact_tool_json` (17 approximate steps), so the
+  false-alarm column has never been tested against a legitimately different
+  trajectory.
+- The committed flake reports (Haiku 120 runs, Opus 30, qwen2.5:7b 30) keep
+  every run's outcome in order, so the question "how many runs does a verdict
+  need" has an offline half that needs no model.
+
+### What comes next, and why
+
+**M11: identifying arguments, and paths that differ without being worse**
+(question 1 and the round-1 hazard; steer: failure modes real teams hit).
+*Question:* can a suite name the arguments that identify a recording, so a
+call for an entity the cassette never saw is `unrecorded` and the policy
+decides, without re-breaking the reworded `transfer_to_human_agents` summary;
+and which check types raise a false alarm when a correct agent takes another
+path? *Hypothesis:* the two new mutations `guesses_user_id` and
+`reads_wrong_order` are caught 0/2 in the five non-strict configurations
+today (the replay hands the right recording to the wrong call) and 2/2 in
+`full`, `model-live` and `tools-live+drift` with `identify` keys, while the
+five benign refactors stay at 0/5 (1/5 strict) and the six live cassettes
+still pass with their summary step `approximate`. Of five correct-but-different
+path variants of the fake policy run in `model-live`, the exact
+`tool_sequence` fails 4/5, the ground-truth rules 0/5; under `strict` the
+repeated lookup and the verifying read end as `unrecorded`, under `fallback`
+0 do. *Measured as:* two new tables in `make eval-mutations`, byte-stable.
+
+**M12: is the failure the model's or the frozen world's, and how many runs
+does a verdict need** (question 4; steer item 2). *Question:* does
+`model-live` on a frozen world report the pass rate the agent has with
+`fallback` tools, and at what number of runs does the gate's verdict stop
+changing? *Hypothesis:* at most 2 of 20 `strict` runs per scenario end for a
+world reason (an unrecorded call or an approximate step), `fallback` changes
+the pass count by at most 1 in 20, and `cheapest_fare_in_euros` fails at
+least once in 40 further runs (the committed 10/10 is not 100%). Offline,
+resampling the committed outcomes: a single run false-passes
+`book_earliest_flight` about 20% of the time and three runs under 1%; ten
+runs agree with the full-data verdict on every committed scenario. The
+offline curve uses the fixed-threshold gate and counting only; `stats.py`
+stays untouched. *Measured as:* `make eval-pydantic-ai-arms` (qwen2.5:7b
+through Ollama, locally or from `ollama.yml`, never on PRs; raw reports
+committed, every run classified by cause) and `make eval-verdict-curve`
+(offline, seeded, byte-stable).
+
+**M13: cassette bytes at scale, and the cheapest fix that the numbers
+justify** (steer item 3: large cassettes, long runs, measured storage).
+*Question:* what does a 100-turn run cost in cassette bytes, load and replay
+time and store bytes, and does plain compression already recover what a
+shared-prefix encoding would? *Hypothesis:* bytes fit an exponent near 2 in
+turns; gzip of the JSONL recovers at least 5× at 100 turns because every
+envelope repeats the prefix; a shared-prefix encoding (each model request
+stored as what it appends to the previous one) beats gzip by less than 3×,
+so no schema change is justified; `full` replay stays under 2 s at 200 turns.
+The decision rule is fixed before the run: transparent `.jsonl.gz` cassettes
+if gzip reaches 5×, cassette v2 only if the prefix encoding beats gzip by
+more than 3×. *Measured as:* `make bench-scale` (sizes byte-stable, timings
+machine-dependent like `bench-replay`) and the chosen fix with tests.
+
+### Considered and not chosen this round
+
+- **Replay across upstream releases as a milestone.** Measured flat (above):
+  four other releases replay the 2.61.0 cassettes exactly. The matrix rides
+  along as a row in M13's results; a weekly run would spend CI minutes to
+  print zeros.
+- **A split identity (history fingerprint for matching, context fingerprint
+  as "drift").** Rejected: a system-prompt edit is exactly the change that
+  makes a recorded model reply stale, and relabelling those steps `exact`
+  hides it. The reporting half, a reason on every approximate step
+  (`context`, `history`, `arguments`), goes into M11.
+- **Six kinds of benign tool noise with `ignore_fields`.** Four of the six
+  are readable off `drift.py` (key order never drifts, timestamps and ids are
+  what `ignore_fields` is for, JSON floats have one form); the two it cannot
+  express (result order, a transient error then a retry) are a small change
+  without a milestone's worth of question. Left for a later round.
+- **A fully live third arm in M12.** The recording attempts in
+  `eval/results/m9_qwen_recording.json` already are record mode with checks;
+  20 runs per arm cannot resolve a one-run difference. M12 keeps `strict`
+  against `fallback` and reports the cause counts, which are exact per run.
+- **Parallel scenarios in `replay flake` and parallel replay throughput.**
+  One Ollama server serves one request at a time on this hardware, and `full`
+  replay of a 200-turn run takes 1.6 s; nothing measured says throughput is
+  the limit.
+- **A store fix in M13 up front** (not copying an `exact` step's request).
+  Deferred until `bench-scale` says store bytes are the pain, since it needs
+  an Alembic revision on both backends and the dashboard's diff reads.
+- **An `openai` SDK adapter.** Still not the question: nothing measured this
+  round needs a second framework.
 
 ## Milestones
 
@@ -877,3 +1019,6 @@ first item.
     database rule, not drift, because their results are unchanged. 0 drift in
     34 live tool results on the six live recordings. The README roadmap entry
     is struck through as done, like items 8 and 9.
+- [ ] M11: Identifying arguments and correct-but-different paths — a per-tool `identify` list in suites (`[defaults.identify] get_order_details = ["order_id"]`, validated at load like `ignore_fields`): a served tool call whose identifying arguments match no unused recording is `unrecorded`, so the policy decides (`strict` fails the run, `fallback` calls the real tool, `synth` stubs), instead of being served another entity's result as `approximate`; in `tools-live` with `fail_on_tool_drift` a live call whose identity no recording has is reported as drift (`identity_unrecorded`); every approximate step carries a reason (`context` when only `system` or `tools` changed, `history`, `arguments`), shown in reports and the trace viewer; two new mutations (`guesses_user_id`, `reads_wrong_order`) and five correct-but-different path variants of the fake policy (one order instead of three, two lookups in parallel, a repeated lookup, a verifying read after the write, a reworded transfer summary) in `eval/mutation_study.py`, the variants run in `model-live` under `strict` and `fallback` with a column per check type and a termination-cause column. Done when `make eval-mutations` shows the two mutations caught 0/2 in every non-strict configuration without keys and 2/2 in `full`, `model-live` and `tools-live+drift` with keys, the five benign refactors unchanged (0/5 false alarms, 1/5 strict), the six live cassettes still passing in `tools-live --fail-on-tool-drift` with the summary step approximate, the path-variant table with its hypothesis answered, and RESULTS.md and the README results table carry the numbers beside the v1 and M10 ones.
+- [ ] M12: Frozen-world bias and the verdict-stability curve — `eval/verdict_curve.py` (stdlib and counting only; `stats.py` untouched): for every committed flake report (Haiku 120, Opus 30, qwen2.5:7b 30, plus this milestone's) the share of seeded random run subsets of size n (2000 draws per n) whose fixed-threshold verdict agrees with the verdict on all runs, and the single-run false-pass and false-fail rates, as `make eval-verdict-curve` (offline, byte-stable, in `make eval`); `eval/pydantic_ai.py --arms strict,fallback` running 20 `model-live` runs per arm of the two qwen2.5:7b scenarios through Ollama as `make eval-pydantic-ai-arms` (an `ollama.yml` input; never on pull requests), every run classified by termination cause (passed; unrecorded call; approximate step then a failed check; the model's own failure) in a committed raw report, the harness tested offline against the fake model. Done when RESULTS.md holds the per-arm pass and cause counts with wall time and CPU beside the M9 rows, the 40 further `cheapest_fare_in_euros` runs pooled with the committed 10, the curve table with its hypothesis answered, and every v1 and M9 number unchanged.
+- [ ] M13: Cassette bytes at scale — `eval/bench_scale.py` as `make bench-scale`: fake-model runs of 5, 20, 50, 100 and 200 turns with the retail-sized system prompt and 10 and 100 runs: cassette bytes with the fitted exponent, bytes new per turn, `Cassette.load` and `full` replay time, `save_run` time and database bytes, `get_run` payload bytes, and gzip of the JSONL against a shared-prefix encoding prototype kept inside `eval/`; the upstream-release matrix of the pydantic-ai cassettes (2.58.0 to 2.62.0) as a row; then the fix the rule chooses: transparent `.jsonl.gz` cassettes (`replay record --out x.jsonl.gz`, `Cassette.load`, `replay ci`) if gzip recovers at least 5× at 100 turns, cassette schema v2 with the prefix encoding only if it beats gzip by more than 3×. Done when `make bench-scale` writes the table (sizes byte-stable and checked in CI, timings machine-dependent like `bench-replay`), RESULTS.md holds it with the decision and its reason, and whichever fix the rule chose is in with tests and documented in the README.
