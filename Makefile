@@ -59,7 +59,8 @@ RETAIL_SUITE = examples/retail_agent/replay.toml
 
 # replay ci on the retail suite: passes in every mode (the fake model plays the
 # live one), the live recordings stay within their cost and latency baseline,
-# and each seeded regression fails it (expected exit 1).
+# and each seeded regression fails it (expected exit 1). In tools-live the live recordings'
+# tools return what they returned when recorded, and a tool that drifted fails the suite.
 ci-demo:
 	uv run replay ci $(RETAIL_SUITE) --no-store
 	REPLAY_JUDGE_OFFLINE=1 uv run replay ci examples/retail_agent/replay-live.toml --no-store
@@ -71,6 +72,11 @@ ci-demo:
 			--agent examples.retail_agent.mutants:$$mutant > /dev/null; \
 		test $$? -eq 1 || { echo "mutant $$mutant was not caught"; exit 1; }; \
 	done
+	REPLAY_JUDGE_OFFLINE=1 uv run replay ci examples/retail_agent/replay-live.toml --no-store \
+		--mode tools-live --fail-on-tool-drift
+	uv run replay ci $(RETAIL_SUITE) --no-store --mode tools-live --fail-on-tool-drift \
+		--agent eval.mutations.tools:order_details_stale_status > /dev/null; \
+		test $$? -eq 1 || { echo "the stale-status tool drifted unnoticed"; exit 1; }
 
 # replay flake offline: the fake model passes every scenario's gate; a seeded flaky
 # model is classified passing, flaky or failing per scenario and fails the gate (exit 1).
@@ -131,9 +137,9 @@ eval-judge-objective:
 		-o eval/results/calibration_objective.json --no-store
 
 # The mutation study: 32 known-bad variants and 5 benign refactors of the retail agent,
-# replayed in full, tools-live, model-live, model-live with fallback and tools-live with
-# fail_on_approximate; detection rate per check type and per configuration (offline,
-# ~25 s). The JSON is byte-stable across runs.
+# replayed in full, tools-live, model-live, model-live with fallback, tools-live with
+# fail_on_approximate and tools-live with fail_on_tool_drift; detection rate per check type
+# and per configuration (offline, about a minute). The JSON is byte-stable across runs.
 eval-mutations:
 	uv run python eval/mutation_study.py --out eval/results/mutations.json
 

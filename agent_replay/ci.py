@@ -17,8 +17,17 @@ policy and a list of checks::
 Paths are relative to the suite file. A scenario's checks are the defaults'
 checks followed by its own. A scenario passes when the agent finished without
 error, every check passed (advisory checks are reported but never fail it) and
-(with ``fail_on_approximate``) no step was served approximately. The suite
-passes when every scenario does.
+(with ``fail_on_approximate``) no step was served approximately and (with
+``fail_on_tool_drift``) every tool that ran live returned what it returned when
+recorded (:mod:`agent_replay.drift`; ``ignore_fields`` maps a tool to result
+paths left out of that comparison)::
+
+    [defaults]
+    fail_on_tool_drift = true
+    [defaults.ignore_fields]
+    get_order_details = ["fulfillments[*].tracking_id"]
+
+The suite passes when every scenario does.
 """
 
 from __future__ import annotations
@@ -43,6 +52,7 @@ from agent_replay.cassette import Cassette, ErrorInfo
 from agent_replay.checks.base import Check, CheckResult
 from agent_replay.checks.budget import RELATIVE_LIMITS
 from agent_replay.checks.spec import build_check
+from agent_replay.drift import describe, parse_path, tool_drift
 from agent_replay.errors import ConfigError, JudgeCacheMiss, MeasurementError, ReplayError
 from agent_replay.pricing import format_cost
 from agent_replay.runner import RunResult, load_agent, make_client, replay
@@ -64,6 +74,10 @@ class Defaults(_Config):
     client: str | None = None
     """``module:factory`` returning a live model client (needed by ``model-live``)."""
     fail_on_approximate: bool = False
+    fail_on_tool_drift: bool = False
+    """In ``tools-live``, fail when a live tool's result differs from its recording."""
+    ignore_fields: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    """Per tool, result paths the drift comparison skips (values that legitimately vary)."""
     baseline: str | None = None
     """Baseline file (``replay baseline``) that budget checks' relative limits compare
     against, relative to the suite file."""
@@ -79,6 +93,9 @@ class Scenario(_Config):
     client: str | None = None
     task: str | None = None
     fail_on_approximate: bool | None = None
+    fail_on_tool_drift: bool | None = None
+    ignore_fields: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    """Added to the defaults' paths for the same tool."""
     checks: tuple[dict[str, Any], ...] = ()
 
 
@@ -96,6 +113,8 @@ class Overrides(_Config):
     client: str | None = None
     fail_on_approximate: bool | None = None
     """Fail every scenario on a served step whose request differs from the recording."""
+    fail_on_tool_drift: bool | None = None
+    """Fail every scenario on a live tool result that differs from the recording."""
     cassette_dir: Path | None = None
     """Read every scenario's cassette (by file name) from this directory instead."""
     baseline: Path | None = None
@@ -122,6 +141,13 @@ def load_suite(path: Path) -> Suite:
     duplicates = sorted({n for n in names if names.count(n) > 1})
     if duplicates:
         raise ConfigError(f"{path}: scenario names must be unique; repeated: {duplicates}")
+    for ignore_fields in (suite.defaults.ignore_fields, *(s.ignore_fields for s in suite.scenario)):
+        for tool, paths in ignore_fields.items():
+            for field in paths:
+                try:
+                    parse_path(field)
+                except ConfigError as exc:
+                    raise ConfigError(f"{path}: tool {tool!r}: {exc}") from exc
     return suite
 
 
@@ -367,6 +393,19 @@ def run_scenario(
                 "differed from the recording",
             ),
         )
+    drift = with_checks and _first_set(
+        overrides.fail_on_tool_drift, scenario.fail_on_tool_drift, defaults.fail_on_tool_drift
+    )
+    if drift and mode == "tools-live":
+        check_results += (_drift_check(result, cassette, _ignore_fields(scenario, defaults)),)
+    elif drift:
+        log.warning(
+            "ci.tool_drift_skipped",
+            name=scenario.name,
+            mode=mode,
+            reason="fail_on_tool_drift compares live tool results; only tools-live runs "
+            "the tools, so replay this scenario with --mode tools-live",
+        )
     by_status: dict[str, int] = {}
     for step in result.trajectory.steps:
         by_status[step.status.value] = by_status.get(step.status.value, 0) + 1
@@ -389,6 +428,26 @@ def run_scenario(
         baseline=baseline,
     )
     return report, result
+
+
+def _ignore_fields(scenario: Scenario, defaults: Defaults) -> dict[str, tuple[str, ...]]:
+    merged = dict(defaults.ignore_fields)
+    for tool, paths in scenario.ignore_fields.items():
+        merged[tool] = (*merged.get(tool, ()), *paths)
+    return merged
+
+
+def _drift_check(
+    result: RunResult, cassette: Cassette, ignore_fields: dict[str, tuple[str, ...]]
+) -> CheckResult:
+    """``no_tool_drift``: every live tool result equals its recording (see :mod:`drift`)."""
+    report = tool_drift(result.trajectory, cassette, ignore_fields)
+    return CheckResult(
+        check="no_tool_drift",
+        passed=report.ok,
+        message=describe(report),
+        details=report.model_dump(mode="json"),
+    )
 
 
 def _first_set(*values: bool | None) -> bool:

@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+import structlog.testing
 from typer.testing import CliRunner
 
 from agent_replay.checks import CheckResult
@@ -279,6 +280,106 @@ cassette = "{RETAIL_CASSETTES / "cancel_pending_laptop.jsonl"}"
     assert failed.check == "no_approximate_steps"
     assert failed.message.startswith("1 step(s) were served approximately")
     assert not scenario.passed
+
+
+STALE_STATUS = "eval.mutations.tools:order_details_stale_status"
+DRIFT_SUITE = f"""
+[defaults]
+mode = "tools-live"
+fail_on_tool_drift = true
+checks = [{{ type = "tool_sequence" }}]
+
+[[scenario]]
+name = "return_damaged_bicycle"
+cassette = "{RETAIL_CASSETTES / "return_damaged_bicycle.jsonl"}"
+"""
+
+
+def test_tool_drift_passes_the_real_tools_and_reports_what_it_compared() -> None:
+    report = run_suite(SUITE, overrides=Overrides(mode="tools-live", fail_on_tool_drift=True))
+
+    assert report.passed, to_markdown(report)
+    for scenario in report.scenarios:
+        [drift] = [c for c in scenario.checks if c.check == "no_tool_drift"]
+        assert drift.passed
+        assert drift.details["compared"] == scenario.steps.by_status["live"]
+        assert drift.message.endswith("live tool result(s) matched the recording")
+
+
+def test_tool_drift_fails_a_tool_that_returns_something_else(tmp_path: Path) -> None:
+    report = run_suite(write_suite(tmp_path, DRIFT_SUITE), overrides=Overrides(agent=STALE_STATUS))
+
+    [scenario] = report.scenarios
+    [failed] = scenario.failed_checks
+    assert failed.check == "no_tool_drift"
+    assert "get_order_details (step 5) at $.status" in failed.message
+    assert 'recorded "delivered", live "pending"' in failed.message
+    first = failed.details["drifted"][0]  # type: ignore[index]
+    assert first["path"] == "$.status"  # type: ignore[index]
+    assert "no_tool_drift" in to_markdown(report)
+
+
+def test_tool_drift_without_the_flag_lets_the_stale_tool_pass(tmp_path: Path) -> None:
+    body = DRIFT_SUITE.replace("fail_on_tool_drift = true", "")
+    report = run_suite(write_suite(tmp_path, body), overrides=Overrides(agent=STALE_STATUS))
+
+    assert report.passed
+    assert all(c.check != "no_tool_drift" for c in report.scenarios[0].checks)
+    # The command line overrides the suite either way.
+    forced = run_suite(
+        write_suite(tmp_path, DRIFT_SUITE),
+        overrides=Overrides(agent=STALE_STATUS, fail_on_tool_drift=False),
+    )
+    assert forced.passed
+
+
+def test_ignore_fields_skip_a_path_that_legitimately_varies(tmp_path: Path) -> None:
+    body = DRIFT_SUITE.replace(
+        'checks = [{ type = "tool_sequence" }]',
+        'checks = [{ type = "tool_sequence" }]\n[defaults.ignore_fields]\n'
+        'get_order_details = ["fulfillments[*].tracking_id"]',
+    ).replace(
+        'return_damaged_bicycle.jsonl"',
+        'return_damaged_bicycle.jsonl"\nignore_fields = { get_order_details = ["status"] }',
+    )
+    suite = load_suite(write_suite(tmp_path, body))
+    assert suite.defaults.ignore_fields == {"get_order_details": ("fulfillments[*].tracking_id",)}
+
+    report = run_suite(write_suite(tmp_path, body), overrides=Overrides(agent=STALE_STATUS))
+
+    [scenario] = report.scenarios
+    assert scenario.passed, to_markdown(report)
+    [drift] = [c for c in scenario.checks if c.check == "no_tool_drift"]
+    assert drift.passed
+
+
+def test_tool_drift_only_applies_where_tools_run_live(tmp_path: Path) -> None:
+    with structlog.testing.capture_logs() as logs:
+        report = run_suite(
+            write_suite(tmp_path, DRIFT_SUITE),
+            overrides=Overrides(agent=STALE_STATUS, mode="full"),
+        )
+
+    assert report.passed
+    assert all(c.check != "no_tool_drift" for c in report.scenarios[0].checks)
+    assert [e["mode"] for e in logs if e["event"] == "ci.tool_drift_skipped"] == ["full"]
+
+
+def test_a_malformed_ignore_path_is_a_suite_error(tmp_path: Path) -> None:
+    body = DRIFT_SUITE + 'ignore_fields = { get_order_details = ["items[x]"] }\n'
+
+    with pytest.raises(ConfigError, match=r"tool 'get_order_details': ignore_fields: cannot parse"):
+        load_suite(write_suite(tmp_path, body))
+
+
+def test_cli_fail_on_tool_drift(tmp_path: Path) -> None:
+    suite = write_suite(tmp_path, DRIFT_SUITE.replace("fail_on_tool_drift = true", ""))
+    common = ("ci", str(suite), "--agent", STALE_STATUS, "--no-store")
+
+    assert invoke(*common).exit_code == 0
+    result = invoke(*common, "--fail-on-tool-drift")
+    assert result.exit_code == 1, result.output
+    assert "no_tool_drift" in result.output
 
 
 def test_model_live_without_a_client_fails_the_scenario(tmp_path: Path) -> None:

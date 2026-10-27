@@ -2,6 +2,7 @@
   "configurations": [
     {
       "fail_on_approximate": false,
+      "fail_on_tool_drift": false,
       "id": "full",
       "mode": "full",
       "note": "everything served: the stub-everything baseline",
@@ -9,6 +10,7 @@
     },
     {
       "fail_on_approximate": false,
+      "fail_on_tool_drift": false,
       "id": "tools-live",
       "mode": "tools-live",
       "note": "tools run, model replies served",
@@ -16,6 +18,7 @@
     },
     {
       "fail_on_approximate": false,
+      "fail_on_tool_drift": false,
       "id": "model-live",
       "mode": "model-live",
       "note": "model runs, tools served",
@@ -23,6 +26,7 @@
     },
     {
       "fail_on_approximate": false,
+      "fail_on_tool_drift": false,
       "id": "model-live+fallback",
       "mode": "model-live",
       "note": "model runs, tools served; unrecorded tool calls run for real",
@@ -30,9 +34,18 @@
     },
     {
       "fail_on_approximate": true,
+      "fail_on_tool_drift": false,
       "id": "tools-live+strict",
       "mode": "tools-live",
       "note": "tools run, model replies served; a served step whose request differs from the recording fails (fail_on_approximate)",
+      "policy": "strict"
+    },
+    {
+      "fail_on_approximate": false,
+      "fail_on_tool_drift": true,
+      "id": "tools-live+drift",
+      "mode": "tools-live",
+      "note": "tools run, model replies served; a live tool result that differs from the one recorded for the same arguments fails (fail_on_tool_drift)",
       "policy": "strict"
     }
   ],
@@ -43,7 +56,8 @@
     "detected": "the suite fails in that configuration (any scenario not passed)",
     "false_alarm": "a benign refactor fails the suite in that configuration",
     "full": "every call served from the cassette: the stub-everything baseline",
-    "no_approximate_steps": "with fail_on_approximate, a served step whose request differed from the recording (the drift signal) fails the scenario"
+    "no_approximate_steps": "with fail_on_approximate, a served step whose request differed from the recording (the drift signal) fails the scenario",
+    "no_tool_drift": "with fail_on_tool_drift, a live tool whose result differs from the one recorded for the same arguments fails the scenario"
   },
   "mutations": [
     {
@@ -112,6 +126,23 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 12,
+          "caught_by": [
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "tools-live+drift": {
           "approximate_steps": 12,
           "caught_by": [
             "required_tools",
@@ -208,6 +239,20 @@
           ],
           "passed": false
         },
+        "tools-live+drift": {
+          "approximate_steps": 4,
+          "caught_by": [
+            "rule:db_matches_ground_truth",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
         "tools-live+strict": {
           "approximate_steps": 4,
           "caught_by": [
@@ -284,6 +329,22 @@
           ],
           "passed": false
         },
+        "tools-live+drift": {
+          "approximate_steps": 11,
+          "caught_by": [
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
         "tools-live+strict": {
           "approximate_steps": 11,
           "caught_by": [
@@ -329,6 +390,12 @@
           "passed": true
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -396,6 +463,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 17,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 17,
           "caught_by": [],
           "failed_scenarios": [],
@@ -506,6 +579,27 @@
           ],
           "passed": false
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:db_matches_ground_truth",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [
@@ -570,6 +664,17 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
+        "tools-live+drift": {
           "approximate_steps": 0,
           "caught_by": [
             "output_schema",
@@ -658,6 +763,20 @@
           ],
           "passed": false
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [
@@ -714,6 +833,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 11,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 11,
           "caught_by": [],
           "failed_scenarios": [],
@@ -790,6 +915,17 @@
           ],
           "passed": false
         },
+        "tools-live+drift": {
+          "approximate_steps": 29,
+          "caught_by": [
+            "required_tools",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
         "tools-live+strict": {
           "approximate_steps": 29,
           "caught_by": [
@@ -835,6 +971,12 @@
           "passed": true
         },
         "tools-live": {
+          "approximate_steps": 29,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 29,
           "caught_by": [],
           "failed_scenarios": [],
@@ -914,6 +1056,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 17,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 17,
           "caught_by": [
@@ -982,6 +1130,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -1043,6 +1197,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -1085,6 +1245,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1139,6 +1305,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -1181,6 +1353,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1233,6 +1411,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -1275,6 +1459,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1340,6 +1530,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -1391,6 +1587,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1450,6 +1652,12 @@
           "passed": false
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -1522,6 +1730,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -1571,6 +1785,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -1605,6 +1825,16 @@
           "passed": true
         },
         "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop"
+          ],
+          "passed": false
+        },
+        "tools-live+drift": {
           "approximate_steps": 0,
           "caught_by": [
             "rule:db_matches_ground_truth"
@@ -1661,6 +1891,16 @@
           ],
           "passed": false
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop"
+          ],
+          "passed": false
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [
@@ -1701,6 +1941,17 @@
         "tools-live": {
           "approximate_steps": 1,
           "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "modify_address_suite"
+          ],
+          "passed": false
+        },
+        "tools-live+drift": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "no_tool_drift",
             "rule:db_matches_ground_truth"
           ],
           "failed_scenarios": [
@@ -1756,6 +2007,17 @@
           ],
           "passed": false
         },
+        "tools-live+drift": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "no_tool_drift",
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "return_damaged_bicycle"
+          ],
+          "passed": false
+        },
         "tools-live+strict": {
           "approximate_steps": 1,
           "caught_by": [
@@ -1797,6 +2059,17 @@
         "tools-live": {
           "approximate_steps": 1,
           "caught_by": [
+            "rule:db_matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "tools-live+drift": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "no_tool_drift",
             "rule:db_matches_ground_truth"
           ],
           "failed_scenarios": [
@@ -1848,6 +2121,20 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 19,
+          "caught_by": [
+            "no_tool_drift"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
         "tools-live+strict": {
           "approximate_steps": 19,
           "caught_by": [
@@ -1895,6 +2182,16 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 2,
+          "caught_by": [
+            "no_tool_drift"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
         "tools-live+strict": {
           "approximate_steps": 2,
           "caught_by": [
@@ -1937,6 +2234,19 @@
           "caught_by": [],
           "failed_scenarios": [],
           "passed": true
+        },
+        "tools-live+drift": {
+          "approximate_steps": 9,
+          "caught_by": [
+            "no_tool_drift"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
         },
         "tools-live+strict": {
           "approximate_steps": 9,
@@ -1986,6 +2296,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -2024,6 +2340,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -2057,6 +2379,12 @@
           "passed": true
         },
         "tools-live": {
+          "approximate_steps": 17,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
           "approximate_steps": 17,
           "caught_by": [],
           "failed_scenarios": [],
@@ -2109,6 +2437,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -2147,6 +2481,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live+strict": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -2176,6 +2516,10 @@
           "alone": 0,
           "caught": 1
         },
+        "tools-live+drift": {
+          "alone": 0,
+          "caught": 1
+        },
         "tools-live+strict": {
           "alone": 0,
           "caught": 1
@@ -2195,6 +2539,10 @@
           "caught": 3
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live+drift": {
           "alone": 0,
           "caught": 0
         },
@@ -2220,6 +2568,10 @@
           "alone": 0,
           "caught": 0
         },
+        "tools-live+drift": {
+          "alone": 0,
+          "caught": 0
+        },
         "tools-live+strict": {
           "alone": 0,
           "caught": 0
@@ -2239,6 +2591,10 @@
           "caught": 1
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live+drift": {
           "alone": 0,
           "caught": 0
         },
@@ -2264,9 +2620,39 @@
           "alone": 0,
           "caught": 0
         },
+        "tools-live+drift": {
+          "alone": 0,
+          "caught": 0
+        },
         "tools-live+strict": {
           "alone": 7,
           "caught": 14
+        }
+      },
+      "no_tool_drift": {
+        "full": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live+fallback": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live+drift": {
+          "alone": 3,
+          "caught": 6
+        },
+        "tools-live+strict": {
+          "alone": 0,
+          "caught": 0
         }
       },
       "output_schema": {
@@ -2283,6 +2669,10 @@
           "caught": 7
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 2
+        },
+        "tools-live+drift": {
           "alone": 0,
           "caught": 2
         },
@@ -2308,6 +2698,10 @@
           "alone": 0,
           "caught": 4
         },
+        "tools-live+drift": {
+          "alone": 0,
+          "caught": 4
+        },
         "tools-live+strict": {
           "alone": 0,
           "caught": 4
@@ -2327,6 +2721,10 @@
           "caught": 2
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 2
+        },
+        "tools-live+drift": {
           "alone": 0,
           "caught": 2
         },
@@ -2352,6 +2750,10 @@
           "alone": 5,
           "caught": 7
         },
+        "tools-live+drift": {
+          "alone": 2,
+          "caught": 7
+        },
         "tools-live+strict": {
           "alone": 2,
           "caught": 7
@@ -2371,6 +2773,10 @@
           "caught": 19
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 4
+        },
+        "tools-live+drift": {
           "alone": 0,
           "caught": 4
         },
@@ -2396,6 +2802,10 @@
           "alone": 0,
           "caught": 0
         },
+        "tools-live+drift": {
+          "alone": 0,
+          "caught": 0
+        },
         "tools-live+strict": {
           "alone": 0,
           "caught": 0
@@ -2415,6 +2825,10 @@
           "caught": 1
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 0
+        },
+        "tools-live+drift": {
           "alone": 0,
           "caught": 0
         },
@@ -2440,6 +2854,10 @@
           "alone": 0,
           "caught": 1
         },
+        "tools-live+drift": {
+          "alone": 0,
+          "caught": 1
+        },
         "tools-live+strict": {
           "alone": 0,
           "caught": 1
@@ -2462,6 +2880,10 @@
           "alone": 0,
           "caught": 0
         },
+        "tools-live+drift": {
+          "alone": 0,
+          "caught": 0
+        },
         "tools-live+strict": {
           "alone": 0,
           "caught": 0
@@ -2481,6 +2903,10 @@
           "caught": 13
         },
         "tools-live": {
+          "alone": 0,
+          "caught": 5
+        },
+        "tools-live+drift": {
           "alone": 0,
           "caught": 5
         },
@@ -2563,6 +2989,24 @@
           "total": 8
         }
       },
+      "tools-live+drift": {
+        "agent": {
+          "detected": 7,
+          "total": 12
+        },
+        "model": {
+          "detected": 0,
+          "total": 12
+        },
+        "overall": {
+          "detected": 15,
+          "total": 32
+        },
+        "tool": {
+          "detected": 8,
+          "total": 8
+        }
+      },
       "tools-live+strict": {
         "agent": {
           "detected": 11,
@@ -2587,6 +3031,7 @@
       "model-live": [],
       "model-live+fallback": [],
       "tools-live": [],
+      "tools-live+drift": [],
       "tools-live+strict": [
         "compact_tool_json"
       ]

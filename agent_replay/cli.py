@@ -447,6 +447,15 @@ def ci_cmd(
             "replaces the suite's baseline setting."
         ),
     ] = None,
+    fail_on_tool_drift: Annotated[
+        bool | None,
+        typer.Option(
+            "--fail-on-tool-drift/--no-fail-on-tool-drift",
+            help="In tools-live, fail a scenario when a live tool's result differs from its "
+            "recording (no_tool_drift); replaces the suite's fail_on_tool_drift.",
+            show_default=False,
+        ),
+    ] = None,
     json_path: Annotated[
         Path | None, typer.Option("--json", help="Write the JSON report here.")
     ] = None,
@@ -474,6 +483,7 @@ def ci_cmd(
         mode=mode.value if mode else None,
         policy=policy.value if policy else None,
         client=client,
+        fail_on_tool_drift=fail_on_tool_drift,
         cassette_dir=cassette_dir,
         baseline=baseline,
     )

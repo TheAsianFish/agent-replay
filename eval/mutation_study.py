@@ -2,7 +2,7 @@
 
 Replays the retail suite (``examples/retail_agent/replay.toml``, six τ-bench
 tasks with their committed fake-model cassettes) against every mutation and
-benign refactor in ``eval/mutations/``, in five configurations:
+benign refactor in ``eval/mutations/``, in six configurations:
 
 - ``full``: every model and tool call served from the cassette (strict). This
   is the stub-everything baseline: it tests the agent's own code only.
@@ -19,6 +19,10 @@ benign refactor in ``eval/mutations/``, in five configurations:
   (``no_approximate_steps``). This is the drift signal the other configurations
   only record; it catches changed prompts and changed tool outputs at the cost
   of false alarms on refactors that change request bytes.
+- ``tools-live+drift``: ``tools-live`` with ``fail_on_tool_drift``, so a live
+  tool whose result differs from the one recorded for the same arguments fails
+  the scenario (``no_tool_drift``, :mod:`agent_replay.drift`). It looks at tool
+  results only, so a refactor that changes request bytes does not trip it.
 
 Definitions:
 
@@ -73,6 +77,8 @@ class Config:
     note: str
     strict: bool = False
     """``fail_on_approximate``: a served step whose request differs from the recording fails."""
+    drift: bool = False
+    """``fail_on_tool_drift``: a live tool result that differs from the recording fails."""
 
     @property
     def model_live(self) -> bool:
@@ -96,6 +102,14 @@ CONFIGS: tuple[Config, ...] = (
         "tools run, model replies served; a served step whose request differs from the "
         "recording fails (fail_on_approximate)",
         strict=True,
+    ),
+    Config(
+        "tools-live+drift",
+        "tools-live",
+        "strict",
+        "tools run, model replies served; a live tool result that differs from the one "
+        "recorded for the same arguments fails (fail_on_tool_drift)",
+        drift=True,
     ),
 )
 
@@ -169,6 +183,7 @@ def replay_suite(agent: str, client: str, config: Config) -> Outcome:
                 policy=config.policy,
                 client=client if config.model_live else None,
                 fail_on_approximate=True if config.strict else None,
+                fail_on_tool_drift=True if config.drift else None,
             ),
         )
     finally:
@@ -225,6 +240,7 @@ def run(
                 "mode": c.mode,
                 "policy": c.policy,
                 "fail_on_approximate": c.strict,
+                "fail_on_tool_drift": c.drift,
                 "note": c.note,
             }
             for c in configs
@@ -248,6 +264,8 @@ def _definitions() -> dict[str, JsonValue]:
         "full": "every call served from the cassette: the stub-everything baseline",
         "no_approximate_steps": "with fail_on_approximate, a served step whose request "
         "differed from the recording (the drift signal) fails the scenario",
+        "no_tool_drift": "with fail_on_tool_drift, a live tool whose result differs from the "
+        "one recorded for the same arguments fails the scenario",
     }
 
 
