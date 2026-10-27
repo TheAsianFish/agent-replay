@@ -105,6 +105,18 @@ MUTATIONS: tuple[Mutation, ...] = (
     _tool("order_details_stale_status", "get_order_details reports every order as pending"),
 )
 
+IDENTITY_MUTATIONS: tuple[Mutation, ...] = (
+    # --- agent: a read of an entity the recording never saw (M11) ---
+    _agent("guesses_user_id", "fetches the profile with an id guessed from the user's name"),
+    _agent(
+        "reads_wrong_order",
+        "mistypes the last order id when it reads several orders at once",
+    ),
+)
+"""Mutations the v1 suite cannot see without identifying arguments: the replay hands the
+right recording to a call for the wrong entity. Kept out of :data:`MUTATIONS` so the v1
+tables keep their 32 rows."""
+
 _BENIGN = "eval.mutations.benign"
 
 REFACTORS: tuple[Refactor, ...] = (
