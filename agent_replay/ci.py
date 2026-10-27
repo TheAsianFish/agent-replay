@@ -398,6 +398,14 @@ def run_scenario(
     )
     if drift and mode == "tools-live":
         check_results += (_drift_check(result, cassette, _ignore_fields(scenario, defaults)),)
+    elif drift:
+        log.warning(
+            "ci.tool_drift_skipped",
+            name=scenario.name,
+            mode=mode,
+            reason="fail_on_tool_drift compares live tool results; only tools-live runs "
+            "the tools, so replay this scenario with --mode tools-live",
+        )
     by_status: dict[str, int] = {}
     for step in result.trajectory.steps:
         by_status[step.status.value] = by_status.get(step.status.value, 0) + 1

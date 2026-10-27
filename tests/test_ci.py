@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+import structlog.testing
 from typer.testing import CliRunner
 
 from agent_replay.checks import CheckResult
@@ -353,13 +354,15 @@ def test_ignore_fields_skip_a_path_that_legitimately_varies(tmp_path: Path) -> N
 
 
 def test_tool_drift_only_applies_where_tools_run_live(tmp_path: Path) -> None:
-    report = run_suite(
-        write_suite(tmp_path, DRIFT_SUITE),
-        overrides=Overrides(agent=STALE_STATUS, mode="full"),
-    )
+    with structlog.testing.capture_logs() as logs:
+        report = run_suite(
+            write_suite(tmp_path, DRIFT_SUITE),
+            overrides=Overrides(agent=STALE_STATUS, mode="full"),
+        )
 
     assert report.passed
     assert all(c.check != "no_tool_drift" for c in report.scenarios[0].checks)
+    assert [e["mode"] for e in logs if e["event"] == "ci.tool_drift_skipped"] == ["full"]
 
 
 def test_a_malformed_ignore_path_is_a_suite_error(tmp_path: Path) -> None:
