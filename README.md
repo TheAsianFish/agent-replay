@@ -1158,11 +1158,24 @@ Still to do, in order: implement `agent_replay/stats.py` so kappa and the
 SPRT run for real; label the retail golden set and record D1 to measure
 judge-human kappa; the real judge on LLMBar; `make bench-flake` (D3).
 
-Later: replaying the pydantic-ai cassette across upstream releases, the
-verdict-stability curve on a local model, a bytes-per-turn scale benchmark,
-live updates in the dashboard (server-sent events), authentication for a
-shared deployment, and running a flake suite's scenarios in parallel as well
-as their runs.
+Next (evolution round 2, 2026-10-27; evidence and hypotheses in
+[PLAN.md](PLAN.md), "Evolution round 2"):
+
+11. Identifying arguments for the matcher (`identify` keys, so a read for an
+    entity the cassette never saw is `unrecorded` rather than served another
+    entity's result), and a mutation-study table of correct-but-different
+    paths per check type
+12. Frozen-world bias: `model-live` with `strict` against `fallback` tools on
+    qwen2.5:7b, every run classified by cause, and the verdict-stability curve
+    resampled from the committed flake runs
+13. Cassette bytes at scale: a bytes-per-turn benchmark to 200 turns, gzip
+    and xz against a shared-prefix encoding, and the fix the numbers justify
+
+Later: live updates in the dashboard (server-sent events), authentication for
+a shared deployment, and running a flake suite's scenarios in parallel as well
+as their runs. Replaying the pydantic-ai cassettes across upstream releases
+was measured in round 2 (flat: 2.58.0 to 2.62.0 replay the 2.61.0 recordings
+exactly) and joins the scale benchmark as a row.
 
 ## Prior art
 
