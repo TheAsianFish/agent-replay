@@ -49,11 +49,12 @@ make cassettes    re-record the toy agent's committed cassettes (Anthropic and O
 make retail-cassettes  re-record the retail example's cassettes with its fake model
 make demo         the toy quickstart: replay passes, the mutant fails
 make ci-demo      replay ci on the retail suite in every mode; each seeded regression must exit 1;
-                  the live suite against its cost baseline, judged offline from the committed cache
+                  the live suite against its cost baseline, judged offline from the committed cache;
+                  the live suite in tools-live with --fail-on-tool-drift (0 drift), a drifting tool exits 1
 make bench-sprt   simulate the sequential CI gate over true pass rates (offline; core skipped until written)
 make flake-demo   replay flake offline: the fake model passes; a seeded flaky model must exit 1
 make eval-judge-smoke  judge vs deterministic checks on 24 retail runs, from the committed verdict cache
-make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in five replay
+make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in six replay
                        configurations; detection per check type and mode (offline, byte-stable JSON)
 make golden       rebuild eval/golden/retail from the live recordings and mutants (offline; 21 items from 24 runs)
 make record-golden  D1: 120 model-live retail runs (Opus and Haiku) into eval/golden/retail-d1
