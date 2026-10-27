@@ -1,5 +1,5 @@
-"""Identifying arguments: parsing, served-call matching under each policy and the suite
-tables."""
+"""Identifying arguments: parsing, served-call matching under each policy, tool drift and
+the suite tables."""
 
 from __future__ import annotations
 
@@ -11,13 +11,15 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from agent_replay.cassette import Cassette
+from agent_replay._json import fingerprint
+from agent_replay.cassette import Cassette, Envelope, Footer, Header, Kind
 from agent_replay.ci import Overrides, load_suite, run_suite
+from agent_replay.drift import DriftReport, describe, tool_drift
 from agent_replay.errors import ConfigError, UnrecordedCallError
 from agent_replay.identify import check_recorded, identity, parse_identify, values
 from agent_replay.record.tools import tool
 from agent_replay.session import RecordingSession, ReplaySession
-from agent_replay.trajectory import StepStatus
+from agent_replay.trajectory import Step, StepStatus, Trajectory
 
 CLOCK = datetime(2026, 10, 27, tzinfo=UTC)
 CALLS: list[str] = []
@@ -212,6 +214,109 @@ def test_a_typo_in_the_keys_fails_before_the_run() -> None:
         ReplaySession(record("#W1"), identify={"get_order": ["id"]})
 
 
+# --- drift --------------------------------------------------------------------------
+
+
+def _envelope(seq: int, name: str, request: dict[str, str], response: str) -> Envelope:
+    return Envelope(
+        seq=seq,
+        kind=Kind.TOOL,
+        name=name,
+        fingerprint=fingerprint(Kind.TOOL, name, request),
+        request=request,
+        response=response,
+        latency_ms=1.0,
+        span_id=f"s{seq}",
+    )
+
+
+def _cassette(*envelopes: Envelope) -> Cassette:
+    return Cassette(
+        header=Header(cassette_id="c", created_at=CLOCK),
+        envelopes=envelopes,
+        footer=Footer(status="ok", envelope_count=len(envelopes)),
+    )
+
+
+def _live(index: int, name: str, request: dict[str, str], response: str) -> Step:
+    return Step(
+        index=index,
+        kind=Kind.TOOL,
+        name=name,
+        status=StepStatus.LIVE,
+        fingerprint=fingerprint(Kind.TOOL, name, request),
+        request=request,
+        response=response,
+    )
+
+
+def test_a_live_call_for_an_entity_no_recording_has_is_identity_drift() -> None:
+    cassette = _cassette(_envelope(0, "get_order", {"order_id": "A"}, "a"))
+    run = Trajectory(steps=(_live(0, "get_order", {"order_id": "Z"}, "z"),))
+
+    without = tool_drift(run, cassette)
+    report = tool_drift(run, cassette, identify={"get_order": ["order_id"]})
+
+    assert without == DriftReport(arguments_differ=1)
+    assert not report.ok
+    [drift] = report.drifted
+    assert (drift.reason, drift.envelope_seq, drift.live) == (
+        "identity_unrecorded",
+        None,
+        {"order_id": "Z"},
+    )
+    assert report.identity_unrecorded == 1
+    assert describe(report) == (
+        "1 live tool call(s) for an entity no recording has (identity_unrecorded); first: "
+        'get_order (step 0) with order_id="Z"'
+    )
+
+
+def test_identity_drift_counts_recordings_already_paired() -> None:
+    """A second read of a recorded entity is not identity drift (the entity is known); with
+    its recording paired it is counted as before."""
+    cassette = _cassette(
+        _envelope(0, "get_order", {"order_id": "A", "fields": "all"}, "a"),
+        _envelope(1, "transfer", {"summary": "x"}, "ok"),
+    )
+    run = Trajectory(
+        steps=(
+            _live(0, "get_order", {"order_id": "A", "fields": "all"}, "a"),
+            _live(1, "get_order", {"order_id": "A", "fields": "status"}, "a"),
+            _live(2, "transfer", {"summary": "reworded"}, "ok"),
+        )
+    )
+
+    report = tool_drift(run, cassette, identify={"get_order": ["order_id"]})
+
+    assert report == DriftReport(compared=1, arguments_differ=1, unrecorded=1)
+
+
+def test_a_tool_never_recorded_is_identity_drift_when_it_has_keys() -> None:
+    cassette = _cassette(_envelope(0, "get_order", {"order_id": "A"}, "a"))
+    run = Trajectory(steps=(_live(0, "get_user", {"user_id": "u"}, "u"),))
+
+    assert tool_drift(run, cassette) == DriftReport(unrecorded=1)
+    report = tool_drift(run, cassette, identify={"get_user": ["user_id"]})
+    assert [d.reason for d in report.drifted] == ["identity_unrecorded"]
+
+
+def test_result_and_identity_drift_are_both_described() -> None:
+    cassette = _cassette(_envelope(0, "get_order", {"order_id": "A"}, "a"))
+    run = Trajectory(
+        steps=(
+            _live(0, "get_order", {"order_id": "A"}, "changed"),
+            _live(1, "get_order", {"order_id": "B"}, "b"),
+        )
+    )
+
+    report = tool_drift(run, cassette, identify={"get_order": ["order_id"]})
+
+    assert [d.reason for d in report.drifted] == ["result", "identity_unrecorded"]
+    assert describe(report).startswith("1 of 1 live tool result(s) differ from the recording")
+    assert "; 1 live tool call(s) for an entity no recording has" in describe(report)
+
+
 # --- suites -------------------------------------------------------------------------
 
 
@@ -301,3 +406,17 @@ def test_a_typo_in_a_suite_breaks_the_scenario_with_the_fix(tmp_path: Path) -> N
     assert report.broken
     assert report.scenarios[0].error is not None
     assert "fix the path in the suite's identify table" in report.scenarios[0].error.message
+
+
+def test_tools_live_drift_reports_a_read_of_an_unrecorded_entity(tmp_path: Path) -> None:
+    suite = _identify_suite(tmp_path)
+    overrides = Overrides(mode="tools-live", fail_on_tool_drift=True)
+
+    report = run_suite(suite, overrides=overrides)
+    [scenario] = report.scenarios
+    [drift] = [c for c in scenario.checks if c.check == "no_tool_drift"]
+    assert not drift.passed
+    assert '(identity_unrecorded); first: get_order (step 0) with order_id="#W9"' in (drift.message)
+
+    without = run_suite(suite, overrides=overrides.model_copy(update={"identify": {}}))
+    assert without.passed

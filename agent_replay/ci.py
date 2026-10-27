@@ -30,7 +30,9 @@ paths left out of that comparison)::
 ``identify`` maps a tool to the arguments that name the entity it reads or
 writes (:mod:`agent_replay.identify`). A served call is then never given a
 recording made for another entity: with no unused recording of the same
-identity it is unrecorded and the policy decides::
+identity it is unrecorded and the policy decides. In ``tools-live`` with
+``fail_on_tool_drift``, a live call for an entity no recording has is drift
+(``identity_unrecorded``)::
 
     [defaults.identify]
     get_order_details = ["order_id"]
@@ -419,7 +421,9 @@ def run_scenario(
         overrides.fail_on_tool_drift, scenario.fail_on_tool_drift, defaults.fail_on_tool_drift
     )
     if drift and mode == "tools-live":
-        check_results += (_drift_check(result, cassette, _ignore_fields(scenario, defaults)),)
+        check_results += (
+            _drift_check(result, cassette, _ignore_fields(scenario, defaults), identify),
+        )
     elif drift:
         log.warning(
             "ci.tool_drift_skipped",
@@ -468,10 +472,14 @@ def _identify(
 
 
 def _drift_check(
-    result: RunResult, cassette: Cassette, ignore_fields: dict[str, tuple[str, ...]]
+    result: RunResult,
+    cassette: Cassette,
+    ignore_fields: dict[str, tuple[str, ...]],
+    identify: dict[str, tuple[str, ...]],
 ) -> CheckResult:
-    """``no_tool_drift``: every live tool result equals its recording (see :mod:`drift`)."""
-    report = tool_drift(result.trajectory, cassette, ignore_fields)
+    """``no_tool_drift``: every live tool result equals its recording and every identified
+    call names an entity the recording has (see :mod:`drift`)."""
+    report = tool_drift(result.trajectory, cassette, ignore_fields, identify)
     return CheckResult(
         check="no_tool_drift",
         passed=report.ok,
