@@ -183,6 +183,11 @@ def test_tool_mutants_keep_the_real_tools_name_and_schema(mutation_id: str):
         # A tool regression shows only where the tools run, and only in the database.
         ("cancel_keeps_status", "tools-live", ["rule:db_matches_ground_truth"]),
         ("cancel_keeps_status", "model-live", []),
+        # A read-only tool bug changes only what the tool returns: the drift check sees it...
+        ("order_details_stale_status", "tools-live", []),
+        ("order_details_stale_status", "tools-live+drift", ["no_tool_drift"]),
+        # ...and a bug that only changes the database is no drift (its result is unchanged).
+        ("cancel_keeps_status", "tools-live+drift", ["rule:db_matches_ground_truth"]),
         # An orchestration bug shows in every mode; strict ends the run at the extra call.
         (
             "repeats_write_calls",
@@ -244,6 +249,18 @@ def test_strict_configuration_fails_on_approximate_steps():
     assert not strict.passed
     assert strict.caught_by == ("no_approximate_steps",)
     assert strict.approximate_steps == 17
+
+
+def test_drift_configuration_ignores_the_request_bytes_strict_fails_on():
+    """The JSON-layout refactor changes every model request (17 approximate steps) but no
+    tool result, so ``tools-live+drift`` passes it where ``tools-live+strict`` fails it."""
+    refactor = REFACTOR["compact_tool_json"]
+
+    drift = study.replay_suite(refactor.agent, refactor.client, CONFIG["tools-live+drift"])
+
+    assert drift.passed
+    assert drift.approximate_steps == 17
+    assert COMMITTED_ROWS["compact_tool_json"]["results"]["tools-live+drift"] == drift.to_json()
 
 
 def test_check_types_keep_rule_names_and_drop_arguments():
