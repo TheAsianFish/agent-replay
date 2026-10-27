@@ -24,6 +24,15 @@ every older version.
   difference fails the scenario as `no_tool_drift`, naming the first differing path.
   Per-tool `ignore_fields` skip values that legitimately vary.
 - The mutation study's sixth configuration, `tools-live+drift`.
+- `identify` in suites (`[defaults.identify]`, per scenario, or `replay(identify=...)`):
+  per tool, the arguments that name the entity a call reads or writes. A served call
+  only falls back to a recording of the same entity; otherwise it is unrecorded and the
+  policy decides. With `fail_on_tool_drift`, a live call whose identity no recording has
+  is drift (`identity_unrecorded`). The retail and pydantic-ai suites declare theirs.
+- The mutation study re-runs with the identify keys, adds two mutations that read an
+  entity the recording never saw (`guesses_user_id`, `reads_wrong_order`), and replays
+  five correct-but-different paths of the fake model in `model-live` under `strict` and
+  `fallback`, with a termination cause per scenario.
 
 ### Changed
 
