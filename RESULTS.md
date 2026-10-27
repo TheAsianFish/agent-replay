@@ -1507,11 +1507,10 @@ only by `no_approximate_steps`, at the price of failing the benign
 `compact_tool_json` refactor.
 
 - **Check:** `fail_on_tool_drift` (`agent_replay/drift.py`). In `tools-live`,
-  each live tool call is paired with an unused recorded call of the same tool
-  at the same nesting level: the one with the same request fingerprint
-  (arguments), else the oldest left. Same-argument pairs are compared as
-  canonical JSON; a pair whose arguments differ, or a call with no recording
-  left, is counted and not compared. A difference fails the scenario as
+  each live tool call is paired with the first unused recorded call of the
+  same tool, at the same nesting level, with the same request fingerprint
+  (arguments). Those pairs are compared as canonical JSON; a call with no
+  such recording is counted, consumes nothing and is not compared. A difference fails the scenario as
   `no_tool_drift` with the first differing path. Per-tool `ignore_fields`
   skip paths that legitimately vary (none were needed here).
 - **Hypothesis (PLAN.md, written before the run):** `tools-live+drift` 8/8 tool bugs, 0/5
@@ -1615,7 +1614,12 @@ What this shows:
   0 drifted, and 4 write calls with other arguments were not compared; the
   ground-truth rules fail it. A changed argument is the agent's fault, and
   reporting it as tool drift would blame the wrong component. So the two flags
-  are complementary, not one replacing the other.
+  are complementary, not one replacing the other. The separation is not
+  complete: for a tool whose result depends on earlier calls, an agent that
+  drops or reorders a write before a read with the same arguments gets a
+  different read result, and that is reported as drift (a unit test pins
+  this down, `test_a_dropped_read_before_a_write_reads_as_drift_on_a_stateful_tool`);
+  no mutation in this study does that.
 - **Caveats.** The live tools here are deterministic over a fixed, vendored
   database, so `ignore_fields` was never exercised on real data. A tool that
   reads a clock or a remote service will drift every run until its varying
