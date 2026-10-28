@@ -1,0 +1,106 @@
+{
+  "command": "make bench-upstream",
+  "recorded_on": "2.61.0",
+  "releases": [
+    {
+      "version": "2.58.0",
+      "installed": "2.58.0",
+      "suites": [
+        {
+          "suite": "replay.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        },
+        {
+          "suite": "replay-qwen.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        }
+      ]
+    },
+    {
+      "version": "2.59.0",
+      "installed": "2.59.0",
+      "suites": [
+        {
+          "suite": "replay.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        },
+        {
+          "suite": "replay-qwen.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        }
+      ]
+    },
+    {
+      "version": "2.60.0",
+      "installed": "2.60.0",
+      "suites": [
+        {
+          "suite": "replay.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        },
+        {
+          "suite": "replay-qwen.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        }
+      ]
+    },
+    {
+      "version": "2.61.0",
+      "installed": "2.61.0",
+      "suites": [
+        {
+          "suite": "replay.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        },
+        {
+          "suite": "replay-qwen.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        }
+      ]
+    },
+    {
+      "version": "2.62.0",
+      "installed": "2.62.0",
+      "suites": [
+        {
+          "suite": "replay.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        },
+        {
+          "suite": "replay-qwen.toml",
+          "scenarios": 3,
+          "passed": 3,
+          "approximate_steps": 0,
+          "steps": 15
+        }
+      ]
+    }
+  ]
+}
