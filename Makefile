@@ -6,7 +6,8 @@
 	golden record-golden eval-judge eval-judge-objective token-rates \
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
 	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough \
-	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline
+	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline \
+	eval-pydantic-ai-arms
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -167,6 +168,13 @@ eval-pydantic-ai:
 # The offline half of eval-pydantic-ai (part of `make eval`, so CI runs it).
 eval-pydantic-ai-offline:
 	uv run python -m eval.pydantic_ai --offline
+
+# M12: the two qwen2.5:7b-recorded scenarios in model-live, 20 runs each under the strict
+# and the fallback policy (identify keys on), every run classified by how it ended, into
+# eval/results/m12_arms_qwen.json. Needs Ollama serving qwen2.5:7b (skipped without it);
+# CPU only, about an hour on 4 CPUs. Locally or from the manual Ollama workflow, never on a PR.
+eval-pydantic-ai-arms:
+	uv run python -m eval.pydantic_ai --arms strict,fallback --runs 20
 
 # Regenerate the API schema the dashboard's TypeScript types come from.
 openapi:

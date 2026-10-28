@@ -2,7 +2,8 @@ name: Local model (Ollama)
 
 # The pydantic-ai example against qwen2.5:7b on the runner's CPU: re-record its live
 # cassettes and/or run `make eval-pydantic-ai` (replay flake in model-live, 10 runs per
-# scenario). Free (an open model, no key) but slow: started by hand only, never on a
+# scenario), or with `arms` the M12 strict and fallback arms (make eval-pydantic-ai-arms).
+# Free (an open model, no key) but slow: started by hand only, never on a
 # push or pull request. Results come back as an artifact to review and commit.
 on:
   workflow_dispatch:
@@ -15,6 +16,10 @@ on:
         description: "model-live runs per scenario"
         type: number
         default: 10
+      arms:
+        description: "Instead of the flake: strict and fallback arms, 20 runs each (make eval-pydantic-ai-arms)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,7 +28,7 @@ jobs:
   ollama:
     name: pydantic-ai travel desk on qwen2.5:7b
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 180
     env:
       OLLAMA_VERSION: v0.40.11
       MODEL: qwen2.5:7b
@@ -51,12 +56,17 @@ jobs:
         if: ${{ inputs.record }}
         run: make record-pydantic-ai
       - name: replay ci in full, then replay flake in model-live
+        if: ${{ !inputs.arms }}
         run: uv run python -m eval.pydantic_ai --runs ${{ inputs.runs }}
+      - name: replay ci in full, then the strict and fallback arms in model-live
+        if: ${{ inputs.arms }}
+        run: make eval-pydantic-ai-arms
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: pydantic-ai-qwen
           path: |
             eval/results/m9_*
+            eval/results/m12_*
             examples/pydantic_ai_agent/cassettes/qwen/
             /tmp/ollama.log
