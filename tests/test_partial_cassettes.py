@@ -30,7 +30,7 @@ from agent_replay.cassette import (
 from agent_replay.ci import Overrides, run_suite
 from agent_replay.cli import app
 from agent_replay.diff import diff_steps, steps_from_cassette
-from agent_replay.errors import CassetteError, UnrecordedCallError
+from agent_replay.errors import CassetteError, ReplayError, UnrecordedCallError
 from agent_replay.fake import FakeAnthropic, FakeRequest, Reply, ToolCall
 from agent_replay.runner import record, replay
 from agent_replay.session import RecordingSession
@@ -424,3 +424,37 @@ def test_the_partial_is_valid_json_lines_at_every_step(tmp_path: Path) -> None:
         types = [json.loads(x)["type"] for x in lines[:-1]]
         assert types[0] == "header"
         assert set(types[1:]) <= {"envelope"}
+
+
+# --- the partial failing to write ----------------------------------------------------------
+
+
+def test_a_failed_partial_write_never_reaches_the_agent_or_loses_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "run.jsonl"
+    real_append = CassetteWriter.append
+    writes = {"n": 0}
+
+    def disk_full_on_the_third(self: CassetteWriter, envelope: Envelope) -> None:
+        writes["n"] += 1
+        if writes["n"] == 3:
+            raise OSError(28, "No space left on device")
+        real_append(self, envelope)
+
+    monkeypatch.setattr(CassetteWriter, "append", disk_full_on_the_third)
+    cassette = _record(out)
+    assert len(cassette.envelopes) == 2 * TURNS - 1
+    assert Cassette.load(out) == cassette  # written whole by dump instead
+    assert not partial_path(out).exists()
+    assert writes["n"] == 3  # nothing more was sent to the broken writer
+
+
+def test_a_session_that_cannot_start_leaves_no_partial(tmp_path: Path) -> None:
+    out = tmp_path / "run.jsonl"
+    with RecordingSession(task="outer"):
+        inner = RecordingSession(task="inner", out=out)
+        with pytest.raises(ReplayError, match="already active"):
+            inner.__enter__()
+    assert not partial_path(out).exists()
+    _record(out)  # and the next recording is not refused

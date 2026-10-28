@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import functools
 import os
+import pathlib
 import platform
 import threading
 import time
@@ -43,8 +44,10 @@ from agent_replay.cassette import (
     Header,
     Kind,
     Usage,
+    partial_path,
 )
 from agent_replay.errors import (
+    CassetteError,
     ReplayError,
     UnattributedCallError,
     UnrecordedCallError,
@@ -223,6 +226,8 @@ class Session:
         self._writer = (
             CassetteWriter(out, self._header, overwrite=overwrite) if out is not None else None
         )
+        self._dump_to: pathlib.Path | None = None
+        """Where :meth:`finish` dumps the cassette after the partial failed to write."""
         self._spans = 0
         self._queues = _servable(cassette, self._served) if cassette is not None else {}
         self._identify = {tool: paths for tool, paths in parse_identify(identify).items() if paths}
@@ -231,6 +236,9 @@ class Session:
 
     def __enter__(self) -> Self:
         if _current.get() is not None:
+            if self._writer is not None:  # nothing was recorded: leave no partial behind
+                self._writer.discard()
+                self._writer = None
             raise ReplayError("a recording or replay session is already active in this context")
         self._token = _current.set(self)
         with _active_lock:
@@ -527,7 +535,10 @@ class Session:
                 )
             )
             if self._writer is not None:
-                self._writer.append(self._envelopes[-1])
+                try:
+                    self._writer.append(self._envelopes[-1])
+                except (OSError, CassetteError) as exc:
+                    self._partial_failed(exc)
         log.debug("envelope.recorded", seq=seq, kind=call.kind.value, name=call.name)
         return seq
 
@@ -556,6 +567,24 @@ class Session:
                     "latency_ms": latency_ms,
                 }
             )
+
+    def _partial_failed(self, exc: Exception) -> None:
+        """The partial cannot be written (a full disk): keep recording in memory only.
+
+        The call itself succeeded, so the agent must not see the error; the partial
+        stays as an interrupted prefix, and :meth:`finish` writes the whole cassette
+        with :meth:`Cassette.dump` instead.
+        """
+        assert self._writer is not None
+        log.warning(
+            "record.partial_write_failed",
+            path=str(self._writer.partial),
+            envelopes_written=self._writer.envelopes,
+            error=repr(exc),
+        )
+        self._writer.close()
+        self._dump_to = self._writer.path
+        self._writer = None
 
     # --- results ----------------------------------------------------------------
 
@@ -590,10 +619,17 @@ class Session:
                 error=ErrorInfo.from_exception(error) if error is not None else None,
                 envelope_count=len(self._envelopes),
             )
+            cassette = Cassette(
+                header=self._header, envelopes=tuple(self._envelopes), footer=footer
+            )
             if self._writer is not None:
                 writer, self._writer = self._writer, None
                 writer.finish(footer)
-            return Cassette(header=self._header, envelopes=tuple(self._envelopes), footer=footer)
+            elif self._dump_to is not None:
+                cassette.dump(self._dump_to)
+                partial_path(self._dump_to).unlink(missing_ok=True)  # a stale prefix now
+                self._dump_to = None
+            return cassette
 
 
 def _recorder_info() -> dict[str, str]:

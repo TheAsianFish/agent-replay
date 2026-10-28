@@ -318,7 +318,9 @@ for check in result.check(tool_sequence(cassette.tool_names()), budget(max_cost_
     compressed when the recording finishes. `replay record` refuses to start
     over an existing partial without `--force`, so the evidence of the last
     crash is not overwritten. The partial survives the process, not a power
-    cut (it is flushed, not fsynced).
+    cut (it is flushed, not fsynced). If the partial cannot be written (a full
+    disk), the error is logged, never raised into the agent's call, and the
+    cassette is written whole at the end instead.
   - v1 cassettes from M1 are read through frozen v1 models and migrated in
     memory. The live Opus toy cassette stays committed in v1 to prove it.
 - **Cut points.** Each mode is a set of call kinds served from the cassette,

@@ -387,7 +387,7 @@ def run_scenario(
             raise CassetteError(
                 f"{cassette.describe_interrupted(cassette_path)}, so a pass would cover only "
                 "part of the run. Re-record it with `replay record --out "
-                f"{cassette_path.name.removesuffix(PARTIAL_SUFFIX)} --force`; `replay run` "
+                f"{cassette_path.name[: -len(PARTIAL_SUFFIX)]} --force`; `replay run` "
                 "replays a partial for debugging"
             )
         agent_ref = agent_ref or cassette.header.agent

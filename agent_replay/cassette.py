@@ -431,6 +431,11 @@ class CassetteWriter:
             raise
         self.partial.unlink()
 
+    def discard(self) -> None:
+        """Close the file and remove the partial (nothing was recorded into it)."""
+        self.close()
+        self.partial.unlink(missing_ok=True)
+
     def close(self) -> None:
         """Close the file and leave the partial where it is (an interrupted recording)."""
         if self._fh is not None:
@@ -461,7 +466,9 @@ def _collector_paused() -> Iterator[None]:
     re-enabled when the last of them ends, and left alone if it was off before.
     Agent code on other threads runs with the collector paused for as long as a
     load takes; that delays collections, it never skips freeing (reference
-    counting still frees everything acyclic).
+    counting still frees everything acyclic). A ``gc.disable()`` made by another
+    thread during a load is undone when the load ends: ``gc`` offers no way to
+    tell it apart from the pause.
     """
     global _pause_depth, _paused_by_us  # noqa: PLW0603 - one process-wide pause
     with _pause_lock:
