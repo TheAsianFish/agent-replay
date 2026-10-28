@@ -1166,8 +1166,9 @@ it. M12 depends on M11's `identify` keys and is built after it.
     under 3×). `full` replay takes 1.7 s at 200 turns (holds: under 3 s), and
     xz does not change load time (holds). (d) The real traces confirm the
     shape (model envelopes 86% to 95%), grow 2.4 to 4.4× faster per turn on
-    Opus retail, and compress better than the synthetic text at equal length,
-    so the synthetic table is the conservative case. (e) The fix is
+    Opus retail, and compress better than the synthetic run at equal turns
+    (not at equal bytes: they are about twice as long), so per turn the
+    synthetic table is the conservative case. (e) The fix is
     transparent `.jsonl.xz` cassettes in `Cassette.load` and `dump`, with other
     compression suffixes refused, and `--out` on `replay record`. (f) The run
     store is untouched and is now the measured storage problem: 3.8 MB a

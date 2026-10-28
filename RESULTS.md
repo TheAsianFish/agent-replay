@@ -2159,12 +2159,15 @@ What the real traces say about the fit:
   replies, projects to 3.0 to 3.3 MB, close to the synthetic workload. So the
   synthetic table is a lower bound for a retail-sized Opus agent, not a
   typical case.
-- **Real text compresses better at equal length.** At 3 to 6 turns, xz
-  recovers 8.9× to 13.6× on the live retail cassettes against 7.65× on the
-  5-turn synthetic run. The live cassettes repeat English, JSON keys and the
-  tool list, where the synthetic text is uniform pseudo-words. So the
-  synthetic codec ratios are conservative, and the 10× bar is easier to
-  clear on real traces. These short real runs have no envelope near 32 KB
+- **Real runs compress better per turn, not per byte.** At 3 to 6 turns,
+  xz recovers 8.9× to 13.6× on the live retail cassettes against 7.65× on
+  the 5-turn synthetic run. But the 5-turn live cassettes are also about
+  twice the 5-turn synthetic run's bytes (84,880 to 92,071 against 44,366),
+  each envelope repeating a 12.5 KB prefix, and the synthetic table shows
+  the xz ratio rising with length on its own. So this does not show that
+  real text is more compressible byte for byte; it shows that at a given
+  number of turns a retail-sized Opus run has more repeated bytes, and
+  clears the 10× bar in fewer turns than the synthetic run. These short real runs have no envelope near 32 KB
   (the largest is 27 KB), so they cannot show the gzip collapse themselves.
   At their measured growth, a live retail run would pass 32 KB at about
   turn 8 to 15. (That is an extrapolation from the growth column, not a
