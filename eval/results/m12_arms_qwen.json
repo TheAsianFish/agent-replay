@@ -1,0 +1,1358 @@
+{
+  "arms": {
+    "fallback": {
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 1,
+            "passed": 19,
+            "unrecorded": 0
+          },
+          "classification": "flaky",
+          "decision": "pass",
+          "failures": {
+            "rule:answer_states": 1
+          },
+          "name": "cheapest_fare_in_euros",
+          "outcomes": [
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 0,
+              "passed": true,
+              "seconds": 43.0,
+              "seed": 3063848772,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 1,
+              "passed": true,
+              "seconds": 40.0,
+              "seed": 3248074706,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 2,
+              "passed": true,
+              "seconds": 40.3,
+              "seed": 1485897320,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 3,
+              "passed": true,
+              "seconds": 40.0,
+              "seed": 798478078,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 4,
+              "passed": true,
+              "seconds": 40.7,
+              "seed": 2985515869,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 5,
+              "passed": true,
+              "seconds": 40.8,
+              "seed": 3337907147,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 6,
+              "passed": true,
+              "seconds": 40.4,
+              "seed": 1610431089,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 7,
+              "passed": false,
+              "seconds": 40.3,
+              "seed": 687475431,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 8,
+              "passed": true,
+              "seconds": 40.1,
+              "seed": 3091535734,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 9,
+              "passed": true,
+              "seconds": 40.0,
+              "seed": 3477219296,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 10,
+              "passed": true,
+              "seconds": 40.6,
+              "seed": 2630350198,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 11,
+              "passed": true,
+              "seconds": 40.1,
+              "seed": 3955279328,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 12,
+              "passed": true,
+              "seconds": 40.6,
+              "seed": 1925813338,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 13,
+              "passed": true,
+              "seconds": 40.3,
+              "seed": 97428684,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 14,
+              "passed": true,
+              "seconds": 40.3,
+              "seed": 2611622255,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 15,
+              "passed": true,
+              "seconds": 40.4,
+              "seed": 3970761209,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 16,
+              "passed": true,
+              "seconds": 40.4,
+              "seed": 1973702723,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 17,
+              "passed": true,
+              "seconds": 40.4,
+              "seed": 44261589,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 18,
+              "passed": true,
+              "seconds": 40.1,
+              "seed": 2451340612,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 19,
+              "passed": true,
+              "seconds": 40.3,
+              "seed": 3843771858,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            }
+          ],
+          "passes": 19,
+          "passes_with_an_approximate_step": 0,
+          "run_seconds_total": 809.1,
+          "runs": 20,
+          "runs_with_a_fallback_step": 0,
+          "unrecorded_by_identity": 0
+        },
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 12,
+            "passed": 8,
+            "unrecorded": 0
+          },
+          "classification": "flaky",
+          "decision": "fail",
+          "failures": {
+            "rule:answer_states": 12,
+            "rule:writes_match": 12,
+            "tool_sequence": 12
+          },
+          "name": "book_earliest_flight",
+          "outcomes": [
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 0,
+              "passed": true,
+              "seconds": 41.2,
+              "seed": 2603076256,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 1,
+              "passed": true,
+              "seconds": 38.2,
+              "seed": 3961584182,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 2,
+              "passed": false,
+              "seconds": 30.2,
+              "seed": 1965665164,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 3,
+              "passed": false,
+              "seconds": 31.2,
+              "seed": 36608794,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 4,
+              "passed": true,
+              "seconds": 41.9,
+              "seed": 2622099129,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 5,
+              "passed": false,
+              "seconds": 34.7,
+              "seed": 3947707951,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 6,
+              "passed": false,
+              "seconds": 29.8,
+              "seed": 1917087637,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 7,
+              "passed": true,
+              "seconds": 47.6,
+              "seed": 88301315,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 8,
+              "passed": true,
+              "seconds": 42.7,
+              "seed": 2516337298,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 9,
+              "passed": false,
+              "seconds": 31.3,
+              "seed": 3808129540,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 10,
+              "passed": false,
+              "seconds": 30.9,
+              "seed": 999123522,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 11,
+              "passed": false,
+              "seconds": 30.9,
+              "seed": 1284135636,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 12,
+              "passed": false,
+              "seconds": 30.9,
+              "seed": 3582135150,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 13,
+              "passed": false,
+              "seconds": 32.4,
+              "seed": 2726575096,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 14,
+              "passed": true,
+              "seconds": 41.1,
+              "seed": 1021357659,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 15,
+              "passed": true,
+              "seconds": 42.6,
+              "seed": 1273470669,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 16,
+              "passed": false,
+              "seconds": 36.5,
+              "seed": 3538866039,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 17,
+              "passed": false,
+              "seconds": 32.4,
+              "seed": 2783576033,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 18,
+              "passed": true,
+              "seconds": 41.8,
+              "seed": 894886512,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 19,
+              "passed": false,
+              "seconds": 30.7,
+              "seed": 1112658662,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            }
+          ],
+          "passes": 8,
+          "passes_with_an_approximate_step": 0,
+          "run_seconds_total": 719.0,
+          "runs": 20,
+          "runs_with_a_fallback_step": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 1528.3
+    },
+    "strict": {
+      "policy": "strict",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 2,
+            "passed": 18,
+            "unrecorded": 0
+          },
+          "classification": "flaky",
+          "decision": "pass",
+          "failures": {
+            "rule:answer_states": 2
+          },
+          "name": "cheapest_fare_in_euros",
+          "outcomes": [
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 0,
+              "passed": true,
+              "seconds": 43.4,
+              "seed": 3063848772,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 1,
+              "passed": false,
+              "seconds": 40.5,
+              "seed": 3248074706,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 2,
+              "passed": true,
+              "seconds": 40.9,
+              "seed": 1485897320,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 3,
+              "passed": true,
+              "seconds": 44.5,
+              "seed": 798478078,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 4,
+              "passed": true,
+              "seconds": 54.7,
+              "seed": 2985515869,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 5,
+              "passed": true,
+              "seconds": 40.4,
+              "seed": 3337907147,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 6,
+              "passed": true,
+              "seconds": 40.8,
+              "seed": 1610431089,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 7,
+              "passed": true,
+              "seconds": 40.6,
+              "seed": 687475431,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 8,
+              "passed": true,
+              "seconds": 40.1,
+              "seed": 3091535734,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 9,
+              "passed": true,
+              "seconds": 40.3,
+              "seed": 3477219296,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 10,
+              "passed": true,
+              "seconds": 40.3,
+              "seed": 2630350198,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 11,
+              "passed": false,
+              "seconds": 40.2,
+              "seed": 3955279328,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 12,
+              "passed": true,
+              "seconds": 40.5,
+              "seed": 1925813338,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 13,
+              "passed": true,
+              "seconds": 40.4,
+              "seed": 97428684,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 14,
+              "passed": true,
+              "seconds": 40.1,
+              "seed": 2611622255,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 15,
+              "passed": true,
+              "seconds": 40.5,
+              "seed": 3970761209,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 16,
+              "passed": true,
+              "seconds": 40.2,
+              "seed": 1973702723,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 17,
+              "passed": true,
+              "seconds": 40.2,
+              "seed": 44261589,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 18,
+              "passed": true,
+              "seconds": 40.4,
+              "seed": 2451340612,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 19,
+              "passed": true,
+              "seconds": 40.4,
+              "seed": 3843771858,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            }
+          ],
+          "passes": 18,
+          "passes_with_an_approximate_step": 0,
+          "run_seconds_total": 829.4,
+          "runs": 20,
+          "runs_with_a_fallback_step": 0,
+          "unrecorded_by_identity": 0
+        },
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 8,
+            "passed": 9,
+            "unrecorded": 3
+          },
+          "classification": "flaky",
+          "decision": "fail",
+          "failures": {
+            "error:UnrecordedCallError": 3,
+            "rule:answer_states": 11,
+            "rule:writes_match": 8,
+            "tool_sequence": 8
+          },
+          "name": "book_earliest_flight",
+          "outcomes": [
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 0,
+              "passed": true,
+              "seconds": 45.8,
+              "seed": 2603076256,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 1,
+              "passed": false,
+              "seconds": 30.8,
+              "seed": 3961584182,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 2,
+              "passed": true,
+              "seconds": 38.4,
+              "seed": 1965665164,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 3,
+              "passed": false,
+              "seconds": 31.5,
+              "seed": 36608794,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 4,
+              "passed": false,
+              "seconds": 36.7,
+              "seed": 2622099129,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 5,
+              "passed": false,
+              "seconds": 30.3,
+              "seed": 3947707951,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 6,
+              "passed": true,
+              "seconds": 43.1,
+              "seed": 1917087637,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 7,
+              "passed": true,
+              "seconds": 42.9,
+              "seed": 88301315,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 8,
+              "passed": true,
+              "seconds": 38.5,
+              "seed": 2516337298,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 9,
+              "passed": false,
+              "seconds": 31.4,
+              "seed": 3808129540,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 10,
+              "passed": false,
+              "seconds": 31.5,
+              "seed": 999123522,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 11,
+              "passed": false,
+              "seconds": 30.8,
+              "seed": 1284135636,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "unrecorded",
+              "error": "UnrecordedCallError: the agent made a tool call 'get_booking' that the cassette never recorded (or made it more times than recorded); request: {\"booking_ref\":\"DL2207_20261105_456789\"}. If the change is intended, re-record the cassette with `replay record`, or replay with --policy fallback (perform it for real) or --policy synth (stub it).",
+              "failed_checks": [
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 12,
+              "passed": false,
+              "seconds": 34.1,
+              "seed": 3582135150,
+              "steps": {
+                "exact": 2,
+                "live": 2,
+                "unrecorded": 1
+              }
+            },
+            {
+              "cause": "unrecorded",
+              "error": "UnrecordedCallError: the agent made a tool call 'get_booking' that the cassette never recorded (or made it more times than recorded); request: {\"booking_ref\":\"DL2207-ALIMA-20261105\"}. If the change is intended, re-record the cassette with `replay record`, or replay with --policy fallback (perform it for real) or --policy synth (stub it).",
+              "failed_checks": [
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 13,
+              "passed": false,
+              "seconds": 33.5,
+              "seed": 2726575096,
+              "steps": {
+                "exact": 2,
+                "live": 2,
+                "unrecorded": 1
+              }
+            },
+            {
+              "cause": "unrecorded",
+              "error": "UnrecordedCallError: the agent made a tool call 'get_booking' that the cassette never recorded (or made it more times than recorded); request: {\"booking_ref\":\"DL2207_20261105_ALIMA\"}. If the change is intended, re-record the cassette with `replay record`, or replay with --policy fallback (perform it for real) or --policy synth (stub it).",
+              "failed_checks": [
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 14,
+              "passed": false,
+              "seconds": 33.3,
+              "seed": 1021357659,
+              "steps": {
+                "exact": 2,
+                "live": 2,
+                "unrecorded": 1
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 15,
+              "passed": true,
+              "seconds": 38.5,
+              "seed": 1273470669,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:writes_match",
+                "rule:answer_states"
+              ],
+              "identity": false,
+              "index": 16,
+              "passed": false,
+              "seconds": 37.0,
+              "seed": 3538866039,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 17,
+              "passed": true,
+              "seconds": 38.5,
+              "seed": 2783576033,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 18,
+              "passed": true,
+              "seconds": 43.2,
+              "seed": 894886512,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 19,
+              "passed": true,
+              "seconds": 43.0,
+              "seed": 1112658662,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              }
+            }
+          ],
+          "passes": 9,
+          "passes_with_an_approximate_step": 0,
+          "run_seconds_total": 732.8,
+          "runs": 20,
+          "runs_with_a_fallback_step": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 1562.3
+    }
+  },
+  "causes": {
+    "approximate": "a step was served approximately (another request's recording) and a check then failed: possibly the frozen world's fault",
+    "model": "a check failed (or the agent raised) with every served step exact: the model's own failure",
+    "passed": "every check passed",
+    "unrecorded": "a call no unused recording matched (by tool, or by the identify keys) ended the run under strict: the frozen world's limit"
+  },
+  "client": "examples.pydantic_ai_agent.agent:make_client",
+  "command": "uv run python -m eval.pydantic_ai --arms strict,fallback --runs 20",
+  "environment": {
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "logical_cpus": 4,
+    "model": "qwen2.5:7b",
+    "ollama": "0.40.11",
+    "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39"
+  },
+  "identify": "the suite's [defaults.identify] keys",
+  "mode": "model-live",
+  "settings": {
+    "alpha": 0.05,
+    "beta": 0.05,
+    "concurrency": 1,
+    "confidence": 0.95,
+    "gate": "sprt",
+    "max_runs": 20,
+    "min_pass_rate": 0.8,
+    "p_fail": 0.6,
+    "p_pass": 0.9,
+    "runs_per_minute": null,
+    "seed": 0
+  },
+  "suite": "examples/pydantic_ai_agent/replay-qwen.toml"
+}
