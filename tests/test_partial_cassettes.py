@@ -158,6 +158,22 @@ def test_a_base_exception_in_the_agent_leaves_an_interrupted_partial(tmp_path: P
     assert len(cassette.envelopes) == 1
 
 
+def test_an_exception_out_of_the_block_can_still_be_finished(tmp_path: Path) -> None:
+    out = tmp_path / "run.jsonl"
+    session = RecordingSession(task="t", out=out)
+    try:
+        with session:
+            wrap(make_client()).messages.create(
+                model="m", max_tokens=1, messages=[{"role": "user", "content": "t"}]
+            )
+            raise ValueError("boom")
+    except ValueError as exc:
+        cassette = session.finish(error=exc)
+    assert cassette.footer.status == "error"
+    assert Cassette.load(out) == cassette
+    assert not partial_path(out).exists()
+
+
 # --- loading a partial ---------------------------------------------------------------------
 
 

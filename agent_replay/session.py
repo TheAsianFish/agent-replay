@@ -257,9 +257,10 @@ class Session:
         if self._token is not None:
             _current.reset(self._token)
             self._token = None
-        if exc is not None and self._writer is not None:
+        if self._writer is not None and exc is not None and not isinstance(exc, Exception):
             # Ctrl-C or another BaseException: keep what was written as an interrupted
-            # recording (finish() is never reached on this path).
+            # recording (finish() is never reached on this path). An ordinary exception
+            # leaves the writer open: the caller may still finish(error=exc).
             with self._lock:
                 self._writer.close()
 
