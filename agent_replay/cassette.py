@@ -18,10 +18,14 @@ other suffixes are refused rather than silently stored uncompressed.
 
 from __future__ import annotations
 
+import gc
 import json
 import lzma
 import os
 import tempfile
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
@@ -172,6 +176,18 @@ class Cassette(_Strict):
 
     @classmethod
     def loads(cls, text: str, *, source: str = "<string>") -> Cassette:
+        """Parse a cassette's JSONL.
+
+        The garbage collector is paused while the envelopes are parsed (and only
+        then): building a large cassette allocates millions of containers and none
+        of them is garbage, so every collection the allocations trigger is wasted
+        work. ``make bench-scale`` measures load with the collector on and off.
+        """
+        with _collector_paused():
+            return cls._loads(text, source=source)
+
+    @classmethod
+    def _loads(cls, text: str, *, source: str) -> Cassette:
         # Split on "\n" only: str.splitlines() also breaks on U+2028 and friends, which
         # JSON leaves unescaped inside strings.
         numbered = enumerate(text.split("\n"), start=1)
@@ -226,6 +242,36 @@ class Cassette(_Strict):
         except UnicodeDecodeError as exc:
             raise CassetteError(f"cannot read cassette {path}: {exc}") from exc
         return cls.loads(text, source=str(path))
+
+
+_pause_lock = threading.Lock()
+_pause_depth = 0
+_paused_by_us = False
+
+
+@contextmanager
+def _collector_paused() -> Iterator[None]:
+    """Disable the cyclic garbage collector for the block, unless something else already has.
+
+    Process-wide, so nested and concurrent loads share one pause: the collector is
+    re-enabled when the last of them ends, and left alone if it was off before.
+    Agent code on other threads runs with the collector paused for as long as a
+    load takes; that delays collections, it never skips freeing (reference
+    counting still frees everything acyclic).
+    """
+    global _pause_depth, _paused_by_us  # noqa: PLW0603 - one process-wide pause
+    with _pause_lock:
+        if _pause_depth == 0:
+            _paused_by_us = gc.isenabled()
+            gc.disable()
+        _pause_depth += 1
+    try:
+        yield
+    finally:
+        with _pause_lock:
+            _pause_depth -= 1
+            if _pause_depth == 0 and _paused_by_us:
+                gc.enable()
 
 
 def _is_compressed(path: Path) -> bool:
