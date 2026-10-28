@@ -664,11 +664,13 @@ messy traces, and the failure modes teams hit, with depth over feature count.
   and megabytes lost on a kill, and a footer-less file fails to load as "cut
   short" rather than replaying what it has.
 - **The run store's by-reference fix is worth less than the roadmap says.**
-  M13 measured model envelopes at 94% to 98.5% of cassette bytes. In
-  `model-live`, the mode the dashboard exists for, those steps are live and
-  must be stored in full, so storing `exact` steps by reference saves the
-  tool share, 2% to 6%. It saves 90% and more only in `full`, where every
-  step is exact and the diff has nothing to show.
+  M13 measured model envelopes at 94% to 98.5% of the synthetic cassettes'
+  bytes and 85.9% to 94.5% of the eight committed real recordings'
+  (`model_share` in `eval/results/bench_scale_sizes.json`). In `model-live`,
+  the mode the dashboard exists for, those steps are live and must be stored
+  in full, so storing `exact` steps by reference saves the tool share, 5.5%
+  to 14% on the real recordings. It saves 85% and more only in `full`, where
+  every step is exact and the diff has nothing to show.
 - **qwen2.5:7b issues parallel tool calls in one turn**
   (`eval/results/m9_first_contact/cheapest_fare_in_euros.jsonl` has
   `search_flights` and `convert_currency` together), and `replay-qwen.toml`
@@ -688,14 +690,19 @@ parsing or by the collector? *Hypothesis:* appending each envelope to
 `<out>.partial` as it completes costs under 1% of the median recorded model
 latency per envelope on `make bench-replay`'s boundaries, and the finalised
 file is byte-identical to today's `dump`; a process killed with SIGKILL after
-envelope k leaves k envelopes that `Cassette.load` reads with footer status
-`interrupted` and that replay in `full` and diff against the next attempt. A
+envelope k leaves k envelopes that `Cassette.load` reads as interrupted (a
+load-time property: the v1 footer and its `ok`/`error` status are unchanged)
+and that replay in `full` and diff against the next attempt, while `replay ci`
+refuses an interrupted cassette and names the fix, so a suite never passes on
+a truncated recording. The partial is flushed per envelope, not fsynced: it
+survives the process dying, not the machine losing power. A
 collector pause scoped to `Cassette.loads` (never around agent code) makes
 load within 1.3× linear in bytes from 100 to 400 turns, and `gc.freeze()`
 after load, reported rather than gated, cuts `full` replay at 200 turns by at
 least 20%. *Measured as:* `make bench-scale` with a 400-turn row, load with
-the collector on and off and peak RSS per run; a subprocess kill test in
-`tests/`; RESULTS.md M13's parsing sentence corrected beside the new numbers.
+the collector on and off and peak RSS per run, and the same load timings on
+the committed real recordings; the append overhead in microseconds per
+envelope beside the in-memory baseline; a subprocess kill test in `tests/`; RESULTS.md M13's parsing sentence corrected beside the new numbers.
 Offline.
 
 **M15: does `model-live` survive the change it exists to test?** (question
@@ -740,17 +747,25 @@ an 8-link chain and the total paid in EUR (8 sequential `get_booking` and 1
 fake-model cassette; a qwen2.5:7b recording (up to 5 attempts, the fake-model
 world if none passes, as M9 did for the cancellation); `eval/pydantic_ai.py
 --arms strict,fallback` recording per-step status sequences, not only
-counts. *Hypotheses:* under `strict`, at least 4 of 20 runs end on the world
-(independent divergence at 3/143 per call predicts 17% at 9 calls, about 3
-runs); under `fallback`, where a world touch does not end the run, the share
-of world steps that follow an earlier world step in the same run is at least
-3× the base rate (clustering); the identify keys fire at least 5 times in 40
+counts. Existing bookings' tool results stay byte-identical (the chain is new
+records), so every committed cassette still replays with 0 approximate steps
+and the pydantic-ai `tools-live --fail-on-tool-drift` run shows 0 drift.
+*Hypotheses:* the decision test is clustering: under `fallback`, where a world
+touch does not end the run, the share of world steps that follow an earlier
+world step in the same run is at least 3× the base rate; if fewer than 5
+world steps occur in the arm, clustering is reported as not measurable, not
+as refuted. Under `strict`, the count of runs ending on the world is reported
+with its interval beside the independence prediction (3/143 per call gives
+17% at 9 calls, about 3.5 of 20); 20 runs cannot tell 3 from 5, so that count
+is descriptive, not a test; the identify keys fire at least 5 times in 40
 runs (a chain of references is where a model mis-copies one); the survival
 curve, the share of runs with no world step by served-call index, is
-committed beside `(1 − 3/143)^n`. The recording is the first committed real
-cassette past 6 turns, and `make bench-scale` reports its bytes per turn and
-codec ratios as a row; no gzip-collapse claim is made for it, since at qwen's
-measured 0.6 KB per turn its envelopes stay far under 32 KB. *Measured as:*
+committed beside `(1 − 3/143)^n`. If a qwen2.5:7b recording passes, it is the
+first committed real cassette past 6 turns and `make bench-scale` reports its
+bytes per turn and codec ratios as a row (M9 never got a passing qwen
+recording of the cancellation in 15 attempts, so this is not assumed); no
+gzip-collapse claim is made for it, since qwen's requests grow by about
+0.6 KB per turn (`growth_per_turn_bytes`) and stay far under 32 KB. *Measured as:*
 `make eval-pydantic-ai-long` (Ollama, an `ollama.yml` input; 15 runs per arm
 if the recording shows over 150 s per run), raw report
 `eval/results/m16_long_qwen.json`; offline, the new scenario replays in
@@ -762,9 +777,10 @@ then M15 (it adds the harness flags M16 reuses), then M16.
 ### Considered and not chosen this round
 
 - **The run store by reference** (the roadmap's "next storage problem").
-  Refuted before it starts: live model steps are 94% to 98.5% of a
-  `model-live` run's bytes and must be stored in full, so the saving is 2% to
-  6% there and 90%+ only in `full`; a week of migration, hydration and
+  Refuted before it starts: live model steps are 85.9% to 94.5% of the real
+  recordings' bytes (94% to 98.5% of the synthetic ones') and must be stored
+  in full in `model-live`, so the saving is 5.5% to 14% there and 85%+ only
+  in `full`; a week of migration, hydration and
   dashboard work for a number that is arithmetic. The roadmap paragraph is
   corrected.
 - **An evaluation of the aligned diff.** Near-tautological on the committed
@@ -787,6 +803,24 @@ then M15 (it adds the harness flags M16 reuses), then M16.
 - **Pausing the collector around replay.** Rejected: it would pause it
   around the agent's own code. M14 pauses it only inside `Cassette.loads`
   and reports `gc.freeze()` after load.
+
+### Review (2026-10-28)
+
+Re-run on this branch: `make check` (1352 passed, 22 skipped, 58 xfailed);
+the M12 step counts from `m12_arms_qwen.json` (143 served tool steps, 140
+exact, 3 unrecorded, 0 identity, 0 fallback); `(1 − 3/143)^9` = 0.826; the
+M15 control intervals (16 to 20 and 4 to 13 of 20 at 37/40 and 17/40); the
+collector pilot (200 turns 0.395 s on and 0.079 s off, 400 turns 1.198 s and
+0.309 s; 6 to 7.7 ms per MB off on a loaded runner) and `gc.freeze()` cutting
+`full` replay at 200 turns from 1.027 s to 0.772 s (25%). All three
+milestones are kept, with these changes: the run-store saving is restated
+from the real recordings' model share (85.9% to 94.5%, not the synthetic 94%
+to 98.5%); M14's interrupted state is a load-time property, so the v1 footer
+does not gain a status value, and `replay ci` refuses a truncated cassette;
+M16 keeps existing bookings byte-identical, makes clustering the decision
+test with a minimum of 5 world steps, reports the `strict` count against
+independence instead of testing "at least 4 of 20" (20 runs cannot separate
+it from the 3.5 predicted), and no longer assumes a passing qwen recording.
 
 ## Milestones
 
@@ -1355,6 +1389,6 @@ then M15 (it adds the harness flags M16 reuses), then M16.
     only), and real traces longer than six turns. No committed recording
     reaches 32 KB per envelope, so the gzip collapse on real text is
     extrapolated from the growth column, not observed.
-- [ ] M14: Long recordings that survive their process, and a load linear in bytes — the recorder appends each envelope to `<out>.partial` as it completes (`lzma.LZMACompressor` for `.xz` paths), finalised into a cassette byte-identical to today's `dump`; `Cassette.load` reads a footer-less partial as footer status `interrupted` and names it; a subprocess kill test (SIGKILL after envelope k) replays the k envelopes in `full` and diffs them against a finished recording; a collector pause scoped to `Cassette.loads` (never around agent code); `make bench-scale` gains a 400-turn row, load with the collector on and off, peak RSS per run and the `full` replay time with `gc.freeze()` after load, reported not gated; `make bench-replay` gains the append overhead per boundary. Done when the sizes report stays byte-stable in CI with its new row, the kill test passes for both writers (plain and `.xz`), RESULTS.md M13's parsing sentence is corrected beside the new numbers with the hypotheses answered (overhead under 1% of the median recorded model latency; load within 1.3× linear in bytes from 100 to 400 turns; the replay gain from freezing stated), and the README documents partial cassettes.
+- [ ] M14: Long recordings that survive their process, and a load linear in bytes — the recorder appends each envelope to `<out>.partial` as it completes (`lzma.LZMACompressor` for `.xz` paths), finalised into a cassette byte-identical to today's `dump`; `Cassette.load` reads a footer-less partial as interrupted (a load-time property; the v1 footer schema is unchanged) and names it, and `replay ci` refuses it with the fix named; a subprocess kill test (SIGKILL after envelope k) replays the k envelopes in `full` and diffs them against a finished recording; a collector pause scoped to `Cassette.loads` (never around agent code); `make bench-scale` gains a 400-turn row, load with the collector on and off, peak RSS per run and the `full` replay time with `gc.freeze()` after load, reported not gated, with load timings on the committed real recordings beside the synthetic rows; `make bench-replay` gains the append overhead per boundary in microseconds beside the in-memory baseline. Done when the sizes report stays byte-stable in CI with its new row, the kill test passes for both writers (plain and `.xz`), RESULTS.md M13's parsing sentence is corrected beside the new numbers with the hypotheses answered (overhead under 1% of the median recorded model latency, with the absolute per-envelope cost; load within 1.3× linear in bytes from 100 to 400 turns; the replay gain from freezing stated), and the README documents partial cassettes.
 - [ ] M15: Does `model-live` survive the change it exists to test? — `examples/pydantic_ai_agent/agent.py` takes its model from `REPLAY_OLLAMA_MODEL` and its prompt variant from a named parameter; `eval/pydantic_ai.py` gains `--model`, `--prompt-variant` (`recording`, `no_guard`) and `--temperature` arms as `make eval-pydantic-ai-swap` (an `ollama.yml` input; never on pull requests): 20 `model-live` runs each of `cheapest_fare_in_euros` and `book_earliest_flight` for qwen2.5:3b under `strict` and `fallback`, qwen2.5:7b with the guard line removed under `strict`, and the qwen2.5:7b control under `strict`, plus 10 runs of the booking at `temperature=0` preceded by two committed probe calls showing Ollama's `/v1/messages` honours the parameter; every run classified by cause as in M12, identity endings counted; one `replay diff` of a failed 3b run against its cassette in RESULTS.md; the harness tested offline against the fake model. Done when RESULTS.md holds the per-arm pass and cause counts with wall time and CPU beside the M9 and M12 rows, each hypothesis answered (3b fails the gate with `fallback` within 2 of `strict`; the no-guard arm's first identity or unrecorded ending; the control inside 16 to 20 and 4 to 13 of 20; the temperature-0 trajectories identical or not, against the 17/40 shipped rate), the raw report `eval/results/m15_swap_qwen.json` is committed, and every v1, M9 and M12 number is unchanged.
-- [ ] M16: Does frozen-world divergence compound on a long chain? — bookings in the pydantic-ai example's fixed world carry a `rebooked_from` reference and a `trace_rebooking_chain` task asks for the origin of an 8-link chain and the total paid in EUR (8 sequential `get_booking` whose arguments each come from the previous result, then `convert_currency`), with raised limits in both suites, its `in_order` sequence and answer rules, a fake-model cassette, and a qwen2.5:7b recording (up to 5 attempts, logged; the fake-model world if none passes); `eval/pydantic_ai.py --arms strict,fallback` records per-step status sequences and a survival curve by served-call index against `(1 − 3/143)^n`, as `make eval-pydantic-ai-long` (an `ollama.yml` input; 20 runs per arm, 15 if a run exceeds 150 s). Done when the new scenario replays in `full` with 0 approximate steps in `make eval`, `make bench-scale` reports the recording as a real row (bytes per turn and codec ratios, no collapse claim), RESULTS.md holds the per-arm pass and cause counts, the survival curve, the conditional rate of a world step after an earlier one under `fallback` against the base rate, and the identity firings with each hypothesis answered (at least 4 of 20 `strict` runs end on the world; clustering at least 3× the base rate; keys fire at least 5 times in 40 runs), the raw report `eval/results/m16_long_qwen.json` is committed, and every earlier number is unchanged.
+- [ ] M16: Does frozen-world divergence compound on a long chain? — new bookings in the pydantic-ai example's fixed world carry a `rebooked_from` reference (existing bookings' tool results byte-identical) and a `trace_rebooking_chain` task asks for the origin of an 8-link chain and the total paid in EUR (8 sequential `get_booking` whose arguments each come from the previous result, then `convert_currency`), with raised limits in both suites, its `in_order` sequence and answer rules, a fake-model cassette, and a qwen2.5:7b recording (up to 5 attempts, logged; the fake-model world if none passes); `eval/pydantic_ai.py --arms strict,fallback` records per-step status sequences and a survival curve by served-call index against `(1 − 3/143)^n`, as `make eval-pydantic-ai-long` (an `ollama.yml` input; 20 runs per arm, 15 if a run exceeds 150 s). Done when the new scenario replays in `full` with 0 approximate steps in `make eval`, every committed cassette still replays with 0 approximate steps and the pydantic-ai `tools-live --fail-on-tool-drift` run shows 0 drift, `make bench-scale` reports the qwen recording as a real row if one passed (bytes per turn and codec ratios, no collapse claim; otherwise the attempts log says why not), RESULTS.md holds the per-arm pass and cause counts, the survival curve, the conditional rate of a world step after an earlier one under `fallback` against the base rate, and the identity firings with each hypothesis answered (clustering at least 3× the base rate, or "not measurable" below 5 world steps; keys fire at least 5 times in 40 runs) and the `strict` world-ending count reported with its interval beside the independence prediction, the raw report `eval/results/m16_long_qwen.json` is committed, and every earlier number is unchanged.

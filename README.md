@@ -1263,8 +1263,9 @@ a shared deployment, and running a flake suite's scenarios in parallel as well
 as their runs. The run store keeps every step's request in full, so a stored
 100-turn run is 3.8 MB and its run page downloads 3.7 MB (`make bench-scale`);
 storing an `exact` step's request by reference to its cassette would recover
-most of that in `full` mode only, since a `model-live` run's live model steps
-are 94% to 98.5% of its bytes and must be stored in full. Replaying the
+most of that in `full` mode only, since live model steps are 85.9% to 94.5%
+of the committed real recordings' bytes and a `model-live` run must store them
+in full. Replaying the
 pydantic-ai cassettes across upstream releases is flat (2.58.0 to 2.62.0
 replay the 2.61.0 recordings exactly; `make bench-upstream`).
 
