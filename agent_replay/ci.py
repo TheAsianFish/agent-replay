@@ -58,12 +58,18 @@ import structlog
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from agent_replay.baseline import BaselineFile, RunMetrics, ScenarioBaseline, aggregate, measure
-from agent_replay.cassette import Cassette, ErrorInfo, Kind
+from agent_replay.cassette import PARTIAL_SUFFIX, Cassette, ErrorInfo, Kind
 from agent_replay.checks.base import Check, CheckResult
 from agent_replay.checks.budget import RELATIVE_LIMITS
 from agent_replay.checks.spec import build_check
 from agent_replay.drift import describe, parse_path, tool_drift
-from agent_replay.errors import ConfigError, JudgeCacheMiss, MeasurementError, ReplayError
+from agent_replay.errors import (
+    CassetteError,
+    ConfigError,
+    JudgeCacheMiss,
+    MeasurementError,
+    ReplayError,
+)
 from agent_replay.identify import parse_identify
 from agent_replay.pricing import format_cost
 from agent_replay.runner import RunResult, load_agent, make_client, replay
@@ -377,6 +383,13 @@ def run_scenario(
 
     try:
         cassette = Cassette.load(cassette_path)
+        if cassette.interrupted:
+            raise CassetteError(
+                f"{cassette.describe_interrupted(cassette_path)}, so a pass would cover only "
+                "part of the run. Re-record it with `replay record --out "
+                f"{cassette_path.name.removesuffix(PARTIAL_SUFFIX)} --force`; `replay run` "
+                "replays a partial for debugging"
+            )
         agent_ref = agent_ref or cassette.header.agent
         if agent_ref is None:
             raise ConfigError(

@@ -16,6 +16,7 @@ context into its workers, which keeps their spans nested too.
 from __future__ import annotations
 
 import functools
+import os
 import platform
 import threading
 import time
@@ -35,6 +36,7 @@ from agent_replay._json import canonical_json, to_jsonable
 from agent_replay._paths import Path
 from agent_replay.cassette import (
     Cassette,
+    CassetteWriter,
     Envelope,
     ErrorInfo,
     Footer,
@@ -192,6 +194,8 @@ class Session:
         metadata: dict[str, JsonValue] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         timer: Callable[[], float] = time.perf_counter,
+        out: str | os.PathLike[str] | None = None,
+        overwrite: bool = False,
     ) -> None:
         if mode != "record" and cassette is None:
             raise ReplayError(f"mode {mode!r} replays a cassette; pass one")
@@ -216,6 +220,9 @@ class Session:
         )
         self._timer = timer
         self._envelopes: list[Envelope] = []
+        self._writer = (
+            CassetteWriter(out, self._header, overwrite=overwrite) if out is not None else None
+        )
         self._spans = 0
         self._queues = _servable(cassette, self._served) if cassette is not None else {}
         self._identify = {tool: paths for tool, paths in parse_identify(identify).items() if paths}
@@ -242,6 +249,11 @@ class Session:
         if self._token is not None:
             _current.reset(self._token)
             self._token = None
+        if exc is not None and self._writer is not None:
+            # Ctrl-C or another BaseException: keep what was written as an interrupted
+            # recording (finish() is never reached on this path).
+            with self._lock:
+                self._writer.close()
 
     def fail[E: ReplayError](self, error: E) -> E:
         """Remember ``error`` as fatal and return it for raising.
@@ -514,6 +526,8 @@ class Session:
                     parent_span_id=plan.parent,
                 )
             )
+            if self._writer is not None:
+                self._writer.append(self._envelopes[-1])
         log.debug("envelope.recorded", seq=seq, kind=call.kind.value, name=call.name)
         return seq
 
@@ -552,10 +566,13 @@ class Session:
         return sorted(left, key=lambda e: e.seq)
 
     def finish(self, *, output: object = None, error: BaseException | None = None) -> Cassette:
-        """Close the session and return what it saw as a cassette (not written to disk here).
+        """Close the session and return what it saw as a cassette.
 
         For a recording that is the cassette; for a replay it is a recording of
         the replayed run, served calls included, which replays like any other.
+        A session made with ``out`` has been appending to ``<out>.partial``; this
+        writes the footer and moves the finished file to ``out``. Otherwise nothing
+        is written here (:meth:`Cassette.dump`).
         """
         if error is None and self.fatal is not None:
             error = self.fatal
@@ -573,6 +590,9 @@ class Session:
                 error=ErrorInfo.from_exception(error) if error is not None else None,
                 envelope_count=len(self._envelopes),
             )
+            if self._writer is not None:
+                writer, self._writer = self._writer, None
+                writer.finish(footer)
             return Cassette(header=self._header, envelopes=tuple(self._envelopes), footer=footer)
 
 
@@ -633,9 +653,18 @@ class RecordingSession(Session):
         metadata: dict[str, JsonValue] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         timer: Callable[[], float] = time.perf_counter,
+        out: str | os.PathLike[str] | None = None,
+        overwrite: bool = False,
     ) -> None:
         super().__init__(
-            mode="record", agent=agent, task=task, metadata=metadata, clock=clock, timer=timer
+            mode="record",
+            agent=agent,
+            task=task,
+            metadata=metadata,
+            clock=clock,
+            timer=timer,
+            out=out,
+            overwrite=overwrite,
         )
 
 

@@ -30,7 +30,13 @@ from agent_replay._cli import fail as _fail
 from agent_replay._json import canonical_json, to_jsonable
 from agent_replay._logging import configure_logging
 from agent_replay.calibrate import commands_calibrate, commands_golden
-from agent_replay.cassette import Cassette, Kind, check_cassette_name, is_cassette_path
+from agent_replay.cassette import (
+    Cassette,
+    Kind,
+    check_cassette_name,
+    is_cassette_path,
+    partial_path,
+)
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
 from agent_replay.ci import (
@@ -191,13 +197,24 @@ def record_cmd(
         model_client = wrap(_make_client(client))
     except (ReplayError, TypeError) as exc:
         raise _fail(str(exc)) from exc
-    result, cassette = record(agent_fn, task, client=model_client, agent_ref=agent)
+    partial = partial_path(output)
     try:
-        cassette.dump(output)
+        result, cassette = record(
+            agent_fn, task, client=model_client, agent_ref=agent, out=output, overwrite=force
+        )
+    except ReplayError as exc:  # an earlier interrupted recording is in the way
+        raise _fail(str(exc)) from exc
     except OSError as exc:
         raise _fail(
             f"cannot write the cassette to {output}: {exc}; pick a writable --output path"
         ) from exc
+    except KeyboardInterrupt:
+        console.print(
+            f"[bold red]interrupted[/]: the envelopes recorded so far are in "
+            f"{escape(str(partial))}; replay them with `replay run {escape(str(partial))} "
+            "--mode full`, or record again with --force"
+        )
+        raise typer.Exit(EXIT_FAILED) from None
     console.print(_steps_table(result.trajectory))
     cost = format_cost(result.cost_usd, result.unpriced_calls)
     tokens = sum(
@@ -303,6 +320,11 @@ def run_cmd(
         if save is not None:
             check_cassette_name(save)
         cassette = Cassette.load(cassette_path)
+        if cassette.interrupted:
+            console.print(
+                f"[yellow]warning[/]: {escape(cassette.describe_interrupted(cassette_path))}; "
+                "the replay fails where the recording stopped"
+            )
         agent_ref = agent or cassette.header.agent
         if agent_ref is None:
             raise ReplayError("the cassette does not name its agent; pass --agent module:function")
