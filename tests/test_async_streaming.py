@@ -108,7 +108,7 @@ def statuses(result: Any) -> set[StepStatus]:
 
 def test_async_client_is_wrapped_and_passes_through_outside_a_session() -> None:
     client = wrap(fake_async())
-    assert asyncio.iscoroutinefunction(client.messages.create)
+    assert inspect.iscoroutinefunction(client.messages.create)
     reply = asyncio.run(
         client.messages.create(
             model=MODEL, max_tokens=8, messages=[{"role": "user", "content": "x"}]
