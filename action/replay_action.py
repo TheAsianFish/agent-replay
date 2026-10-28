@@ -252,7 +252,9 @@ def urllib_http(token: str, *, timeout: float = 30.0) -> Http:
             with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
                 return Response(resp.status, _json_or_none(resp.read()))
         except urllib.error.HTTPError as exc:
-            return Response(exc.code, _json_or_none(exc.read()))
+            # The error carries the open response; close it, as the with block does above.
+            with exc:
+                return Response(exc.code, _json_or_none(exc.read()))
         except (urllib.error.URLError, TimeoutError) as exc:
             raise CommentError(f"cannot reach the GitHub API: {exc}") from exc
 
