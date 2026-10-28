@@ -20,8 +20,8 @@ appends each line to ``<path>.partial`` as it completes, flushed but not fsynced
 so the file survives the process dying (SIGKILL, Ctrl-C, an OOM kill), not the
 machine losing power. The partial is always plain JSONL, even for an ``.xz``
 path: Python's ``lzma`` has no sync flush, and a stream compressor holds back
-what it has not emitted yet (``make bench-scale``: after 140 of a 100-turn run's
-201 lines, the emitted xz bytes decode to no envelope at all). Finishing appends
+what it has not emitted yet (``make bench-scale``: until line 148 of a 100-turn
+run's 201, the emitted xz bytes decode to no envelope at all). Finishing appends
 the footer and moves the partial into place (compressing it first for ``.xz``),
 which gives the same bytes :meth:`Cassette.dump` writes. A ``.partial`` without a
 footer loads as *interrupted*: a load-time state, not a footer status, so the

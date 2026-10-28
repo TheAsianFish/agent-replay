@@ -48,6 +48,17 @@ every older version.
 - `make bench-scale`: cassette bytes, codecs, load, replay and run-store timings for runs
   of 5 to 200 turns and for every committed real recording. `make bench-upstream`: the
   pydantic-ai cassettes replayed on pydantic-ai-slim 2.58.0 to 2.62.0.
+- Partial cassettes: a recording to a path (`replay record`, `record(..., out=...)`,
+  `RecordingSession(out=...)`) appends each envelope to `<out>.partial` as it completes
+  and moves the finished file into place at the end, with the same bytes `dump` writes.
+  A `.partial` without a footer loads as interrupted (`Cassette.interrupted`; a torn last
+  line is dropped and counted in `torn_bytes`). `replay run` replays it with a warning,
+  `replay diff` compares it, and `replay ci` refuses it. `replay record` keeps the
+  partial on Ctrl-C and refuses to overwrite one without `--force`.
+- `make bench-scale` gains a 400-turn row, a streaming-xz recoverability count, peak
+  RSS, load with the collector paused and on, `full` replay with `gc.freeze()`, and
+  load timings on the committed real recordings; `make bench-replay` gains the
+  per-envelope cost of appending to a partial.
 
 ### Changed
 
@@ -55,6 +66,8 @@ every older version.
   calls`), not `$0.0000`.
 - `count_tokens`, message batches and the beta `parse` / `tool_runner` raise a
   `ReplayError` that names them inside a session instead of going live.
+- `Cassette.loads` pauses the cyclic garbage collector while it parses, and only then:
+  loading 400 turns (50 MB) went from 1.84× to 1.22× linear in bytes against 100 turns.
 
 ### Fixed
 

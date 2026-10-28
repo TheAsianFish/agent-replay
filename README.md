@@ -140,6 +140,8 @@ the rows still to measure.
 | Cassette bytes at scale | quadratic in turns: 3.65 MB at 100 turns, 13.1 MB at 200 (seeded text, retail-sized prompt); live Opus retail traces grow 2.4 to 4.4× faster per turn; `full` replay 1.7 s at 200 turns | `make bench-scale` |
 | What compression recovers at 100 turns | xz 105×; gzip 3.8× (19× at 20 turns, until envelopes outgrow its 32 KB window); a shared-prefix encoding adds only 1.07× under xz, so cassettes compress as `.jsonl.xz` and the schema is unchanged | `make bench-scale` |
 | Run store at scale | a stored run costs what its uncompressed cassette does: 282 KB at 20 turns, 3.8 MB at 100 (not changed yet) | `make bench-scale` |
+| A recording killed with SIGKILL | the k envelopes before the kill replay in `full` (all `exact`) and diff against a finished run, for `.jsonl` and `.jsonl.xz`; appending costs at most 44 µs per envelope, 0.0025% of the 1.8 s median live model call | `tests/test_partial_cassettes.py`, `make bench-replay` |
+| Cassette load, 100 → 400 turns | 1.22× linear in bytes with the collector paused during the parse, 1.84× with it on (full collections, not parsing, made M13's load superlinear); about 12× the cassette's bytes in memory | `make bench-scale` |
 | **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
 
 ## Install
@@ -301,6 +303,22 @@ for check in result.check(tool_sequence(cassette.tool_names()), budget(max_cost_
     window stops reaching the previous copy, so `.gz` and other suffixes are
     refused with the rename that fixes them. Use `.xz` for long runs; short
     cassettes read better in review as plain JSONL.
+  - **Partial cassettes.** `replay record` (and `record(..., out=path)`)
+    appends every envelope to `<out>.partial` as its call finishes, flushed
+    per line, and moves the finished file into place at the end, byte for
+    byte what `Cassette.dump` writes. A recording that is killed (SIGKILL,
+    Ctrl-C, out of memory) leaves the partial: `replay run run.jsonl.partial
+    --mode full` replays the envelopes it has and fails where the recording
+    stopped, `replay diff` compares it with the next attempt, and `replay ci`
+    refuses it with the re-record command, so a suite never passes on half a
+    run. "Interrupted" is decided at load time (a `.partial` with no footer;
+    a torn last line is dropped and counted), so the footer schema is
+    unchanged. A partial is always plain JSONL, even for `run.jsonl.xz`: the
+    stream compressor holds back what it has not emitted yet, and the file is
+    compressed when the recording finishes. `replay record` refuses to start
+    over an existing partial without `--force`, so the evidence of the last
+    crash is not overwritten. The partial survives the process, not a power
+    cut (it is flushed, not fsynced).
   - v1 cassettes from M1 are read through frozen v1 models and migrated in
     memory. The live Opus toy cassette stays committed in v1 to prove it.
 - **Cut points.** Each mode is a set of call kinds served from the cassette,
@@ -858,7 +876,7 @@ back. Stores created before migrations are adopted in place.
 
 | Command | What it does |
 |---|---|
-| `replay record AGENT -t TASK -o FILE [--client anthropic\|module:factory] [--force]` | Run the agent for real and write a cassette (`-o`/`--out`/`--output`; a `.jsonl.xz` name writes it xz-compressed) |
+| `replay record AGENT -t TASK -o FILE [--client anthropic\|module:factory] [--force]` | Run the agent for real and write a cassette (`-o`/`--out`/`--output`; a `.jsonl.xz` name writes it xz-compressed). Envelopes go to `FILE.partial` as they complete, so a killed run keeps them; `--force` overwrites an existing cassette or partial |
 | `replay run CASSETTE [--mode full\|model-live\|tools-live] [--policy strict\|fallback\|synth] [--client REF] [--agent REF] [--expect a,b] [--strict] [--save FILE] [--json]` | Replay one cassette and run `tool_sequence`; `--strict` also fails on `approximate` steps |
 | `replay ci SUITE [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR] [--baseline FILE] [--fail-on-tool-drift] [--json FILE] [--markdown FILE] [--no-store] [--db URL]` | Replay a suite and gate on it |
 | `replay baseline SUITE -o FILE [--runs N] [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR]` | Measure every scenario (no checks) and write median cost, tokens, model calls and p95 latency; exit 2 if a scenario cannot run, 1 if the agent errors (nothing written) |
@@ -1238,17 +1256,16 @@ Next (evolution round 2, 2026-10-27; evidence and hypotheses in
     recovers 105× at 100 turns and a prefix encoding only 1.07× more, so
     cassettes compress as `.jsonl.xz` with no schema change; see
     [RESULTS.md](RESULTS.md))
+14. ~~Long recordings that survive their process, and a load linear in
+    bytes~~ (done: each envelope is appended to `<out>.partial` as it
+    completes, a SIGKILLed recording replays and diffs what it saw and
+    `replay ci` refuses it; the collector pause inside `Cassette.loads`
+    makes load 1.22× linear in bytes from 100 to 400 turns; see
+    [RESULTS.md](RESULTS.md))
 
 Next (evolution round 3, 2026-10-28; evidence and hypotheses in
 [PLAN.md](PLAN.md), "Evolution round 3"):
 
-14. Long recordings that survive their process (each envelope appended to a
-    `.partial` file as it completes, so a killed recording replays what it
-    saw), and a cassette load that is linear in bytes: a pilot measurement
-    found load time dominated by the garbage collector rather than by JSON
-    parsing, as RESULTS.md M13 assumed, so the pause is scoped to
-    `Cassette.load` and `make bench-scale` measures it at 400 turns with peak
-    memory per run
 15. Does `model-live` survive the change it exists to test? qwen2.5:3b and an
     edited prompt against the qwen2.5:7b cassettes, under `strict` and
     `fallback`, every run classified by cause, with a same-day control and a
