@@ -1,0 +1,335 @@
+{
+  "method": {
+    "overhead": "per boundary, interleaved pairs of the same call bare and recorded (order alternating within a pair), timed with time.perf_counter_ns; overhead = median and p95 of the paired differences (recorded - bare), next to the median and p95 of each side; calls run in sessions of `batch` calls after `warmup` discarded pairs; GC enabled",
+    "session": "the fixed cost of one recording session with no calls (create, enter, exit, finish), median and p95 over iterations / batch sessions",
+    "replay_served": "each recorded session replayed in full mode; the time of every served call (lookup, fingerprint, decode), median and p95",
+    "append": "the recorded call in sessions of `batch` calls kept in memory and in sessions also appending each envelope to <out>.partial, alternating which goes first; overhead = median of (appended - in memory) paired by call index; finish() timed for both; the worst boundary's overhead over the median latency_ms of the live suite's model envelopes",
+    "recorded_live_ms": "sum of the cassette's envelope latency_ms (the agent calls one boundary at a time); excludes the agent's own code between calls, so it is a lower bound on the live run's wall-clock",
+    "replay_ms": "wall-clock of agent_replay.ci.run_scenario (load cassette and agent, full replay; with or without the suite's checks, judge from its committed cache), median of `repeats` runs after one warm-up; speedup = recorded_live_ms / median"
+  },
+  "command": "uv run python eval/bench_replay.py --out eval/results/bench_replay.json",
+  "parameters": {
+    "iterations": 2000,
+    "warmup": 200,
+    "batch": 20,
+    "repeats": 20,
+    "seed": 0
+  },
+  "datasets": {
+    "overhead": "D5: synthetic calls through the fake model and the retail tools",
+    "replay": "examples/retail_agent/replay-live.toml: six live claude-opus-5-5 recordings (D1-like)"
+  },
+  "environment": {
+    "python": "3.12.16",
+    "implementation": "CPython",
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu_model": "Intel(R) Xeon(R) 6973P-C",
+    "cpu_count": 4
+  },
+  "boundaries": [
+    {
+      "boundary": "model",
+      "description": "messages.create on FakeAnthropic with the retail agent's first-turn request; bare: the fake client, recorded: agent_replay.wrap(fake client)",
+      "request_bytes": 12543,
+      "iterations": 2000,
+      "bare": {
+        "median_us": 255.987,
+        "p95_us": 289.212
+      },
+      "recorded": {
+        "median_us": 613.449,
+        "p95_us": 691.84
+      },
+      "overhead": {
+        "median_us": 358.851,
+        "p95_us": 423.225
+      },
+      "replay_served": {
+        "median_us": 343.285,
+        "p95_us": 408.267
+      },
+      "append": {
+        "in_memory": {
+          "median_us": 652.728,
+          "p95_us": 751.539
+        },
+        "appended": {
+          "median_us": 697.037,
+          "p95_us": 797.753
+        },
+        "overhead": {
+          "median_us": 44.249,
+          "p95_us": 103.527
+        },
+        "finish_in_memory": {
+          "median_us": 10.035,
+          "p95_us": 11.242
+        },
+        "finish_appended": {
+          "median_us": 52.462,
+          "p95_us": 73.13
+        }
+      }
+    },
+    {
+      "boundary": "tool",
+      "description": "retail get_order_details; bare: the undecorated function, recorded: the @tool",
+      "request_bytes": 24,
+      "iterations": 2000,
+      "bare": {
+        "median_us": 11.56,
+        "p95_us": 15.171
+      },
+      "recorded": {
+        "median_us": 69.335,
+        "p95_us": 80.65
+      },
+      "overhead": {
+        "median_us": 57.864,
+        "p95_us": 68.341
+      },
+      "replay_served": {
+        "median_us": 40.398,
+        "p95_us": 54.65
+      },
+      "append": {
+        "in_memory": {
+          "median_us": 65.659,
+          "p95_us": 86.697
+        },
+        "appended": {
+          "median_us": 73.418,
+          "p95_us": 103.463
+        },
+        "overhead": {
+          "median_us": 7.776,
+          "p95_us": 29.677
+        },
+        "finish_in_memory": {
+          "median_us": 8.401,
+          "p95_us": 12.554
+        },
+        "finish_appended": {
+          "median_us": 37.854,
+          "p95_us": 42.729
+        }
+      }
+    },
+    {
+      "boundary": "clock",
+      "description": "bare: datetime.now(UTC), recorded: agent_replay.now()",
+      "request_bytes": 2,
+      "iterations": 2000,
+      "bare": {
+        "median_us": 0.312,
+        "p95_us": 0.431
+      },
+      "recorded": {
+        "median_us": 22.695,
+        "p95_us": 29.421
+      },
+      "overhead": {
+        "median_us": 22.387,
+        "p95_us": 29.009
+      },
+      "replay_served": {
+        "median_us": 20.75,
+        "p95_us": 27.876
+      },
+      "append": {
+        "in_memory": {
+          "median_us": 23.552,
+          "p95_us": 36.657
+        },
+        "appended": {
+          "median_us": 28.956,
+          "p95_us": 44.984
+        },
+        "overhead": {
+          "median_us": 5.445,
+          "p95_us": 15.046
+        },
+        "finish_in_memory": {
+          "median_us": 6.853,
+          "p95_us": 8.554
+        },
+        "finish_appended": {
+          "median_us": 29.517,
+          "p95_us": 44.654
+        }
+      }
+    },
+    {
+      "boundary": "random",
+      "description": "bare: random.Random.random, recorded: agent_replay.random()",
+      "request_bytes": 2,
+      "iterations": 2000,
+      "bare": {
+        "median_us": 0.087,
+        "p95_us": 0.146
+      },
+      "recorded": {
+        "median_us": 20.197,
+        "p95_us": 27.098
+      },
+      "overhead": {
+        "median_us": 20.116,
+        "p95_us": 26.945
+      },
+      "replay_served": {
+        "median_us": 19.878,
+        "p95_us": 27.397
+      },
+      "append": {
+        "in_memory": {
+          "median_us": 19.39,
+          "p95_us": 27.656
+        },
+        "appended": {
+          "median_us": 24.157,
+          "p95_us": 37.486
+        },
+        "overhead": {
+          "median_us": 4.851,
+          "p95_us": 10.901
+        },
+        "finish_in_memory": {
+          "median_us": 5.825,
+          "p95_us": 6.879
+        },
+        "finish_appended": {
+          "median_us": 25.189,
+          "p95_us": 37.352
+        }
+      }
+    }
+  ],
+  "session": {
+    "iterations": 100,
+    "median_us": 9.941,
+    "p95_us": 10.901
+  },
+  "scenarios": [
+    {
+      "scenario": "cancel_pending_laptop",
+      "cassette": "cassettes/live/cancel_pending_laptop.jsonl",
+      "envelopes": 11,
+      "model_calls": 5,
+      "tool_calls": 6,
+      "recorded_model_ms": 8591.964,
+      "recorded_tool_ms": 0.212,
+      "recorded_live_ms": 8592.176,
+      "replay_median_ms": 21.359,
+      "replay_p95_ms": 21.786,
+      "speedup_replay": 402.3,
+      "replay_and_checks_median_ms": 24.863,
+      "replay_and_checks_p95_ms": 64.797,
+      "speedup_replay_and_checks": 345.6
+    },
+    {
+      "scenario": "modify_address_suite",
+      "cassette": "cassettes/live/modify_address_suite.jsonl",
+      "envelopes": 6,
+      "model_calls": 3,
+      "tool_calls": 3,
+      "recorded_model_ms": 6564.1,
+      "recorded_tool_ms": 0.123,
+      "recorded_live_ms": 6564.223,
+      "replay_median_ms": 13.09,
+      "replay_p95_ms": 15.182,
+      "speedup_replay": 501.5,
+      "replay_and_checks_median_ms": 15.526,
+      "replay_and_checks_p95_ms": 15.781,
+      "speedup_replay_and_checks": 422.8
+    },
+    {
+      "scenario": "return_damaged_bicycle",
+      "cassette": "cassettes/live/return_damaged_bicycle.jsonl",
+      "envelopes": 12,
+      "model_calls": 5,
+      "tool_calls": 7,
+      "recorded_model_ms": 8752.196,
+      "recorded_tool_ms": 0.275,
+      "recorded_live_ms": 8752.471,
+      "replay_median_ms": 22.458,
+      "replay_p95_ms": 62.24,
+      "speedup_replay": 389.7,
+      "replay_and_checks_median_ms": 25.409,
+      "replay_and_checks_p95_ms": 29.514,
+      "speedup_replay_and_checks": 344.5
+    },
+    {
+      "scenario": "exchange_waterproof_boots",
+      "cassette": "cassettes/live/exchange_waterproof_boots.jsonl",
+      "envelopes": 14,
+      "model_calls": 6,
+      "tool_calls": 8,
+      "recorded_model_ms": 10829.785,
+      "recorded_tool_ms": 0.426,
+      "recorded_live_ms": 10830.211,
+      "replay_median_ms": 26.231,
+      "replay_p95_ms": 28.529,
+      "speedup_replay": 412.9,
+      "replay_and_checks_median_ms": 29.46,
+      "replay_and_checks_p95_ms": 32.73,
+      "speedup_replay_and_checks": 367.6
+    },
+    {
+      "scenario": "lookup_latest_order_total",
+      "cassette": "cassettes/live/lookup_latest_order_total.jsonl",
+      "envelopes": 9,
+      "model_calls": 4,
+      "tool_calls": 5,
+      "recorded_model_ms": 6546.159,
+      "recorded_tool_ms": 0.173,
+      "recorded_live_ms": 6546.332,
+      "replay_median_ms": 17.147,
+      "replay_p95_ms": 19.216,
+      "speedup_replay": 381.8,
+      "replay_and_checks_median_ms": 20.157,
+      "replay_and_checks_p95_ms": 20.902,
+      "speedup_replay_and_checks": 324.8
+    },
+    {
+      "scenario": "transfer_swapped_refunds",
+      "cassette": "cassettes/live/transfer_swapped_refunds.jsonl",
+      "envelopes": 10,
+      "model_calls": 5,
+      "tool_calls": 5,
+      "recorded_model_ms": 9725.476,
+      "recorded_tool_ms": 0.161,
+      "recorded_live_ms": 9725.637,
+      "replay_median_ms": 21.238,
+      "replay_p95_ms": 60.618,
+      "speedup_replay": 457.9,
+      "replay_and_checks_median_ms": 23.824,
+      "replay_and_checks_p95_ms": 24.218,
+      "speedup_replay_and_checks": 408.2
+    }
+  ],
+  "summary": {
+    "overhead_median_us": {
+      "model": 358.851,
+      "tool": 57.864,
+      "clock": 22.387,
+      "random": 20.116
+    },
+    "recorded_live_ms_total": 51011.05,
+    "replay_median_ms_total": 121.523,
+    "replay_and_checks_median_ms_total": 139.239,
+    "speedup_suite": 419.8,
+    "speedup_suite_with_checks": 366.4,
+    "speedup_min": 381.8,
+    "speedup_max": 501.5,
+    "append_overhead_median_us": {
+      "model": 44.249,
+      "tool": 7.776,
+      "clock": 5.445,
+      "random": 4.851
+    },
+    "recorded_model_calls": 28,
+    "recorded_model_latency_median_ms": 1775.088,
+    "append_worst_share_of_model_latency": 2.493e-05
+  }
+}

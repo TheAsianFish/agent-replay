@@ -183,3 +183,48 @@ def test_the_overhead_is_the_median_of_pair_differences(monkeypatch: pytest.Monk
     row = bench_replay.measure_boundary(boundary, iterations=4, warmup=0, batch=4)
     assert row["overhead"] == {"median_us": 0.055, "p95_us": pytest.approx(0.0695, abs=1e-3)}
     assert row["bare"] == {"median_us": 0.1, "p95_us": pytest.approx(0.865, abs=1e-3)}
+
+
+def test_append_overhead_is_reported_per_boundary(report: dict[str, Any]) -> None:
+    for row in report["boundaries"]:
+        append = row["append"]
+        assert set(append) == {
+            "in_memory",
+            "appended",
+            "overhead",
+            "finish_in_memory",
+            "finish_appended",
+        }
+        assert all(_finite(v) for group in append.values() for v in group.values())
+    summary = report["summary"]
+    assert set(summary["append_overhead_median_us"]) == set(bench_replay.BOUNDARIES)
+    assert summary["recorded_model_calls"] == sum(
+        1
+        for s in load_suite(LIVE_SUITE).scenario
+        for e in Cassette.load(LIVE_SUITE.parent / s.cassette).envelopes
+        if e.kind.value == "model"
+    )
+    worst = max(summary["append_overhead_median_us"].values())
+    assert summary["append_worst_share_of_model_latency"] == pytest.approx(
+        worst / (summary["recorded_model_latency_median_ms"] * 1000), rel=1e-3, abs=1e-8
+    )
+
+
+def test_append_sampling_alternates_sessions_and_writes_each_envelope(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    boundary = next(b for b in bench_replay.boundaries() if b.name == "tool")
+    sessions: list[bool] = []
+    real_session = bench_replay.RecordingSession
+
+    def session(**kwargs: Any) -> Any:
+        sessions.append(kwargs.get("out") is not None)
+        return real_session(**kwargs)
+
+    monkeypatch.setattr(bench_replay, "RecordingSession", session)
+    samples = bench_replay.sample_append(boundary, iterations=6, batch=4, out_dir=tmp_path)
+    assert len(samples.in_memory) == len(samples.appended) == 6
+    assert len(samples.finish_in_memory) == len(samples.finish_appended) == 2
+    # Two batches (4 calls, then 2): memory first, then appending first.
+    assert sessions == [False, True, True, False]
+    assert list(tmp_path.iterdir()) == []  # every appended cassette checked, then removed

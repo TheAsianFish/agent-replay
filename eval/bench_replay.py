@@ -26,6 +26,16 @@ and decoding a recorded response). A warm-up of ``--warmup`` pairs is run and
 discarded first; the garbage collector stays enabled (pauses are part of the
 cost) and is run between boundaries.
 
+**Appending to a partial cassette (M14).** The same recorded call, in sessions of
+``--batch`` calls that keep their envelopes in memory and in sessions that also
+append each envelope to ``<out>.partial`` (a temporary directory), the two kinds
+of session alternating which goes first; call ``i`` of one is paired with call
+``i`` of the other, and the append overhead is the median of those differences.
+The cost of ``finish()`` (which, for an appending session, writes the footer and
+renames the file) is timed for both. The hypothesis compares the largest
+per-boundary append overhead with the median recorded latency of the model
+calls in the six live cassettes.
+
 **Replay vs live wall-clock (D1).** For every scenario of
 ``examples/retail_agent/replay-live.toml`` (six live ``claude-opus-5-5``
 recordings), the recorded live duration is the sum of the ``latency_ms`` of
@@ -59,6 +69,7 @@ import platform
 import random as _random
 import statistics
 import sys
+import tempfile
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -242,6 +253,62 @@ def sample(boundary: Boundary, *, iterations: int, batch: int) -> Samples:
     return Samples(bare, recorded, served)
 
 
+@dataclass(frozen=True)
+class AppendSamples:
+    in_memory: list[int]
+    appended: list[int]
+    finish_in_memory: list[int]
+    finish_appended: list[int]
+
+
+def sample_append(
+    boundary: Boundary, *, iterations: int, batch: int, out_dir: Path
+) -> AppendSamples:
+    """The recorded call in in-memory sessions and in sessions appending to a partial."""
+    in_memory: list[int] = []
+    appended: list[int] = []
+    finish_in_memory: list[int] = []
+    finish_appended: list[int] = []
+    done = 0
+    sessions = 0
+    while done < iterations:
+        size = min(batch, iterations - done)
+        kinds = (False, True) if sessions % 2 == 0 else (True, False)
+        for appending in kinds:
+            out = out_dir / f"{boundary.name}-{sessions}.jsonl" if appending else None
+            session = RecordingSession(agent="eval.bench_replay", task=boundary.name, out=out)
+            times = appended if appending else in_memory
+            with session:
+                for _ in range(size):
+                    times.append(_time_ns(boundary.recorded))
+            (finish_appended if appending else finish_in_memory).append(_time_ns(session.finish))
+            if out is not None:
+                if len(Cassette.load(out).envelopes) != size:
+                    raise HarnessError(f"{boundary.name}: the appended cassette lost envelopes")
+                out.unlink()
+        done += size
+        sessions += 1
+    return AppendSamples(in_memory, appended, finish_in_memory, finish_appended)
+
+
+def measure_append(
+    boundary: Boundary, *, iterations: int, warmup: int, batch: int
+) -> dict[str, JsonValue]:
+    with tempfile.TemporaryDirectory() as tmp:
+        if warmup:
+            sample_append(boundary, iterations=warmup, batch=batch, out_dir=Path(tmp))
+        gc.collect()
+        s = sample_append(boundary, iterations=iterations, batch=batch, out_dir=Path(tmp))
+    overhead = [a - m for a, m in zip(s.appended, s.in_memory, strict=True)]
+    return {
+        "in_memory": _summary_us(s.in_memory),
+        "appended": _summary_us(s.appended),
+        "overhead": _summary_us(overhead),
+        "finish_in_memory": _summary_us(s.finish_in_memory),
+        "finish_appended": _summary_us(s.finish_appended),
+    }
+
+
 def measure_session(*, iterations: int, warmup: int) -> dict[str, JsonValue]:
     """The fixed cost of one recording session with no calls: create, enter, exit, finish."""
 
@@ -274,6 +341,7 @@ def measure_boundary(
         "recorded": _summary_us(s.recorded),
         "overhead": _summary_us(overhead),
         "replay_served": _summary_us(s.served),
+        "append": measure_append(boundary, iterations=iterations, warmup=warmup, batch=batch),
     }
 
 
@@ -304,6 +372,17 @@ def recorded_duration(cassette: Cassette) -> RecordedDuration:
         tool_ms=round(math.fsum(tool), 3),
         total_ms=round(math.fsum(e.latency_ms for e in cassette.envelopes), 3),
     )
+
+
+def recorded_model_latencies(suite_path: Path) -> list[float]:
+    """``latency_ms`` of every model envelope in the suite's cassettes."""
+    suite = load_suite(suite_path)
+    return [
+        e.latency_ms
+        for scenario in suite.scenario
+        for e in Cassette.load(suite_path.parent / scenario.cassette).envelopes
+        if e.kind is Kind.MODEL
+    ]
 
 
 def measure_scenarios(suite_path: Path, *, repeats: int) -> list[dict[str, JsonValue]]:
@@ -409,6 +488,13 @@ def run(
     replay_ms = math.fsum(_num(r, "replay_median_ms") for r in scenario_rows)
     checked_ms = math.fsum(_num(r, "replay_and_checks_median_ms") for r in scenario_rows)
     speedups = [_num(r, "speedup_replay") for r in scenario_rows]
+    model_latencies = recorded_model_latencies(LIVE_SUITE)
+    model_median_ms = statistics.median(model_latencies)
+    appends: dict[str, JsonValue] = {
+        str(_field(r, "boundary")): _num(_field(_field(r, "append"), "overhead"), "median_us")
+        for r in boundary_rows
+    }
+    worst_append_us = max(_num(appends, k) for k in appends)
     return {
         "method": {
             "overhead": "per boundary, interleaved pairs of the same call bare and recorded "
@@ -420,6 +506,11 @@ def run(
             "exit, finish), median and p95 over iterations / batch sessions",
             "replay_served": "each recorded session replayed in full mode; the time of every "
             "served call (lookup, fingerprint, decode), median and p95",
+            "append": "the recorded call in sessions of `batch` calls kept in memory and in "
+            "sessions also appending each envelope to <out>.partial, alternating which goes "
+            "first; overhead = median of (appended - in memory) paired by call index; finish() "
+            "timed for both; the worst boundary's overhead over the median latency_ms of the "
+            "live suite's model envelopes",
             "recorded_live_ms": "sum of the cassette's envelope latency_ms (the agent calls "
             "one boundary at a time); excludes the agent's own code between calls, so it is a "
             "lower bound on the live run's wall-clock",
@@ -455,8 +546,19 @@ def run(
             "speedup_suite_with_checks": round(live_ms / checked_ms, 1),
             "speedup_min": min(speedups),
             "speedup_max": max(speedups),
+            "append_overhead_median_us": appends,
+            "recorded_model_calls": len(model_latencies),
+            "recorded_model_latency_median_ms": round(model_median_ms, 3),
+            "append_worst_share_of_model_latency": round(
+                worst_append_us / (model_median_ms * 1000), 8
+            ),
         },
     }
+
+
+def _worst(appends: JsonValue) -> float:
+    assert isinstance(appends, dict)
+    return max(_num(appends, k) for k in appends)
 
 
 def _field(row: JsonValue, key: str) -> JsonValue:
@@ -485,6 +587,28 @@ def to_text(report: dict[str, JsonValue]) -> str:
         ]
         row = f"| {_field(r, 'boundary')} | {_field(r, 'request_bytes')} | "
         lines.append(row + " | ".join(cells) + " |")
+    lines += [
+        "",
+        "Appending each envelope to a partial cassette (microseconds)",
+        "",
+        "| boundary | in memory median | appending median | append overhead median "
+        "| append overhead p95 | finish in memory | finish appending |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for r in boundaries_:
+        a = _field(r, "append")
+        cells = [
+            f"{_stat(a, group, key):.2f}"
+            for group, key in (
+                ("in_memory", "median_us"),
+                ("appended", "median_us"),
+                ("overhead", "median_us"),
+                ("overhead", "p95_us"),
+                ("finish_in_memory", "median_us"),
+                ("finish_appended", "median_us"),
+            )
+        ]
+        lines.append(f"| {_field(r, 'boundary')} | " + " | ".join(cells) + " |")
     session = report["session"]
     lines += [
         "",
@@ -521,6 +645,11 @@ def to_text(report: dict[str, JsonValue]) -> str:
         f"{_num(summary, 'replay_and_checks_median_ms_total'):.2f} ms "
         f"({_num(summary, 'speedup_suite_with_checks'):.0f}x); per scenario "
         f"{_num(summary, 'speedup_min'):.0f}x to {_num(summary, 'speedup_max'):.0f}x",
+        f"- append: worst boundary {_worst(summary['append_overhead_median_us']):.2f} us "
+        f"per envelope against a median recorded model latency of "
+        f"{_num(summary, 'recorded_model_latency_median_ms'):.1f} ms "
+        f"({_num(summary, 'recorded_model_calls'):.0f} calls): "
+        f"{100 * _num(summary, 'append_worst_share_of_model_latency'):.4f}%",
     ]
     env = report["environment"]
     assert isinstance(env, dict)
