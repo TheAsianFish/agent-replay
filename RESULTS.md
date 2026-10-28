@@ -2070,6 +2070,9 @@ so it would have been v3.)
   the raw and prefix-encoded sizes against the committed report
   (`tests/test_bench_scale.py`). Compressed sizes are recorded with the codec
   versions, because another zlib or liblzma build can differ by a few bytes.
+  The benchmark's cassettes leave the header's `recorder` versions out, so
+  the raw sizes do not depend on the Python or package version (with them,
+  Python 3.14.4 against 3.12.16 made every cassette a byte shorter).
 - **Machine:** 4 vCPU, AMD EPYC 7763, CPython 3.12.16. $0.
 - **Raw output:** `eval/results/bench_scale_sizes.json` (sizes, fit,
   decision) and `eval/results/bench_scale.json` (timings, store).
@@ -2082,15 +2085,15 @@ codec on top of it.
 
 | turns | envelopes | raw bytes | bytes/turn | largest line | gzip | bz2 | xz | prefix | prefix+gzip | prefix+xz |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 5 | 9 | 44,366 | 8,873 | 9,447 | 6.91× (6,423) | 4.6× (9,652) | 7.65× (5,800) | 2.93× (15,152) | 7.29× | 7.73× (5,736) |
-| 20 | 39 | 265,126 | 13,256 | 18,163 | 19.46× (13,624) | 14.33× (18,502) | 25.09× (10,568) | 6.07× (43,702) | 23.2× | 25.84× (10,260) |
-| 50 | 99 | 1,099,243 | 21,985 | 35,611 | 11.12× (98,813) | 19.67× (55,885) | 55.47× (19,816) | 10.9× (100,858) | 49.82× | 58.26× (18,868) |
-| 100 | 199 | 3,653,072 | 36,531 | 64,701 | 3.84× (951,034) | 22.2× (164,522) | 104.85× (34,840) | 18.59× (196,462) | 92.01× | 111.78× (32,680) |
-| 200 | 399 | 13,133,721 | 65,669 | 123,066 | 3.28× (4,003,968) | 17.87× (734,953) | 206.04× (63,744) | 33.83× (388,191) | 175.31× | 224.16× (58,592) |
+| 5 | 9 | 44,325 | 8,865 | 9,447 | 6.93× (6,392) | 4.61× (9,620) | 7.68× (5,772) | 2.93× (15,111) | 7.32× | 7.77× (5,708) |
+| 20 | 39 | 265,085 | 13,254 | 18,163 | 19.5× (13,594) | 14.36× (18,464) | 25.15× (10,540) | 6.07× (43,661) | 23.26× | 25.91× (10,232) |
+| 50 | 99 | 1,099,202 | 21,984 | 35,611 | 11.13× (98,785) | 19.67× (55,895) | 55.58× (19,776) | 10.9× (100,817) | 49.89× | 58.37× (18,832) |
+| 100 | 199 | 3,653,031 | 36,530 | 64,701 | 3.84× (951,007) | 22.23× (164,360) | 104.95× (34,808) | 18.6× (196,421) | 92.08× | 111.97× (32,624) |
+| 200 | 399 | 13,133,680 | 65,668 | 123,066 | 3.28× (4,003,926) | 17.88× (734,732) | 206.02× (63,748) | 33.84× (388,150) | 175.38× | 224.15× (58,592) |
 
 **Growth.** The fitted exponent over 5 to 200 turns is 1.539. Between
 neighbouring sizes it climbs: 1.29 (5→20), 1.55 (20→50), 1.73 (50→100), 1.85
-(100→200). The exact fit is bytes ≈ 492 + 7,395·n + 291.4·n². So bytes are
+(100→200). The exact fit is bytes ≈ 451 + 7,395·n + 291.4·n². So bytes are
 quadratic, but the linear term (the system prompt and tool list every request
 carries) dominates until about 25 turns (7,395 / 291.4). That is why a slope
 over the whole range reads 1.5 and not 2. The hypothesis said "an exponent
@@ -2111,9 +2114,9 @@ not the text. bz2's 900 KB blocks peak at 22× and fall back to 17.9× at 200
 turns, when the cassette is 15 blocks long. xz's 8 MB dictionary keeps
 finding the repeats: 105× at 100 turns and 206× at 200.
 
-**The decision.** At 100 turns the best codec is xz at 104.85×, which clears
-the 10× bar. The prefix encoding under xz is 32,680 bytes against 34,840 for xz
-alone, 1.07× smaller. The raw prefix encoding (196,462 bytes) is 5.6× *larger*
+**The decision.** At 100 turns the best codec is xz at 104.95×, which clears
+the 10× bar. The prefix encoding under xz is 32,624 bytes against 34,808 for xz
+alone, 1.07× smaller. The raw prefix encoding (196,421 bytes) is 5.6× *larger*
 than xz. Neither comes near 3×, so the rule chooses transparent `.jsonl.xz`
 cassettes and no schema change. That is what was built: a cassette path
 ending in `.xz` is read and written as xz (`Cassette.load`, `Cassette.dump`,
@@ -2135,7 +2138,7 @@ projection is close.
 
 | cassette | turns | raw bytes | bytes/turn | largest line | model share | first request | growth/turn | gzip | bz2 | xz | prefix | requests at 100 turns |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| synthetic, 5 turns | 5 | 44,366 | 8,873 | 9,447 | 0.942 | 6,469 | 580 | 6.91× | 4.6× | 7.65× | 2.93× | 3.5 MB |
+| synthetic, 5 turns | 5 | 44,325 | 8,865 | 9,447 | 0.943 | 6,469 | 580 | 6.93× | 4.61× | 7.68× | 2.93× | 3.5 MB |
 | `live/cancel_pending_laptop.jsonl` | 5 | 84,880 | 16,976 | 19,044 | 0.934 | 12,543 | 1,369 | 11.27× | 9.18× | 12.85× | 2.92× | 8.0 MB |
 | `live/exchange_waterproof_boots.jsonl` | 6 | 126,419 | 21,070 | 27,470 | 0.907 | 12,531 | 2,562 | 11.15× | 9.73× | 13.59× | 2.82× | 13.9 MB |
 | `live/lookup_latest_order_total.jsonl` | 4 | 66,814 | 16,704 | 19,700 | 0.922 | 12,405 | 1,596 | 7.94× | 6.87× | 8.85× | 2.37× | 9.1 MB |
@@ -2160,9 +2163,9 @@ What the real traces say about the fit:
   synthetic table is a lower bound for a retail-sized Opus agent, not a
   typical case.
 - **Real runs compress better per turn, not per byte.** At 3 to 6 turns,
-  xz recovers 8.9× to 13.6× on the live retail cassettes against 7.65× on
+  xz recovers 8.9× to 13.6× on the live retail cassettes against 7.68× on
   the 5-turn synthetic run. But the 5-turn live cassettes are also about
-  twice the 5-turn synthetic run's bytes (84,880 to 92,071 against 44,366),
+  twice the 5-turn synthetic run's bytes (84,880 to 92,071 against 44,325),
   each envelope repeating a 12.5 KB prefix, and the synthetic table shows
   the xz ratio rising with length on its own. So this does not show that
   real text is more compressible byte for byte; it shows that at a given
@@ -2203,8 +2206,8 @@ JSONL, or decompress then `loads`, which is what `Cassette.load` does for a
 
 | load | cassette bytes | DB bytes | DB bytes per run | step JSON share | `save_run` median | `get_run` payload | `get_run` median |
 |---|---|---|---|---|---|---|---|
-| 100 runs × 20 turns | 265,126 | 28,209,152 | 282,092 | 0.914 | 0.006 s | 267,622 | 0.004 s |
-| 10 runs × 100 turns | 3,653,072 | 38,432,768 | 3,843,277 | 0.967 | 0.042 s | 3,665,429 | 0.232 s |
+| 100 runs × 20 turns | 265,085 | 28,209,152 | 282,092 | 0.914 | 0.006 s | 267,622 | 0.004 s |
+| 10 runs × 100 turns | 3,653,031 | 38,428,672 | 3,842,867 | 0.967 | 0.042 s | 3,665,429 | 0.232 s |
 
 The store keeps every step's request and response in full, so a stored run
 costs about what its cassette costs uncompressed: 282 KB a 20-turn run, 3.8 MB

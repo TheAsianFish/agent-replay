@@ -102,7 +102,7 @@
     {
       "turns": 20,
       "runs": 100,
-      "cassette_bytes": 265126,
+      "cassette_bytes": 265085,
       "save_run_median_s": 0.006,
       "save_run_max_s": 0.0161,
       "db_bytes": 28209152,
@@ -114,11 +114,11 @@
     {
       "turns": 100,
       "runs": 10,
-      "cassette_bytes": 3653072,
+      "cassette_bytes": 3653031,
       "save_run_median_s": 0.0422,
       "save_run_max_s": 0.0449,
-      "db_bytes": 38432768,
-      "db_bytes_per_run": 3843277,
+      "db_bytes": 38428672,
+      "db_bytes_per_run": 3842867,
       "step_json_share": 0.967,
       "get_run_payload_bytes": 3665429,
       "get_run_median_s": 0.232

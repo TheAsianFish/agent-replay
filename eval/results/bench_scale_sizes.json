@@ -26,165 +26,165 @@
     {
       "turns": 5,
       "envelopes": 9,
-      "raw_bytes": 44366,
-      "bytes_per_turn": 8873,
+      "raw_bytes": 44325,
+      "bytes_per_turn": 8865,
       "largest_line_bytes": 9447,
-      "model_share": 0.942,
+      "model_share": 0.943,
       "first_request_bytes": 6469,
       "growth_per_turn_bytes": 580,
       "requests_at_100_turns_bytes": 3516662,
-      "prefix_raw_bytes": 15152,
+      "prefix_raw_bytes": 15111,
       "prefix_raw_ratio": 2.93,
       "codecs": {
         "gzip": {
-          "bytes": 6423,
-          "ratio": 6.91,
-          "prefix_bytes": 6085,
-          "prefix_ratio": 7.29
+          "bytes": 6392,
+          "ratio": 6.93,
+          "prefix_bytes": 6054,
+          "prefix_ratio": 7.32
         },
         "bz2": {
-          "bytes": 9652,
-          "ratio": 4.6,
-          "prefix_bytes": 6565,
-          "prefix_ratio": 6.76
+          "bytes": 9620,
+          "ratio": 4.61,
+          "prefix_bytes": 6529,
+          "prefix_ratio": 6.79
         },
         "xz": {
-          "bytes": 5800,
-          "ratio": 7.65,
-          "prefix_bytes": 5736,
-          "prefix_ratio": 7.73
+          "bytes": 5772,
+          "ratio": 7.68,
+          "prefix_bytes": 5708,
+          "prefix_ratio": 7.77
         }
       }
     },
     {
       "turns": 20,
       "envelopes": 39,
-      "raw_bytes": 265126,
-      "bytes_per_turn": 13256,
+      "raw_bytes": 265085,
+      "bytes_per_turn": 13254,
       "largest_line_bytes": 18163,
       "model_share": 0.96,
       "first_request_bytes": 6469,
       "growth_per_turn_bytes": 581,
       "requests_at_100_turns_bytes": 3521026,
-      "prefix_raw_bytes": 43702,
+      "prefix_raw_bytes": 43661,
       "prefix_raw_ratio": 6.07,
       "codecs": {
         "gzip": {
-          "bytes": 13624,
-          "ratio": 19.46,
-          "prefix_bytes": 11427,
-          "prefix_ratio": 23.2
+          "bytes": 13594,
+          "ratio": 19.5,
+          "prefix_bytes": 11397,
+          "prefix_ratio": 23.26
         },
         "bz2": {
-          "bytes": 18502,
-          "ratio": 14.33,
-          "prefix_bytes": 12184,
-          "prefix_ratio": 21.76
+          "bytes": 18464,
+          "ratio": 14.36,
+          "prefix_bytes": 12153,
+          "prefix_ratio": 21.81
         },
         "xz": {
-          "bytes": 10568,
-          "ratio": 25.09,
-          "prefix_bytes": 10260,
-          "prefix_ratio": 25.84
+          "bytes": 10540,
+          "ratio": 25.15,
+          "prefix_bytes": 10232,
+          "prefix_ratio": 25.91
         }
       }
     },
     {
       "turns": 50,
       "envelopes": 99,
-      "raw_bytes": 1099243,
-      "bytes_per_turn": 21985,
+      "raw_bytes": 1099202,
+      "bytes_per_turn": 21984,
       "largest_line_bytes": 35611,
       "model_share": 0.976,
       "first_request_bytes": 6469,
       "growth_per_turn_bytes": 581,
       "requests_at_100_turns_bytes": 3523961,
-      "prefix_raw_bytes": 100858,
+      "prefix_raw_bytes": 100817,
       "prefix_raw_ratio": 10.9,
       "codecs": {
         "gzip": {
-          "bytes": 98813,
-          "ratio": 11.12,
-          "prefix_bytes": 22063,
-          "prefix_ratio": 49.82
+          "bytes": 98785,
+          "ratio": 11.13,
+          "prefix_bytes": 22034,
+          "prefix_ratio": 49.89
         },
         "bz2": {
-          "bytes": 55885,
+          "bytes": 55895,
           "ratio": 19.67,
-          "prefix_bytes": 21946,
-          "prefix_ratio": 50.09
+          "prefix_bytes": 21953,
+          "prefix_ratio": 50.07
         },
         "xz": {
-          "bytes": 19816,
-          "ratio": 55.47,
-          "prefix_bytes": 18868,
-          "prefix_ratio": 58.26
+          "bytes": 19776,
+          "ratio": 55.58,
+          "prefix_bytes": 18832,
+          "prefix_ratio": 58.37
         }
       }
     },
     {
       "turns": 100,
       "envelopes": 199,
-      "raw_bytes": 3653072,
-      "bytes_per_turn": 36531,
+      "raw_bytes": 3653031,
+      "bytes_per_turn": 36530,
       "largest_line_bytes": 64701,
       "model_share": 0.985,
       "first_request_bytes": 6469,
       "growth_per_turn_bytes": 581,
       "requests_at_100_turns_bytes": 3525200,
-      "prefix_raw_bytes": 196462,
-      "prefix_raw_ratio": 18.59,
+      "prefix_raw_bytes": 196421,
+      "prefix_raw_ratio": 18.6,
       "codecs": {
         "gzip": {
-          "bytes": 951034,
+          "bytes": 951007,
           "ratio": 3.84,
-          "prefix_bytes": 39702,
-          "prefix_ratio": 92.01
+          "prefix_bytes": 39673,
+          "prefix_ratio": 92.08
         },
         "bz2": {
-          "bytes": 164522,
-          "ratio": 22.2,
-          "prefix_bytes": 36933,
-          "prefix_ratio": 98.91
+          "bytes": 164360,
+          "ratio": 22.23,
+          "prefix_bytes": 36954,
+          "prefix_ratio": 98.85
         },
         "xz": {
-          "bytes": 34840,
-          "ratio": 104.85,
-          "prefix_bytes": 32680,
-          "prefix_ratio": 111.78
+          "bytes": 34808,
+          "ratio": 104.95,
+          "prefix_bytes": 32624,
+          "prefix_ratio": 111.97
         }
       }
     },
     {
       "turns": 200,
       "envelopes": 399,
-      "raw_bytes": 13133721,
-      "bytes_per_turn": 65669,
+      "raw_bytes": 13133680,
+      "bytes_per_turn": 65668,
       "largest_line_bytes": 123066,
       "model_share": 0.992,
       "first_request_bytes": 6469,
       "growth_per_turn_bytes": 583,
       "requests_at_100_turns_bytes": 3530611,
-      "prefix_raw_bytes": 388191,
-      "prefix_raw_ratio": 33.83,
+      "prefix_raw_bytes": 388150,
+      "prefix_raw_ratio": 33.84,
       "codecs": {
         "gzip": {
-          "bytes": 4003968,
+          "bytes": 4003926,
           "ratio": 3.28,
-          "prefix_bytes": 74916,
-          "prefix_ratio": 175.31
+          "prefix_bytes": 74888,
+          "prefix_ratio": 175.38
         },
         "bz2": {
-          "bytes": 734953,
-          "ratio": 17.87,
-          "prefix_bytes": 63939,
-          "prefix_ratio": 205.41
+          "bytes": 734732,
+          "ratio": 17.88,
+          "prefix_bytes": 63897,
+          "prefix_ratio": 205.54
         },
         "xz": {
-          "bytes": 63744,
-          "ratio": 206.04,
+          "bytes": 63748,
+          "ratio": 206.02,
           "prefix_bytes": 58592,
-          "prefix_ratio": 224.16
+          "prefix_ratio": 224.15
         }
       }
     }
@@ -214,7 +214,7 @@
       }
     ],
     "quadratic": {
-      "c0": 492,
+      "c0": 451,
       "c1": 7395,
       "c2": 291.4
     }
@@ -496,7 +496,7 @@
   "decision": {
     "turns": 100,
     "best_codec": "xz",
-    "best_ratio": 104.85,
+    "best_ratio": 104.95,
     "codec_qualifies": true,
     "prefix_under_codec_gain": 1.07,
     "prefix_raw_against_codec": 0.18,

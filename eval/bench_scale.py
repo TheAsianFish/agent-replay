@@ -213,7 +213,11 @@ def record_run(turns: int) -> Cassette:
     with session:
         output = run(cast(Anthropic, client), TASK)
     cassette = session.finish(output=output)
-    header = cassette.header.model_copy(update={"cassette_id": f"bench-scale-{turns:03d}"})
+    # The recorder's versions vary by machine (Python 3.12.16 against 3.14.4 is a byte), so
+    # the benchmark's cassettes leave them out and their sizes do not depend on the runner.
+    header = cassette.header.model_copy(
+        update={"cassette_id": f"bench-scale-{turns:03d}", "recorder": {}}
+    )
     cassette = cassette.model_copy(update={"header": header})
     model_calls = sum(1 for e in cassette.envelopes if e.kind is Kind.MODEL)
     if model_calls != turns or cassette.footer.status != "ok":
