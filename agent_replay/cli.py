@@ -30,7 +30,7 @@ from agent_replay._cli import fail as _fail
 from agent_replay._json import canonical_json, to_jsonable
 from agent_replay._logging import configure_logging
 from agent_replay.calibrate import commands_calibrate, commands_golden
-from agent_replay.cassette import Cassette, Kind, is_cassette_path
+from agent_replay.cassette import Cassette, Kind, check_cassette_name, is_cassette_path
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
 from agent_replay.ci import (
@@ -186,6 +186,7 @@ def record_cmd(
     if output.exists() and not force:
         raise _fail(f"{output} already exists; pass --force to overwrite it")
     try:
+        check_cassette_name(output)
         agent_fn = load_agent(agent)
         model_client = wrap(_make_client(client))
     except (ReplayError, TypeError) as exc:
@@ -299,6 +300,8 @@ def run_cmd(
     replay_mode: ReplayMode = mode.value
     replay_policy: PolicyName = policy.value
     try:
+        if save is not None:
+            check_cassette_name(save)
         cassette = Cassette.load(cassette_path)
         agent_ref = agent or cassette.header.agent
         if agent_ref is None:

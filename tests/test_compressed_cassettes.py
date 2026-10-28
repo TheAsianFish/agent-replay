@@ -138,3 +138,21 @@ def test_replay_ci_reads_a_compressed_cassette(tmp_path: Path) -> None:
     )
     report = run_suite(suite)
     assert [s.passed for s in report.scenarios] == [True]
+
+
+def test_record_refuses_a_gz_name_before_running_the_agent(tmp_path: Path) -> None:
+    out = tmp_path / "rec.jsonl.gz"
+    # a client that cannot be built proves the name is checked first: no agent ran
+    result = invoke("record", AGENT, "--task", TASK, "--out", str(out), "--client", "nope:none")
+    assert result.exit_code == 2
+    assert "name it rec.jsonl.xz" in result.output
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert not out.exists()
+
+
+def test_run_refuses_a_gz_save_name_before_replaying(tmp_path: Path) -> None:
+    save = tmp_path / "replayed.jsonl.bz2"
+    result = invoke("run", str(TOY), "--agent", "nope:none", "--save", str(save))
+    assert result.exit_code == 2
+    assert "name it replayed.jsonl.xz" in result.output
+    assert not save.exists()

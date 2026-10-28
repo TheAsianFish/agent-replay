@@ -242,6 +242,15 @@ def _is_compressed(path: Path) -> bool:
     return False
 
 
+def check_cassette_name(path: str | Path) -> None:
+    """Refuse a compression suffix other than ``.xz`` before anything is recorded.
+
+    ``dump`` refuses it too, but a command that runs a live agent first should
+    fail before spending the calls, not after.
+    """
+    _is_compressed(Path(path))
+
+
 def is_cassette_path(path: str | Path) -> bool:
     """Whether ``path`` is named like a cassette: ``*.jsonl`` or ``*.jsonl.xz``."""
     name = Path(path).name.lower()
