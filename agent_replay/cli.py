@@ -30,7 +30,7 @@ from agent_replay._cli import fail as _fail
 from agent_replay._json import canonical_json, to_jsonable
 from agent_replay._logging import configure_logging
 from agent_replay.calibrate import commands_calibrate, commands_golden
-from agent_replay.cassette import Cassette, Kind
+from agent_replay.cassette import Cassette, Kind, is_cassette_path
 from agent_replay.checks import CheckResult, tool_sequence
 from agent_replay.checks.tool_sequence import SequenceMode
 from agent_replay.ci import (
@@ -163,7 +163,16 @@ def _make_client(spec: str) -> object:
 def record_cmd(
     agent: Annotated[str, typer.Argument(help="The agent, as module:function(client, task).")],
     task: Annotated[str, typer.Option("--task", "-t", help="Task text passed to the agent.")],
-    output: Annotated[Path, typer.Option("--output", "-o", help="Cassette file to write.")],
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "--out",
+            "-o",
+            help="Cassette file to write; a name ending in .xz (run.jsonl.xz) is "
+            "written xz-compressed.",
+        ),
+    ],
     client: Annotated[
         str,
         typer.Option(
@@ -884,7 +893,7 @@ _DIFF_STYLE = {"same": "dim", "changed": "yellow", "added": "green", "removed": 
 
 
 def _is_cassette_ref(ref: str) -> bool:
-    return ref.endswith(".jsonl") or Path(ref).is_file()
+    return is_cassette_path(ref) or Path(ref).is_file()
 
 
 def _diff_side(ref: str, store: Store | None) -> tuple[list[DiffStep], str]:
@@ -896,7 +905,7 @@ def _diff_side(ref: str, store: Store | None) -> tuple[list[DiffStep], str]:
     except StoreError as exc:
         raise StoreError(
             f"{ref!r} is neither a cassette file nor a stored run: {exc} "
-            "Pass a .jsonl cassette path or a run id."
+            "Pass a .jsonl (or .jsonl.xz) cassette path or a run id."
         ) from exc
     return steps_from_record(run), run.id[:12]
 
@@ -904,10 +913,16 @@ def _diff_side(ref: str, store: Store | None) -> tuple[list[DiffStep], str]:
 @app.command("diff")
 def diff_cmd(
     base: Annotated[
-        str, typer.Argument(metavar="BASE", help="Cassette (.jsonl) or stored run id (prefix).")
+        str,
+        typer.Argument(
+            metavar="BASE", help="Cassette (.jsonl or .jsonl.xz) or stored run id (prefix)."
+        ),
     ],
     head: Annotated[
-        str, typer.Argument(metavar="HEAD", help="Cassette (.jsonl) or stored run id (prefix).")
+        str,
+        typer.Argument(
+            metavar="HEAD", help="Cassette (.jsonl or .jsonl.xz) or stored run id (prefix)."
+        ),
     ],
     json_path: Annotated[
         Path | None, typer.Option("--json", help="Write the JSON diff here.")
