@@ -7,7 +7,7 @@
     "recorded_live_ms": "sum of the cassette's envelope latency_ms (the agent calls one boundary at a time); excludes the agent's own code between calls, so it is a lower bound on the live run's wall-clock",
     "replay_ms": "wall-clock of agent_replay.ci.run_scenario (load cassette and agent, full replay; with or without the suite's checks, judge from its committed cache), median of `repeats` runs after one warm-up; speedup = recorded_live_ms / median"
   },
-  "command": "uv run python eval/bench_replay.py --out eval/results/bench_replay.json",
+  "command": "uv run python eval/bench_replay.py --out eval/results/m14_bench_replay.json",
   "parameters": {
     "iterations": 2000,
     "warmup": 200,

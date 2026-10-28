@@ -47,7 +47,7 @@ load from JSONL and from each compressed form (decompress, then parse), and
 share of them that is step request and response JSON, and the ``get_run``
 payload (the ``/api/runs/{id}`` body) and time. Above 200 turns, loads are timed
 once rather than as a median, compression is not timed, the in-process replay
-is skipped, and the fresh process repeats at most 3 times. Since M14, per size in a fresh process
+is skipped; the fresh process (below) keeps every repeat. Since M14, per size in a fresh process
 (:func:`child`): peak RSS after loading the cassette and replaying it once in
 ``full``; ``Cassette.loads`` with its collector pause (as shipped) against the
 same parse with the collector on (:meth:`Cassette._loads`), interleaved, with the
