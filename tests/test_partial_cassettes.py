@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import lzma
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -301,7 +302,10 @@ def test_replay_ci_refuses_an_interrupted_cassette(tmp_path: Path) -> None:
     assert not scenario.ran
     assert scenario.error is not None
     assert "interrupted recording: 6 envelope(s)" in scenario.error.message
-    assert "replay record --out run.jsonl --force" in scenario.error.message
+    assert (
+        f"replay record {AGENT} -t {shlex.quote(bs.TASK)} --out {tmp_path / 'run.jsonl'} --force"
+        in scenario.error.message
+    )
 
 
 def test_replay_ci_accepts_a_partial_that_finished(tmp_path: Path) -> None:

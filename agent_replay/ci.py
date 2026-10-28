@@ -45,6 +45,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import subprocess
 import time
 import tomllib
@@ -384,10 +385,21 @@ def run_scenario(
     try:
         cassette = Cassette.load(cassette_path)
         if cassette.interrupted:
+            rerecord = shlex.join(
+                [
+                    "replay",
+                    "record",
+                    agent_ref or cassette.header.agent or "AGENT",
+                    "-t",
+                    cassette.header.task or "TASK",
+                    "--out",
+                    str(cassette_path)[: -len(PARTIAL_SUFFIX)],
+                    "--force",
+                ]
+            )
             raise CassetteError(
                 f"{cassette.describe_interrupted(cassette_path)}, so a pass would cover only "
-                "part of the run. Re-record it with `replay record --out "
-                f"{cassette_path.name[: -len(PARTIAL_SUFFIX)]} --force`; `replay run` "
+                f"part of the run. Re-record it with `{rerecord}`; `replay run` "
                 "replays a partial for debugging"
             )
         agent_ref = agent_ref or cassette.header.agent
