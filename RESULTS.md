@@ -2198,11 +2198,12 @@ JSONL, or decompress then `loads`, which is what `Cassette.load` does for a
   13 MB of JSON costs far more than decompressing 64 KB. Loading is still
   superlinear in turns, about ×9 from 100 to 200. So compression saves disk
   and git, not parse time. The hypothesis held.
-  **Corrected in M14:** the parsing explanation was wrong. The superlinear
-  load came from the garbage collector's full collections. Parsing itself is
-  linear in bytes, at 5 to 7 ms per MB. With the collector paused, load from
-  100 to 400 turns is 1.22× linear in bytes; with it on, 1.84×. The table
-  above is kept as measured. See "Long recordings and a load linear in bytes
+  **Corrected in M14:** the parsing explanation was mostly wrong. Most of
+  the superlinear load came from the garbage collector's full collections.
+  The parse alone is close to linear but not quite: it rises from about 5 to
+  7 ms per MB. With the collector paused, load from 100 to 400 turns is 1.22×
+  linear in bytes on the first run and 1.33× on a re-run; with the collector
+  on, it is 1.84× and 2.11×. The table above is kept as measured. See "Long recordings and a load linear in bytes
   (M14)" below.
 - Writing xz costs 0.24 s at 100 turns and 1.05 s at 200, once per recording.
   bz2 is the slowest to write and to read, 3.1 s and 0.55 s at 200 turns, and
@@ -2280,7 +2281,9 @@ written before the run:
   (D5) and the six live `claude-opus-5-5` retail cassettes' 28 model calls.
 - **Commands:** `make bench-scale` (about 3.5 minutes; sizes byte-stable and
   re-checked in CI; timings to `.replay/`), `make bench-replay` (about 1.5
-  minutes), and the kill test in `tests/test_partial_cassettes.py`. $0.
+  minutes), and the kill test in `tests/test_partial_cassettes.py`. A second
+  `make bench-scale BENCH_SCALE_OUT=eval/results/m14_bench_scale_rerun.json`
+  on the same machine type checks the load timings. $0.
 - **Machine:** 4 vCPU, Intel Xeon 6973P-C, CPython 3.12.16. This is a
   different CPU from the M7 and M13 timings, so every comparison below is
   within this run, never against the older tables.
@@ -2288,7 +2291,8 @@ written before the run:
   and `xz_streaming`; its `fit` now spans 5 to 400 turns: exponent 1.607,
   bytes ≈ 2,004 + 7,325·n + 291.7·n², against M13's 1.539 over 5 to 200);
   `eval/results/m14_bench_scale.json` (memory, collector, freeze, linearity,
-  real loads); `eval/results/m14_bench_replay.json` (append overhead). The
+  real loads), `eval/results/m14_bench_scale_rerun.json` (the re-run);
+  `eval/results/m14_bench_replay.json` (append overhead). The
   committed M7 `bench_replay.json` and M13 `bench_scale.json` are left as they
   were.
 
@@ -2350,14 +2354,14 @@ also pays, once, at `dump`. The append only moves that cost into the call.
 That cost grows with the envelope. The model envelope measured here is a
 first turn (12.5 KB), while a 100-turn envelope is 65 KB. That size is not
 measured; at five times the serialising cost it would still be about 0.01%.
-Finishing an appending session costs about 40 µs more (the last line and a
-rename).
+Finishing an appending session costs 19 to 42 µs more, depending on the
+boundary (the last line and a rename).
 
 ### Load: the collector, not the parser
 
 Each size runs in a fresh interpreter. Loads alternate paused
 (`Cassette.loads`, as shipped) and unpaused (`Cassette._loads`, the parse as
-before M14); medians of 5 (3 at 400 turns). "full" counts the gen2
+before M14); medians of 5. "full" counts the gen2
 collections the collector started during one unpaused load. "peak RSS" is
 `VmHWM` after one load and one `full` replay; the interpreter alone holds
 115 MB after imports, and "RSS / bytes" is the peak above that.
@@ -2373,9 +2377,17 @@ collections the collector started during one unpaused load. "peak RSS" is
 
 (At 5 turns the ratio is lost in page-granularity noise and left out.)
 
-- **Linear in bytes: hypothesis held.** From 100 to 400 turns the bytes grow
-  13.58×. Paused load grows 16.56×, 1.22× linear (bound 1.3). Collector-on
-  load grows 24.94×, 1.84× linear (`load_linearity`).
+- **Linear in bytes: held on the first run, not on the re-run.** From 100 to
+  400 turns the bytes grow 13.58×. On the run in the table, paused load grows
+  16.56×, 1.22× linear (bound 1.3), and collector-on load grows 24.94×, 1.84×
+  linear (`load_linearity`). The re-run (`m14_bench_scale_rerun.json`, same
+  CPU model) gives 0.0160 s and 0.2888 s: 18.05×, **1.33× linear, outside the
+  bound**, with the collector on at 2.11×. The first run's 100-turn load was
+  about 25% slower than the re-run's (0.0201 against 0.0160 s), which is
+  where its lower ratio comes from. So the pause removes most of the excess
+  (2.1× down to 1.3×), but the parse itself is still slightly superlinear:
+  its ms per MB rises by about a third from 100 to 400 turns. The hypothesis
+  is not robustly met.
 - **Where the collector's cost comes from.** Young-generation collections are
   cheap: the 44 at 100 turns cost nothing measurable. A full collection walks
   every live object, and one fires only once enough survivors have piled up.
@@ -2384,7 +2396,10 @@ collections the collector started during one unpaused load. "peak RSS" is
 - **The busier the process, the bigger the cost.** M13 timed load in a
   process holding every other cassette. The same in-process column now
   (`runs[].load_s`, the main process with all six cassettes and the store
-  runs alive) gives 0.458 s paused against 1.183 s on at 400 turns (2.6×).
+  runs alive, one timing each above 200 turns, not a median) gives 0.458 s
+  paused against 1.183 s on at 400 turns (2.6×), and 0.371 against 0.928 s on
+  the re-run. That paused load is 1.53× linear against its own 100-turn row
+  (0.022 s), so in a busy process the pause helps more and leaves more.
   At 200 turns it gives 0.101 against 0.105: no full collection happened to
   fire. The round-3 pilot (1.10 against 0.27 s at 400 turns) ran in the same
   kind of process. So the collector's cost is lumpy and depends on what else
@@ -2392,10 +2407,10 @@ collections the collector started during one unpaused load. "peak RSS" is
   the fix is a pause rather than a tuned threshold.
 - **Small cassettes gain nothing.** On the committed real recordings (13 KB
   to 126 KB, medians of 21), paused load is 0.08 to 0.46 ms, 3.2 to 6.4 ms
-  per MB. That is 2 to 14 µs *slower* than unpaused, the cost of the lock
+  per MB. That is 5 to 40 µs *slower* than unpaused, the cost of the lock
   and the two `gc` calls, and far below any decision.
 - **Memory: about 12× the cassette's bytes.** A loaded and replayed cassette
-  costs 11.4× to 12.5× its JSONL size in resident memory above the
+  costs 11.4× to 13.8× its JSONL size in resident memory above the
   interpreter: 590 MB for the 50 MB cassette. Pydantic models and Python
   strings take several times their UTF-8 bytes, and replay holds the
   requests it fingerprints. So `replay ci --concurrency` over long cassettes
@@ -2406,7 +2421,7 @@ collections the collector started during one unpaused load. "peak RSS" is
 `gc.freeze()` moves every object alive at that moment into a generation the
 collector never scans, so collections during the replay no longer walk the
 cassette. Fresh process, interleaved with an ordinary replay of the same
-cassette, medians of 5 (3 at 400 turns):
+cassette, medians of 5:
 
 | turns | `full` replay | with `gc.freeze()` after load | gain |
 |---|---|---|---|
@@ -2416,7 +2431,7 @@ cassette, medians of 5 (3 at 400 turns):
 | 400 | 4.5994 s | 3.7496 s | 18.5% |
 
 **Hypothesis not met at 200 turns:** 17.4%, against the 20% predicted (the
-round-3 pilot measured 25% in a busier process). The gain is real from 100
+round-3 pilot measured 25% in a busier process); the re-run gives 13.5%. The gain is real from 100
 turns on, but it stays a measurement, not a product change. Freezing is
 process-wide, and it would also keep the agent's own long-lived objects out
 of every later collection. A caller that replays one long cassette per

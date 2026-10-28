@@ -141,7 +141,7 @@ the rows still to measure.
 | What compression recovers at 100 turns | xz 105×; gzip 3.8× (19× at 20 turns, until envelopes outgrow its 32 KB window); a shared-prefix encoding adds only 1.07× under xz, so cassettes compress as `.jsonl.xz` and the schema is unchanged | `make bench-scale` |
 | Run store at scale | a stored run costs what its uncompressed cassette does: 282 KB at 20 turns, 3.8 MB at 100 (not changed yet) | `make bench-scale` |
 | A recording killed with SIGKILL | the k envelopes before the kill replay in `full` (all `exact`) and diff against a finished run, for `.jsonl` and `.jsonl.xz`; appending costs at most 44 µs per envelope, 0.0025% of the 1.8 s median live model call | `tests/test_partial_cassettes.py`, `make bench-replay` |
-| Cassette load, 100 → 400 turns | 1.22× linear in bytes with the collector paused during the parse, 1.84× with it on (full collections, not parsing, made M13's load superlinear); about 12× the cassette's bytes in memory | `make bench-scale` |
+| Cassette load, 100 → 400 turns | 1.22× to 1.33× linear in bytes over two runs with the collector paused during the parse, 1.84× to 2.11× with it on (full collections, more than parsing, made M13's load superlinear); about 12× the cassette's bytes in memory | `make bench-scale` |
 | **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
 
 ## Install
@@ -1262,7 +1262,8 @@ Next (evolution round 2, 2026-10-27; evidence and hypotheses in
     bytes~~ (done: each envelope is appended to `<out>.partial` as it
     completes, a SIGKILLed recording replays and diffs what it saw and
     `replay ci` refuses it; the collector pause inside `Cassette.loads`
-    makes load 1.22× linear in bytes from 100 to 400 turns; see
+    brings load from 2.1× to 1.2–1.3× linear in bytes from 100 to 400
+    turns; see
     [RESULTS.md](RESULTS.md))
 
 Next (evolution round 3, 2026-10-28; evidence and hypotheses in

@@ -1398,7 +1398,8 @@ it from the 3.5 predicted), and no longer assumes a passing qwen recording.
     is still byte-identical to `dump`. Results are in RESULTS.md, M14: append
     overhead at most 44 µs per envelope (0.0025% of the median live model
     call); paused load 1.22× linear in bytes from 100 to 400 turns (1.84×
-    collector on); about 12× the cassette's bytes in RSS; `gc.freeze()`
+    collector on), but 1.33× (2.11×) on a re-run, so the 1.3 bound is not
+    robustly met; about 12× the cassette's bytes in RSS; `gc.freeze()`
     saves 17.4% at 200 turns, short of the 20% hypothesis. The timings ran on
     a different CPU from M7 and M13, so they go to new `m14_*` files beside
     the committed ones. `make bench-scale` grows from about 1 minute to about

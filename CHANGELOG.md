@@ -67,7 +67,8 @@ every older version.
 - `count_tokens`, message batches and the beta `parse` / `tool_runner` raise a
   `ReplayError` that names them inside a session instead of going live.
 - `Cassette.loads` pauses the cyclic garbage collector while it parses, and only then:
-  loading 400 turns (50 MB) went from 1.84× to 1.22× linear in bytes against 100 turns.
+  loading 400 turns (50 MB) went from 1.84–2.11× to 1.22–1.33× linear in bytes against 100
+  turns (two runs).
 
 ### Fixed
 
