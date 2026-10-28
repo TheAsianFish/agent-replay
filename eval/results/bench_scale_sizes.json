@@ -6,7 +6,8 @@
       20,
       50,
       100,
-      200
+      200,
+      400
     ],
     "system_chars": 6123,
     "tool_result_chars": 220,
@@ -187,10 +188,43 @@
           "prefix_ratio": 224.15
         }
       }
+    },
+    {
+      "turns": 400,
+      "envelopes": 799,
+      "raw_bytes": 49605749,
+      "bytes_per_turn": 124014,
+      "largest_line_bytes": 239814,
+      "model_share": 0.996,
+      "first_request_bytes": 6469,
+      "growth_per_turn_bytes": 583,
+      "requests_at_100_turns_bytes": 3533519,
+      "prefix_raw_bytes": 771646,
+      "prefix_raw_ratio": 64.29,
+      "codecs": {
+        "gzip": {
+          "bytes": 15466427,
+          "ratio": 3.21,
+          "prefix_bytes": 145587,
+          "prefix_ratio": 340.73
+        },
+        "bz2": {
+          "bytes": 3804384,
+          "ratio": 13.04,
+          "prefix_bytes": 112491,
+          "prefix_ratio": 440.98
+        },
+        "xz": {
+          "bytes": 120620,
+          "ratio": 411.26,
+          "prefix_bytes": 107200,
+          "prefix_ratio": 462.74
+        }
+      }
     }
   ],
   "fit": {
-    "exponent": 1.539,
+    "exponent": 1.607,
     "between_sizes": [
       {
         "from": 5,
@@ -211,12 +245,17 @@
         "from": 100,
         "to": 200,
         "exponent": 1.846
+      },
+      {
+        "from": 200,
+        "to": 400,
+        "exponent": 1.917
       }
     ],
     "quadratic": {
-      "c0": 451,
-      "c1": 7395,
-      "c2": 291.4
+      "c0": 2004,
+      "c1": 7325,
+      "c2": 291.7
     }
   },
   "real": [
@@ -503,5 +542,25 @@
     "new_schema": false,
     "rule": "compress with the best codec if it recovers >= 10x at 100 turns; a new cassette schema with the prefix encoding only if it beats that codec by more than 3x",
     "choice": "transparent .jsonl.xz cassettes"
+  },
+  "xz_streaming": {
+    "turns": 100,
+    "lines": 201,
+    "recoverable": [
+      [
+        1,
+        0
+      ],
+      [
+        148,
+        146
+      ],
+      [
+        201,
+        146
+      ]
+    ],
+    "unflushed_envelopes_lost_at_end": 53,
+    "streamed_equals_whole": true
   }
 }
