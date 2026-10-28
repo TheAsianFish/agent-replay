@@ -86,8 +86,14 @@ def test_loads_flake_and_arm_reports(tmp_path: Path) -> None:
     arms = {
         "settings": {"p_fail": 0.6, "p_pass": 0.9},
         "arms": {
-            "strict": {"scenarios": [{"name": "y", "outcomes": [{"passed": True}]}]},
-            "fallback": {"scenarios": [{"name": "y", "outcomes": [{"passed": False}]}]},
+            "strict": {
+                "stats_impl": "baseline",
+                "scenarios": [{"name": "y", "outcomes": [{"passed": True}]}],
+            },
+            "fallback": {
+                "stats_impl": "baseline",
+                "scenarios": [{"name": "y", "outcomes": [{"passed": False}]}],
+            },
         },
     }
     (tmp_path / "f.json").write_text(json.dumps(flake), encoding="utf-8")
@@ -99,6 +105,10 @@ def test_loads_flake_and_arm_reports(tmp_path: Path) -> None:
         ("A fallback", (False,)),
         ("A strict", (True,)),
     ]
+    arms["arms"]["fallback"]["stats_impl"] = "core"  # type: ignore[index]
+    (tmp_path / "a.json").write_text(json.dumps(arms), encoding="utf-8")
+    with pytest.raises(ValueError, match="'fallback' ran core"):
+        vc.load_arms("A", tmp_path / "a.json")
     flake["stats_impl"] = "core"
     (tmp_path / "f.json").write_text(json.dumps(flake), encoding="utf-8")
     with pytest.raises(ValueError, match="baseline"):

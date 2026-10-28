@@ -98,6 +98,12 @@ def load_flake(label: str, path: Path) -> list[Scenario]:
 
 def load_arms(label: str, path: Path) -> list[Scenario]:
     report = json.loads(path.read_text(encoding="utf-8"))
+    for arm, summary in report["arms"].items():
+        if summary.get("stats_impl") != "baseline":
+            raise ValueError(
+                f"{path}: arm {arm!r} ran {summary.get('stats_impl')}, and the curve replays "
+                "the baseline gate"
+            )
     threshold = _threshold(report["settings"])
     return [
         Scenario(
