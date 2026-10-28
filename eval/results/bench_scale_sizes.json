@@ -1,0 +1,507 @@
+{
+  "command": "make bench-scale",
+  "workload": {
+    "turns": [
+      5,
+      20,
+      50,
+      100,
+      200
+    ],
+    "system_chars": 6123,
+    "tool_result_chars": 220,
+    "reply_chars": 80,
+    "vocabulary": 4096,
+    "seed": 13
+  },
+  "codec_versions": {
+    "zlib": "1.3.2",
+    "bz2": "libbz2 (Python 3.12.16)",
+    "liblzma": "5.8.3",
+    "gzip_level": 9,
+    "bz2_level": 9,
+    "xz_preset": 6
+  },
+  "synthetic": [
+    {
+      "turns": 5,
+      "envelopes": 9,
+      "raw_bytes": 44366,
+      "bytes_per_turn": 8873,
+      "largest_line_bytes": 9447,
+      "model_share": 0.942,
+      "first_request_bytes": 6469,
+      "growth_per_turn_bytes": 580,
+      "requests_at_100_turns_bytes": 3516662,
+      "prefix_raw_bytes": 15152,
+      "prefix_raw_ratio": 2.93,
+      "codecs": {
+        "gzip": {
+          "bytes": 6423,
+          "ratio": 6.91,
+          "prefix_bytes": 6085,
+          "prefix_ratio": 7.29
+        },
+        "bz2": {
+          "bytes": 9652,
+          "ratio": 4.6,
+          "prefix_bytes": 6565,
+          "prefix_ratio": 6.76
+        },
+        "xz": {
+          "bytes": 5800,
+          "ratio": 7.65,
+          "prefix_bytes": 5736,
+          "prefix_ratio": 7.73
+        }
+      }
+    },
+    {
+      "turns": 20,
+      "envelopes": 39,
+      "raw_bytes": 265126,
+      "bytes_per_turn": 13256,
+      "largest_line_bytes": 18163,
+      "model_share": 0.96,
+      "first_request_bytes": 6469,
+      "growth_per_turn_bytes": 581,
+      "requests_at_100_turns_bytes": 3521026,
+      "prefix_raw_bytes": 43702,
+      "prefix_raw_ratio": 6.07,
+      "codecs": {
+        "gzip": {
+          "bytes": 13624,
+          "ratio": 19.46,
+          "prefix_bytes": 11427,
+          "prefix_ratio": 23.2
+        },
+        "bz2": {
+          "bytes": 18502,
+          "ratio": 14.33,
+          "prefix_bytes": 12184,
+          "prefix_ratio": 21.76
+        },
+        "xz": {
+          "bytes": 10568,
+          "ratio": 25.09,
+          "prefix_bytes": 10260,
+          "prefix_ratio": 25.84
+        }
+      }
+    },
+    {
+      "turns": 50,
+      "envelopes": 99,
+      "raw_bytes": 1099243,
+      "bytes_per_turn": 21985,
+      "largest_line_bytes": 35611,
+      "model_share": 0.976,
+      "first_request_bytes": 6469,
+      "growth_per_turn_bytes": 581,
+      "requests_at_100_turns_bytes": 3523961,
+      "prefix_raw_bytes": 100858,
+      "prefix_raw_ratio": 10.9,
+      "codecs": {
+        "gzip": {
+          "bytes": 98813,
+          "ratio": 11.12,
+          "prefix_bytes": 22063,
+          "prefix_ratio": 49.82
+        },
+        "bz2": {
+          "bytes": 55885,
+          "ratio": 19.67,
+          "prefix_bytes": 21946,
+          "prefix_ratio": 50.09
+        },
+        "xz": {
+          "bytes": 19816,
+          "ratio": 55.47,
+          "prefix_bytes": 18868,
+          "prefix_ratio": 58.26
+        }
+      }
+    },
+    {
+      "turns": 100,
+      "envelopes": 199,
+      "raw_bytes": 3653072,
+      "bytes_per_turn": 36531,
+      "largest_line_bytes": 64701,
+      "model_share": 0.985,
+      "first_request_bytes": 6469,
+      "growth_per_turn_bytes": 581,
+      "requests_at_100_turns_bytes": 3525200,
+      "prefix_raw_bytes": 196462,
+      "prefix_raw_ratio": 18.59,
+      "codecs": {
+        "gzip": {
+          "bytes": 951034,
+          "ratio": 3.84,
+          "prefix_bytes": 39702,
+          "prefix_ratio": 92.01
+        },
+        "bz2": {
+          "bytes": 164522,
+          "ratio": 22.2,
+          "prefix_bytes": 36933,
+          "prefix_ratio": 98.91
+        },
+        "xz": {
+          "bytes": 34840,
+          "ratio": 104.85,
+          "prefix_bytes": 32680,
+          "prefix_ratio": 111.78
+        }
+      }
+    },
+    {
+      "turns": 200,
+      "envelopes": 399,
+      "raw_bytes": 13133721,
+      "bytes_per_turn": 65669,
+      "largest_line_bytes": 123066,
+      "model_share": 0.992,
+      "first_request_bytes": 6469,
+      "growth_per_turn_bytes": 583,
+      "requests_at_100_turns_bytes": 3530611,
+      "prefix_raw_bytes": 388191,
+      "prefix_raw_ratio": 33.83,
+      "codecs": {
+        "gzip": {
+          "bytes": 4003968,
+          "ratio": 3.28,
+          "prefix_bytes": 74916,
+          "prefix_ratio": 175.31
+        },
+        "bz2": {
+          "bytes": 734953,
+          "ratio": 17.87,
+          "prefix_bytes": 63939,
+          "prefix_ratio": 205.41
+        },
+        "xz": {
+          "bytes": 63744,
+          "ratio": 206.04,
+          "prefix_bytes": 58592,
+          "prefix_ratio": 224.16
+        }
+      }
+    }
+  ],
+  "fit": {
+    "exponent": 1.539,
+    "between_sizes": [
+      {
+        "from": 5,
+        "to": 20,
+        "exponent": 1.29
+      },
+      {
+        "from": 20,
+        "to": 50,
+        "exponent": 1.552
+      },
+      {
+        "from": 50,
+        "to": 100,
+        "exponent": 1.733
+      },
+      {
+        "from": 100,
+        "to": 200,
+        "exponent": 1.846
+      }
+    ],
+    "quadratic": {
+      "c0": 492,
+      "c1": 7395,
+      "c2": 291.4
+    }
+  },
+  "real": [
+    {
+      "cassette": "examples/retail_agent/cassettes/live/cancel_pending_laptop.jsonl",
+      "turns": 5,
+      "envelopes": 11,
+      "raw_bytes": 84880,
+      "bytes_per_turn": 16976,
+      "largest_line_bytes": 19044,
+      "model_share": 0.934,
+      "first_request_bytes": 12543,
+      "growth_per_turn_bytes": 1369,
+      "requests_at_100_turns_bytes": 8029612,
+      "prefix_raw_bytes": 29062,
+      "prefix_raw_ratio": 2.92,
+      "codecs": {
+        "gzip": {
+          "bytes": 7529,
+          "ratio": 11.27,
+          "prefix_bytes": 6895,
+          "prefix_ratio": 12.31
+        },
+        "bz2": {
+          "bytes": 9248,
+          "ratio": 9.18,
+          "prefix_bytes": 7125,
+          "prefix_ratio": 11.91
+        },
+        "xz": {
+          "bytes": 6604,
+          "ratio": 12.85,
+          "prefix_bytes": 6480,
+          "prefix_ratio": 13.1
+        }
+      }
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/exchange_waterproof_boots.jsonl",
+      "turns": 6,
+      "envelopes": 14,
+      "raw_bytes": 126419,
+      "bytes_per_turn": 21070,
+      "largest_line_bytes": 27470,
+      "model_share": 0.907,
+      "first_request_bytes": 12531,
+      "growth_per_turn_bytes": 2562,
+      "requests_at_100_turns_bytes": 13934010,
+      "prefix_raw_bytes": 44828,
+      "prefix_raw_ratio": 2.82,
+      "codecs": {
+        "gzip": {
+          "bytes": 11338,
+          "ratio": 11.15,
+          "prefix_bytes": 10107,
+          "prefix_ratio": 12.51
+        },
+        "bz2": {
+          "bytes": 12995,
+          "ratio": 9.73,
+          "prefix_bytes": 10396,
+          "prefix_ratio": 12.16
+        },
+        "xz": {
+          "bytes": 9300,
+          "ratio": 13.59,
+          "prefix_bytes": 9108,
+          "prefix_ratio": 13.88
+        }
+      }
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/lookup_latest_order_total.jsonl",
+      "turns": 4,
+      "envelopes": 9,
+      "raw_bytes": 66814,
+      "bytes_per_turn": 16704,
+      "largest_line_bytes": 19700,
+      "model_share": 0.922,
+      "first_request_bytes": 12405,
+      "growth_per_turn_bytes": 1596,
+      "requests_at_100_turns_bytes": 9142350,
+      "prefix_raw_bytes": 28251,
+      "prefix_raw_ratio": 2.37,
+      "codecs": {
+        "gzip": {
+          "bytes": 8420,
+          "ratio": 7.94,
+          "prefix_bytes": 7954,
+          "prefix_ratio": 8.4
+        },
+        "bz2": {
+          "bytes": 9729,
+          "ratio": 6.87,
+          "prefix_bytes": 8311,
+          "prefix_ratio": 8.04
+        },
+        "xz": {
+          "bytes": 7552,
+          "ratio": 8.85,
+          "prefix_bytes": 7436,
+          "prefix_ratio": 8.99
+        }
+      }
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/modify_address_suite.jsonl",
+      "turns": 3,
+      "envelopes": 6,
+      "raw_bytes": 50489,
+      "bytes_per_turn": 16830,
+      "largest_line_bytes": 17306,
+      "model_share": 0.921,
+      "first_request_bytes": 12478,
+      "growth_per_turn_bytes": 1932,
+      "requests_at_100_turns_bytes": 10811200,
+      "prefix_raw_bytes": 23587,
+      "prefix_raw_ratio": 2.14,
+      "codecs": {
+        "gzip": {
+          "bytes": 6218,
+          "ratio": 8.12,
+          "prefix_bytes": 5892,
+          "prefix_ratio": 8.57
+        },
+        "bz2": {
+          "bytes": 7475,
+          "ratio": 6.75,
+          "prefix_bytes": 6213,
+          "prefix_ratio": 8.13
+        },
+        "xz": {
+          "bytes": 5684,
+          "ratio": 8.88,
+          "prefix_bytes": 5612,
+          "prefix_ratio": 9.0
+        }
+      }
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/return_damaged_bicycle.jsonl",
+      "turns": 5,
+      "envelopes": 12,
+      "raw_bytes": 92071,
+      "bytes_per_turn": 18414,
+      "largest_line_bytes": 21575,
+      "model_share": 0.915,
+      "first_request_bytes": 12486,
+      "growth_per_turn_bytes": 2011,
+      "requests_at_100_turns_bytes": 11204288,
+      "prefix_raw_bytes": 33904,
+      "prefix_raw_ratio": 2.72,
+      "codecs": {
+        "gzip": {
+          "bytes": 8525,
+          "ratio": 10.8,
+          "prefix_bytes": 7852,
+          "prefix_ratio": 11.73
+        },
+        "bz2": {
+          "bytes": 10320,
+          "ratio": 8.92,
+          "prefix_bytes": 8076,
+          "prefix_ratio": 11.4
+        },
+        "xz": {
+          "bytes": 7420,
+          "ratio": 12.41,
+          "prefix_bytes": 7280,
+          "prefix_ratio": 12.65
+        }
+      }
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/transfer_swapped_refunds.jsonl",
+      "turns": 5,
+      "envelopes": 10,
+      "raw_bytes": 86020,
+      "bytes_per_turn": 17204,
+      "largest_line_bytes": 19206,
+      "model_share": 0.945,
+      "first_request_bytes": 12539,
+      "growth_per_turn_bytes": 1405,
+      "requests_at_100_turns_bytes": 8208650,
+      "prefix_raw_bytes": 29705,
+      "prefix_raw_ratio": 2.9,
+      "codecs": {
+        "gzip": {
+          "bytes": 8471,
+          "ratio": 10.15,
+          "prefix_bytes": 7836,
+          "prefix_ratio": 10.98
+        },
+        "bz2": {
+          "bytes": 10617,
+          "ratio": 8.1,
+          "prefix_bytes": 8441,
+          "prefix_ratio": 10.19
+        },
+        "xz": {
+          "bytes": 7456,
+          "ratio": 11.54,
+          "prefix_bytes": 7340,
+          "prefix_ratio": 11.72
+        }
+      }
+    },
+    {
+      "cassette": "examples/pydantic_ai_agent/cassettes/qwen/book_earliest_flight.jsonl",
+      "turns": 3,
+      "envelopes": 5,
+      "raw_bytes": 13156,
+      "bytes_per_turn": 4385,
+      "largest_line_bytes": 4360,
+      "model_share": 0.859,
+      "first_request_bytes": 2342,
+      "growth_per_turn_bytes": 618,
+      "requests_at_100_turns_bytes": 3295775,
+      "prefix_raw_bytes": 7735,
+      "prefix_raw_ratio": 1.7,
+      "codecs": {
+        "gzip": {
+          "bytes": 2415,
+          "ratio": 5.45,
+          "prefix_bytes": 2370,
+          "prefix_ratio": 5.55
+        },
+        "bz2": {
+          "bytes": 2836,
+          "ratio": 4.64,
+          "prefix_bytes": 2535,
+          "prefix_ratio": 5.19
+        },
+        "xz": {
+          "bytes": 2376,
+          "ratio": 5.54,
+          "prefix_bytes": 2372,
+          "prefix_ratio": 5.55
+        }
+      }
+    },
+    {
+      "cassette": "examples/pydantic_ai_agent/cassettes/qwen/cheapest_fare_in_euros.jsonl",
+      "turns": 3,
+      "envelopes": 5,
+      "raw_bytes": 12897,
+      "bytes_per_turn": 4299,
+      "largest_line_bytes": 4202,
+      "model_share": 0.866,
+      "first_request_bytes": 2353,
+      "growth_per_turn_bytes": 556,
+      "requests_at_100_turns_bytes": 2985025,
+      "prefix_raw_bytes": 7457,
+      "prefix_raw_ratio": 1.73,
+      "codecs": {
+        "gzip": {
+          "bytes": 2364,
+          "ratio": 5.46,
+          "prefix_bytes": 2315,
+          "prefix_ratio": 5.57
+        },
+        "bz2": {
+          "bytes": 2770,
+          "ratio": 4.66,
+          "prefix_bytes": 2475,
+          "prefix_ratio": 5.21
+        },
+        "xz": {
+          "bytes": 2320,
+          "ratio": 5.56,
+          "prefix_bytes": 2312,
+          "prefix_ratio": 5.58
+        }
+      }
+    }
+  ],
+  "decision": {
+    "turns": 100,
+    "best_codec": "xz",
+    "best_ratio": 104.85,
+    "codec_qualifies": true,
+    "prefix_under_codec_gain": 1.07,
+    "prefix_raw_against_codec": 0.18,
+    "new_schema": false,
+    "rule": "compress with the best codec if it recovers >= 10x at 100 turns; a new cassette schema with the prefix encoding only if it beats that codec by more than 3x",
+    "choice": "transparent .jsonl.xz cassettes"
+  }
+}
