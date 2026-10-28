@@ -135,6 +135,8 @@ the rows still to measure.
 | The Action on a real failing PR | [PR #13](https://github.com/TheAsianFish/agent-replay/pull/13): the seeded `wrong_write_argument` regression fails the check, 4 of 6 scenarios on `rule:matches_ground_truth`, in a 26 s job | `make regression-pr` |
 | A real framework: pydantic-ai, unchanged | records through `client.beta.messages`; fake-model and qwen2.5:7b cassettes replay in `full` with 0 approximate steps | `make eval-pydantic-ai-offline` |
 | Live flakiness on a local model (free) | qwen2.5:7b via Ollama, 10 `model-live` runs per task: lookup 10/10, booking 2/10, cancellation 0/10 (23 of 25 attempts cancel without looking the booking up); 1026 s on 4 vCPU | `make eval-pydantic-ai` (RESULTS.md, M9) |
+| Frozen world vs the model, `model-live` on qwen2.5:7b | 20 runs per arm: `strict` 18 / 20 and 9 / 20, `fallback` 19 / 20 and 8 / 20; 3 of 20 `strict` booking runs end on a call the recording never made, 0 on another entity, 0 approximate steps in 80; lookup pooled with M9 47 / 50 | `make eval-pydantic-ai-arms` (RESULTS.md, M12) |
+| Runs a fixed-threshold verdict needs | 5 runs agree with the all-runs verdict in ≥ 95% of draws on all 15 committed scenarios, but not on 3 of the 4 new ones (90–94%), which sit 0.15–0.35 from the 0.75 threshold | `make eval-verdict-curve` |
 | **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
 
 ## Install
@@ -1198,9 +1200,12 @@ Next (evolution round 2, 2026-10-27; evidence and hypotheses in
     entity's result), and a mutation-study table of correct-but-different
     paths per check type~~ (done: the two identity mutations go from 0 / 2 to
     2 / 2 caught with no v1 result changed; see [RESULTS.md](RESULTS.md))
-12. Frozen-world bias: `model-live` with `strict` against `fallback` tools on
+12. ~~Frozen-world bias: `model-live` with `strict` against `fallback` tools on
     qwen2.5:7b, every run classified by cause, and the verdict-stability curve
-    resampled from the committed flake runs
+    resampled from the committed flake runs~~ (done: the policy moved the pass
+    count by one run per scenario, 3 of 40 `strict` runs ended on the frozen
+    world, and five runs settle the verdict only far from the threshold; see
+    [RESULTS.md](RESULTS.md))
 13. Cassette bytes at scale: a bytes-per-turn benchmark to 200 turns, gzip
     and xz against a shared-prefix encoding, and the fix the numbers justify
 

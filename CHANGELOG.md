@@ -33,6 +33,12 @@ every older version.
   entity the recording never saw (`guesses_user_id`, `reads_wrong_order`), and replays
   five correct-but-different paths of the fake model in `model-live` under `strict` and
   `fallback`, with a termination cause per scenario.
+- `make eval-pydantic-ai-arms` (`eval.pydantic_ai --arms strict,fallback`): the
+  qwen2.5:7b-recorded travel-desk scenarios in `model-live` under each unrecorded-call
+  policy, every run classified by how it ended (passed, unrecorded, approximate,
+  model); an `arms` input on the manual Ollama workflow.
+- `make eval-verdict-curve` (in `make eval`): how often a subset of n runs gives the
+  all-runs fixed-threshold verdict, for every committed flake report.
 
 ### Changed
 

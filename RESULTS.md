@@ -38,13 +38,15 @@ byte-stable ones and fails on any change.
 | The Action on a real failing PR | PR #13 (seeded `wrong_write_argument`): check failed, 4/6 scenarios on `rule:matches_ground_truth`, sticky comment posted; job 26 s | The Action on a real failing PR (M8) | `make regression-pr` | measured, observed on GitHub |
 | A pydantic-ai agent records and replays with no framework change | both suites (fake model; qwen2.5:7b via Ollama for 2 of 3 scenarios, the cancellation on the fake-model cassette) pass in `full` with 0 approximate steps, also against `run_stream`; 13 first-contact breaks listed (7 in Replay, all fixed) | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai-offline` (in `make eval`) | measured, offline |
 | Live flake on a local model | qwen2.5:7b, `model-live`, 10 runs each: 10/10, 2/10, 0/10; 1 approximate step in 30 runs; 1026 s on 4 vCPU (AMD EPYC 7763); $0 | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai` (Ollama) | measured, local model |
+| Frozen world vs the model (`model-live`, real model) | qwen2.5:7b, 20 runs per arm: `strict` 18/20 and 9/20, `fallback` 19/20 and 8/20; world-caused endings 0 and 3 of 20 under `strict` (an invented `get_booking` the recording never made), 0 by identity, 0 approximate steps in 80 runs; `cheapest_fare_in_euros` pooled with M9 47/50; 3090 s on 4 vCPU (AMD EPYC 7763); $0 | Frozen-world bias (M12) | `make eval-pydantic-ai-arms` (Ollama) | measured, local model |
+| Verdict-stability curve | 5 runs agree with the all-runs fixed-threshold verdict in ≥ 95% of draws on all 15 committed scenarios, but on only 1 of the 4 new M12 rows (90.3% to 94.3%; 0.15 to 0.35 from the 0.75 threshold); 13 of 19 rows pass 0% or 100% | Frozen-world bias (M12) | `make eval-verdict-curve` | measured, offline |
 | Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
 | D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
 | Real judge on LLMBar | — | To measure | `make eval-llmbar` (~$12.73) | **to measure** |
 | D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
 
 API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
-M9 $0; M9's live runs used qwen2.5:7b on a local CPU).
+M12 $0; the live runs of M9 and M12 used qwen2.5:7b on a local CPU).
 
 ## Live recording smoke test (M1)
 
@@ -1847,6 +1849,183 @@ What this shows:
   keeps no step arguments to confirm it offline. Identity values compare
   exactly, so a model that writes `"sfo"` for `"SFO"` reads as another
   entity.
+
+## Frozen-world bias and the verdict-stability curve (M12)
+
+Two questions (PLAN.md, M12). First, when a real model runs live against tools
+served from a recording (`model-live`), how many of its failures come from the
+frozen world and how many from the model? Second, how many runs does the
+flakiness gate's verdict need before it stops changing?
+
+### `model-live` under `strict` and `fallback` on qwen2.5:7b
+
+- **Dataset:** the two pydantic-ai travel-desk scenarios whose cassettes
+  qwen2.5:7b recorded (`cheapest_fare_in_euros`, `book_earliest_flight`,
+  `examples/pydantic_ai_agent/replay-qwen.toml`), with the suite's M11
+  `identify` keys on.
+- **Method:** the model live (qwen2.5:7b through Ollama 0.40.11, digest
+  `845dbda0…`, default sampling, no seed), the tools served from the
+  recordings, 20 runs per scenario under each unrecorded-call policy, one run
+  at a time. Under `strict` a call that no unused recording matches ends the
+  run. Under `fallback` it runs the real tool. Every run is classified by how
+  it ended (`eval/pydantic_ai.py`, `cause`): **passed**; **unrecorded** (an
+  unrecorded call, by tool or by identity, ended a `strict` run); **approximate**
+  (a step was served another request's recording and a check then failed);
+  **model** (a check failed, or the agent raised, with every served step
+  exact). A pass with an approximate step would be counted separately, and
+  none occurred. The gate is the committed reports' baseline rule: pass at a
+  pass rate of at least 0.75.
+- **Machine:** 4 vCPU, AMD EPYC 7763, CPU only. $0.
+- **Raw output:** `eval/results/m12_arms_qwen.json` (every run's cause, failed
+  checks, step counts, error and seconds).
+
+```
+$ make eval-pydantic-ai-arms
+uv run python -m eval.pydantic_ai --arms strict,fallback --runs 20
+PASS replay.toml cheapest_fare_in_euros: 5 steps, 0 approximate
+  ... (the six full-mode replays of M9, all PASS)
+arm strict: 20 model-live runs of cheapest_fare_in_euros, book_earliest_flight
+  cheapest_fare_in_euros: 18/20 passed (18 passed, 2 model)
+  book_earliest_flight: 9/20 passed (9 passed, 3 unrecorded, 8 model)
+  wall time 1562.3 s
+arm fallback: 20 model-live runs of cheapest_fare_in_euros, book_earliest_flight
+  cheapest_fare_in_euros: 19/20 passed (19 passed, 1 model)
+  book_earliest_flight: 8/20 passed (8 passed, 12 model)
+  wall time 1528.3 s
+wrote eval/results/m12_arms_qwen.json
+```
+
+| qwen2.5:7b, `model-live` | Passed | passed / unrecorded / approximate / model | Gate | Seconds per run (min / median / max) | Wall |
+|---|---|---|---|---|---|
+| M9: `cheapest_fare_in_euros` (no keys, 10 runs) | 10 / 10 | (not classified in M9) | pass | 41.3 / 47.3 / 66.5 | 1026 s for M9's 30 runs |
+| M9: `book_earliest_flight` (no keys, 10 runs) | 2 / 10 | (1 `UnrecordedCallError`, 1 approximate) | fail | 31.9 / 33.6 / 55.6 | |
+| M12 `strict`: `cheapest_fare_in_euros` | 18 / 20 | 18 / 0 / 0 / 2 | pass | 40.1 / 40.4 / 54.7 | 1562 s for the arm's 40 runs |
+| M12 `strict`: `book_earliest_flight` | 9 / 20 | 9 / 3 / 0 / 8 | fail | 30.3 / 36.9 / 45.8 | |
+| M12 `fallback`: `cheapest_fare_in_euros` | 19 / 20 | 19 / 0 / 0 / 1 | pass | 40.0 / 40.3 / 43.0 | 1528 s for the arm's 40 runs |
+| M12 `fallback`: `book_earliest_flight` | 8 / 20 | 8 / 0 / 0 / 12 | fail | 29.8 / 33.6 / 47.6 | |
+
+The M9 rows are copied unchanged from the M9 section. The v1 rows (retail
+agent: `claude-haiku-5-5` 119 / 120, `claude-opus-5-5` 30 / 30) are unchanged too.
+
+What the 80 runs say, against the plan's hypotheses:
+
+- **World-caused endings: 0 / 20 and 3 / 20 under `strict`. "At most 2 of 20
+  per scenario" is refuted on `book_earliest_flight`, by one run.** All three
+  happened after the booking: qwen searched, booked (both steps served
+  `exact`), then called `get_booking` with a booking reference it invented
+  (`DL2207_20261105_456789`, `DL2207-ALIMA-20261105`, `DL2207_20261105_ALIMA`).
+  The recording has no `get_booking` call at all, so these are unrecorded
+  *by tool*, not by identity, and the run ended before the model could answer.
+  `fallback` had no run that made an unrecorded call (0 fallback steps in 40
+  runs), so these 80 runs cannot say whether those three would have passed
+  with the real tool, which rejects an unknown reference with a retry prompt.
+- **Arms differ by one pass per scenario: 18 vs 19 and 9 vs 8. "At most 1 in
+  20" holds.** The pass rate the gate sees did not depend on the policy here.
+  With 20 runs per arm, a one-run difference is far inside sampling noise, so
+  this is "no difference measured", not "no difference".
+- **`cheapest_fare_in_euros` failed 3 times in its 40 new runs (2 `strict`, 1
+  `fallback`). "At least once" holds.** Every failure is `rule:answer_states`
+  on all-exact steps: the model got the right tool results and misreported the
+  figure. Because the arms differ by one, the plan's pooling rule allows the
+  committed 10: **47 / 50** passes (0.94).
+- **The identity keys never fired, and nothing was served approximately.**
+  0 unrecorded-by-identity endings and 0 approximate steps in 80 runs. M11
+  worried that qwen's arguments would differ in case from the recording
+  (`"sfo"` against `"SFO"`); in these runs every search, conversion and
+  booking matched its recording exactly. The keys cost nothing here, and
+  this sample gave them nothing to catch.
+- **The model is the main source of failure.** 20 of the 23 failures on
+  `book_earliest_flight` across both arms are qwen searching once and
+  stopping without booking (`tool_sequence`, `writes_match` and `answer_states`
+  fail; 1 exact step, 2 model calls). This is the same mode M9 found in 6 of
+  its 10 runs. M9's 2 / 10 is lower than the 17 / 40 pooled here, but at a
+  pass rate of 17 / 40 a run of 10 has a 13% chance of 2 or fewer passes
+  (binomial, computed with `math.comb`), so the two are compatible.
+
+### The verdict-stability curve
+
+- **Dataset:** every committed `replay flake` report run with the baseline
+  gate. `claude-haiku-5-5` (M4, 6 scenarios × 20 runs), `claude-opus-5-5` (M4,
+  6 × 5), qwen2.5:7b (M9, 3 × 10) and the four M12 arm rows above (4 × 20).
+  `m4_flake_haiku_5runs.json` is left out: it repeats the Haiku suite at 5 runs,
+  all 30 passed, and would add six rows identical to Opus's.
+- **Method:** the all-runs verdict is the baseline gate's rule, pass rate at
+  least `(p_fail + p_pass) / 2` = 0.75, with no interval. For each scenario and
+  each subset size n from 1 to runs − 1, 2,000 seeded subsets of n runs are
+  drawn without replacement from its recorded outcomes. The curve is the share
+  whose verdict agrees with the all-runs verdict. The exact share (a
+  hypergeometric count over every subset) sits beside it in the raw output,
+  and the sampled shares match it to within 0.02 everywhere. "Stable from" is the
+  smallest n from which every larger n agrees in at least 95% of draws.
+  A single run's false-pass rate (all-runs verdict fail, one run passes) is the
+  observed pass rate, and its false-fail rate is the observed failure rate, by
+  construction. They are reported, not estimated. Standard library only,
+  `agent_replay/stats.py` untouched; byte-stable (CI re-runs it in `make
+  eval`).
+- **Raw output:** `eval/results/verdict_curve.json`.
+
+```
+$ make eval-verdict-curve
+uv run python -m eval.verdict_curve
+```
+
+| source | scenario | passes | pass rate − 0.75 | verdict | agree at n=5 | stable from n | single-run false pass | single-run false fail |
+|---|---|---|---|---|---|---|---|---|
+| claude-haiku-5-5 (M4) | `cancel_pending_laptop` | 20/20 | +0.25 | pass | 100.0% | 1 | 0% | 0% |
+| claude-haiku-5-5 (M4) | `modify_address_suite` | 20/20 | +0.25 | pass | 100.0% | 1 | 0% | 0% |
+| claude-haiku-5-5 (M4) | `return_damaged_bicycle` | 20/20 | +0.25 | pass | 100.0% | 1 | 0% | 0% |
+| claude-haiku-5-5 (M4) | `exchange_waterproof_boots` | 20/20 | +0.25 | pass | 100.0% | 1 | 0% | 0% |
+| claude-haiku-5-5 (M4) | `lookup_latest_order_total` | 20/20 | +0.25 | pass | 100.0% | 1 | 0% | 0% |
+| claude-haiku-5-5 (M4) | `transfer_swapped_refunds` | 19/20 | +0.20 | pass | 100.0% | 4 | 0% | 5% |
+| claude-opus-5-5 (M4) | `cancel_pending_laptop` | 5/5 | +0.25 | pass | — | 1 | 0% | 0% |
+| claude-opus-5-5 (M4) | `modify_address_suite` | 5/5 | +0.25 | pass | — | 1 | 0% | 0% |
+| claude-opus-5-5 (M4) | `return_damaged_bicycle` | 5/5 | +0.25 | pass | — | 1 | 0% | 0% |
+| claude-opus-5-5 (M4) | `exchange_waterproof_boots` | 5/5 | +0.25 | pass | — | 1 | 0% | 0% |
+| claude-opus-5-5 (M4) | `lookup_latest_order_total` | 5/5 | +0.25 | pass | — | 1 | 0% | 0% |
+| claude-opus-5-5 (M4) | `transfer_swapped_refunds` | 5/5 | +0.25 | pass | — | 1 | 0% | 0% |
+| qwen2.5:7b (M9) | `cheapest_fare_in_euros` | 10/10 | +0.25 | pass | 100.0% | 1 | 0% | 0% |
+| qwen2.5:7b (M9) | `book_earliest_flight` | 2/10 | -0.55 | fail | 100.0% | 2 | 20% | 0% |
+| qwen2.5:7b (M9) | `cancel_refundable_booking` | 0/10 | -0.75 | fail | 100.0% | 1 | 0% | 0% |
+| qwen2.5:7b (M12) fallback | `cheapest_fare_in_euros` | 19/20 | +0.20 | pass | 100.0% | 4 | 0% | 5% |
+| qwen2.5:7b (M12) fallback | `book_earliest_flight` | 8/20 | -0.35 | fail | 94.2% | 6 | 40% | 0% |
+| qwen2.5:7b (M12) strict | `cheapest_fare_in_euros` | 18/20 | +0.15 | pass | 94.3% | 8 | 0% | 10% |
+| qwen2.5:7b (M12) strict | `book_earliest_flight` | 9/20 | -0.30 | fail | 90.3% | 6 | 45% | 0% |
+
+(Opus's scenarios have 5 runs, so n stops at 4; "—" means n = 5 is not a
+subset.)
+
+**Hypothesis: "five runs agree with the all-runs verdict in at least 95% of
+draws on every scenario." It holds on all 15 committed scenarios and is
+refuted by three of the four new M12 rows (94.3%, 94.2%, 90.3%).** The plan
+predicted this curve would be close to arithmetic, and it is: 13 of the 19
+rows pass 0% or 100% of their runs, so every subset agrees. The
+distance column decides the rest. The two committed mixed scenarios sit 0.20
+and 0.55 from the threshold. The new rows sit 0.15 to 0.35 from it, and those
+are the ones five runs cannot settle. `strict`'s `cheapest_fare_in_euros`
+(18 / 20, +0.15) needs 8 runs, where a 19 / 20 scenario needs 4.
+
+The curve is not monotone, and the reason is the threshold, not noise. The
+sampled and exact shares agree. At n = 1 to 3, a 0.75 rule passes only with
+no failures. At n = 4 to 7 it tolerates one, and at n = 8 to 11 it tolerates
+two. So a scenario that should pass gets *less* stable from n = 1 to 3
+(18 / 20: 0.90, 0.81, 0.72), jumps at n = 4 (0.97), and decays again until
+n = 8. A failing scenario does the reverse. A fixed-k gate with k chosen
+just after one of those steps is cheaper and more stable than one chosen
+before it. This is a property of the fixed-threshold rule and does not carry
+over to the SPRT, which `stats.py` will provide.
+
+What the curve does not say: how many runs any agent needs. It says how far
+these particular pass rates sit from 0.75. A scenario with a true pass rate
+near the threshold needs many more runs than any of these, and the
+sequential-gate simulation (`make bench-sprt`) is the tool for that question.
+The single-run columns show the cost of gating on one run. A single run of
+`book_earliest_flight` would have passed a scenario that fails 55% to 80% of
+its runs, 20% to 45% of the time.
+
+**Provenance.** The arms ran from the harness committed in `96f17e5` (only
+its formatting changed after the run started), with the pydantic-ai example
+unchanged since M11. Runs were one at a time. Apart from a few seconds of
+offline tests during the `strict` arm, nothing else ran on the machine.
 
 ## To measure
 
