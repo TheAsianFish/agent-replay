@@ -137,6 +137,9 @@ the rows still to measure.
 | Live flakiness on a local model (free) | qwen2.5:7b via Ollama, 10 `model-live` runs per task: lookup 10/10, booking 2/10, cancellation 0/10 (23 of 25 attempts cancel without looking the booking up); 1026 s on 4 vCPU | `make eval-pydantic-ai` (RESULTS.md, M9) |
 | Frozen world vs the model, `model-live` on qwen2.5:7b | 20 runs per arm: `strict` 18 / 20 and 9 / 20, `fallback` 19 / 20 and 8 / 20; 3 of 20 `strict` booking runs end on a call the recording never made, 0 on another entity, 0 approximate steps in 80; lookup pooled with M9 47 / 50 | `make eval-pydantic-ai-arms` (RESULTS.md, M12) |
 | Runs a fixed-threshold verdict needs | 5 runs agree with the all-runs verdict in ≥ 95% of draws on all 15 committed scenarios, but not on 3 of the 4 new ones (90–94%), which sit 0.15–0.35 from the 0.75 threshold | `make eval-verdict-curve` |
+| Cassette bytes at scale | quadratic in turns: 3.65 MB at 100 turns, 13.1 MB at 200 (seeded text, retail-sized prompt); live Opus retail traces grow 2.4 to 4.4× faster per turn; `full` replay 1.7 s at 200 turns | `make bench-scale` |
+| What compression recovers at 100 turns | xz 105×; gzip 3.8× (19× at 20 turns, until envelopes outgrow its 32 KB window); a shared-prefix encoding adds only 1.07× under xz, so cassettes compress as `.jsonl.xz` and the schema is unchanged | `make bench-scale` |
+| Run store at scale | a stored run costs what its uncompressed cassette does: 282 KB at 20 turns, 3.8 MB at 100 (not changed yet) | `make bench-scale` |
 | **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
 
 ## Install
@@ -288,6 +291,16 @@ for check in result.check(tool_sequence(cassette.tool_names()), budget(max_cost_
     `fingerprint` of the canonical request JSON.
   - Transport options (`extra_headers`, `timeout`) are never recorded.
   - Files are written atomically.
+  - A path ending in `.xz` (`run.jsonl.xz`) is the same JSONL compressed with
+    xz, read and written transparently everywhere a cassette goes
+    (`replay record --out run.jsonl.xz`, `replay run`, `replay ci` suites,
+    `replay diff`). The file is plain xz, so `xz -k run.jsonl` and
+    `xz -dk run.jsonl.xz` convert either way. Every model request repeats the
+    conversation so far, so bytes grow with the square of the turns. xz
+    recovers 105× at 100 turns. gzip recovers only 3.8×, because its 32 KB
+    window stops reaching the previous copy, so `.gz` and other suffixes are
+    refused with the rename that fixes them. Use `.xz` for long runs; short
+    cassettes read better in review as plain JSONL.
   - v1 cassettes from M1 are read through frozen v1 models and migrated in
     memory. The live Opus toy cassette stays committed in v1 to prove it.
 - **Cut points.** Each mode is a set of call kinds served from the cassette,
@@ -845,7 +858,7 @@ back. Stores created before migrations are adopted in place.
 
 | Command | What it does |
 |---|---|
-| `replay record AGENT -t TASK -o FILE [--client anthropic\|module:factory] [--force]` | Run the agent for real and write a cassette |
+| `replay record AGENT -t TASK -o FILE [--client anthropic\|module:factory] [--force]` | Run the agent for real and write a cassette (`-o`/`--out`/`--output`; a `.jsonl.xz` name writes it xz-compressed) |
 | `replay run CASSETTE [--mode full\|model-live\|tools-live] [--policy strict\|fallback\|synth] [--client REF] [--agent REF] [--expect a,b] [--strict] [--save FILE] [--json]` | Replay one cassette and run `tool_sequence`; `--strict` also fails on `approximate` steps |
 | `replay ci SUITE [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR] [--baseline FILE] [--fail-on-tool-drift] [--json FILE] [--markdown FILE] [--no-store] [--db URL]` | Replay a suite and gate on it |
 | `replay baseline SUITE -o FILE [--runs N] [--agent] [--mode] [--policy] [--client] [--cassette-dir DIR]` | Measure every scenario (no checks) and write median cost, tokens, model calls and p95 latency; exit 2 if a scenario cannot run, 1 if the agent errors (nothing written) |
@@ -1010,6 +1023,17 @@ before a stateful read still can be).
   recording buffers the stream.
 - **Schema versions are frozen.** v2 added the clock and random kinds as a
   new version with a migration, not by editing v1.
+- **Compress the file, keep the format.** Cassettes grow with the square of
+  the turns because every model request repeats the conversation. Storing
+  each request as a delta against the previous one would fix that inside the
+  format, but it needs a schema v3, a migration, and a reader that rebuilds
+  requests before it can fingerprint them. The rule, fixed before measuring,
+  was to compress with the best stdlib codec that recovers 10× at 100 turns,
+  and to change the schema only if a prefix encoding beat that codec by more
+  than 3×. xz recovered 105× and the prefix encoding added 1.07×, so the
+  schema stayed as it was. gzip, the obvious first choice, recovered 3.8×:
+  its 32 KB window cannot reach the previous envelope's copy of the
+  conversation once one envelope outgrows it (`make bench-scale`).
 - **The fake model returns real SDK objects** and reports itself as
   `fake:<model>`, so its synthetic token counts are never priced as real
   spend.
@@ -1133,8 +1157,10 @@ make ui                # npm ci + build the dashboard into agent_replay/server/s
 make ui-check          # dashboard: generated types current, tsc, eslint, vitest
 make serve             # replay serve over $REPLAY_DB_URL (or .replay/replay.db)
 make eval              # every offline evaluation (mutations, judge smoke and objective, LLMBar floors, token rates)
-make bench             # every offline benchmark (bench-sprt, bench-replay)
+make bench             # every offline benchmark (bench-sprt, bench-replay, bench-scale)
 make bench-replay      # recorder overhead per boundary and full replay vs live duration (~20 s, to .replay/)
+make bench-scale       # cassette bytes from 5 to 200 turns, codecs, store; timings to .replay/ (~1 min)
+make bench-upstream    # the pydantic-ai cassettes on pydantic-ai-slim 2.58.0 to 2.62.0 (network)
 make walkthrough       # record the README's dashboard walkthrough (Playwright + ffmpeg, ~1 min)
 make regression-pr     # open a seeded-regression PR, capture its failing check and comment, close it (gh login)
 make regression-pr-rehearse  # the same suite edit and replay ci, offline
@@ -1206,14 +1232,21 @@ Next (evolution round 2, 2026-10-27; evidence and hypotheses in
     count by one run per scenario, 3 of 40 `strict` runs ended on the frozen
     world, and five runs settle the verdict only far from the threshold; see
     [RESULTS.md](RESULTS.md))
-13. Cassette bytes at scale: a bytes-per-turn benchmark to 200 turns, gzip
-    and xz against a shared-prefix encoding, and the fix the numbers justify
+13. ~~Cassette bytes at scale: a bytes-per-turn benchmark to 200 turns, gzip
+    and xz against a shared-prefix encoding, and the fix the numbers justify~~
+    (done: bytes are quadratic, gzip collapses past its 32 KB window, xz
+    recovers 105× at 100 turns and a prefix encoding only 1.07× more, so
+    cassettes compress as `.jsonl.xz` with no schema change; see
+    [RESULTS.md](RESULTS.md))
 
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and running a flake suite's scenarios in parallel as well
-as their runs. Replaying the pydantic-ai cassettes across upstream releases
-was measured in round 2 (flat: 2.58.0 to 2.62.0 replay the 2.61.0 recordings
-exactly) and joins the scale benchmark as a row.
+as their runs. The run store is the next storage problem: it keeps every
+step's request in full, so a stored 100-turn run is 3.8 MB and its run page
+downloads 3.7 MB (`make bench-scale`); storing an `exact` step's request by
+reference to its cassette is the candidate fix. Replaying the pydantic-ai
+cassettes across upstream releases is flat (2.58.0 to 2.62.0 replay the
+2.61.0 recordings exactly; `make bench-upstream`).
 
 ## Prior art
 

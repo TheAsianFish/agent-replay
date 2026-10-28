@@ -40,13 +40,17 @@ byte-stable ones and fails on any change.
 | Live flake on a local model | qwen2.5:7b, `model-live`, 10 runs each: 10/10, 2/10, 0/10; 1 approximate step in 30 runs; 1026 s on 4 vCPU (AMD EPYC 7763); $0 | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai` (Ollama) | measured, local model |
 | Frozen world vs the model (`model-live`, real model) | qwen2.5:7b, 20 runs per arm: `strict` 18/20 and 9/20, `fallback` 19/20 and 8/20; world-caused endings 0 and 3 of 20 under `strict` (an invented `get_booking` the recording never made), 0 by identity, 0 approximate steps in 80 runs; `cheapest_fare_in_euros` pooled with M9 47/50; 3090 s on 4 vCPU (AMD EPYC 7763); $0 | Frozen-world bias (M12) | `make eval-pydantic-ai-arms` (Ollama) | measured, local model |
 | Verdict-stability curve | 5 runs agree with the all-runs fixed-threshold verdict in ≥ 95% of draws on all 15 committed scenarios, but on only 1 of the 4 new M12 rows (90.3% to 94.3%; 0.15 to 0.35 from the 0.75 threshold); 13 of 19 rows pass 0% or 100% | Frozen-world bias (M12) | `make eval-verdict-curve` | measured, offline |
+| Cassette bytes at scale | quadratic (c2 291 bytes/turn², fitted exponent 1.54 over 5 to 200 turns, 1.85 from 100 to 200); 3.65 MB at 100 turns; gzip 19.5× at 20 turns → 3.8× at 100 (envelopes outgrow its 32 KB window), xz 105×; prefix encoding under xz only 1.07× more, so `.jsonl.xz` and no schema change; `full` replay 1.7 s at 200 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline (sizes byte-stable) |
+| Real recordings vs the fit | live Opus retail requests grow 1.4 to 2.6 KB a turn (synthetic 0.58), projecting to 8.0 to 13.9 MB of requests at 100 turns; xz 8.9× to 13.6× at 3 to 6 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline |
+| Run store at scale | 282 KB a stored 20-turn run, 3.8 MB a 100-turn run (91% to 97% step JSON); `get_run` 3.7 MB | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline (machine-dependent) |
+| pydantic-ai cassettes across releases | 2.58.0 to 2.62.0: 6/6 pass, 0 approximate on each | Cassette bytes at scale (M13) | `make bench-upstream` (network) | measured, offline replay |
 | Judge-human kappa, self-consistency, probes | — | To measure | `REPLAY_STATS_IMPL=core make eval-judge` (~$1.30) | **to measure** |
 | D1 golden set | — | To measure | `make record-golden` (~$2.19) | **to measure** |
 | Real judge on LLMBar | — | To measure | `make eval-llmbar` (~$12.73) | **to measure** |
 | D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
 
 API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
-M12 $0; the live runs of M9 and M12 used qwen2.5:7b on a local CPU).
+M13 $0; the live runs of M9 and M12 used qwen2.5:7b on a local CPU).
 
 ## Live recording smoke test (M1)
 
@@ -2027,6 +2031,209 @@ its formatting changed after the run started), with the pydantic-ai example
 unchanged since M11. Runs were one at a time. Apart from a few seconds of
 offline tests during the `strict` arm, nothing else ran on the machine.
 
+## Cassette bytes at scale (M13, offline)
+
+The question (PLAN.md, M13): what does a long run cost in cassette bytes, load
+and replay time and run-store bytes, and does a standard-library compressor
+already recover what a shared-prefix encoding would? The answer decides the
+fix, by a rule written into PLAN.md before the run: transparent compressed
+cassettes with the best stdlib codec that recovers at least 10× at 100 turns,
+and a new cassette schema with the prefix encoding only if it beats that codec
+by more than 3×. (PLAN.md calls it "v2", but cassettes are already at schema 2,
+so it would have been v3.)
+
+- **Dataset, synthetic:** a fake-model agent (`eval/bench_scale.py`, `run`)
+  that calls one tool a turn and answers on its last turn, so `n` turns are
+  `n` model calls and `n - 1` tool calls, at 5, 20, 50, 100 and 200 turns. The
+  system prompt is the retail agent's length (6,123 characters) and each tool
+  result about 250 bytes. Both are seeded, non-repeating text: a seeded
+  vocabulary of 4,096 pseudo-words drawn uniformly, about 12 bits a word. A
+  repeated filler would flatter every compressor. Recorded with a fixed
+  clock, timer and cassette id, so the bytes are byte-stable.
+- **Dataset, real:** every committed real recording: the six live
+  `claude-opus-5-5` retail cassettes (M2) and the two qwen2.5:7b pydantic-ai
+  cassettes (M9).
+- **Method:** per cassette, the JSONL bytes and the largest line (one
+  envelope); gzip (stdlib `gzip` over zlib 1.3.2, level 9, DEFLATE with a
+  32 KB window), bz2 (level 9, 900 KB blocks) and xz (stdlib `lzma` over
+  liblzma 5.8.3, preset 6, an 8 MB dictionary); and a shared-prefix encoding
+  (`prefix_encode`: each model request stored as the messages it appends to
+  the previous model request, plus any changed field), raw and under each
+  codec. The encoding is a prototype kept inside `eval/`. Every cassette is
+  checked to decode back to the same JSON. The exponent is the least-squares
+  slope of log bytes on log turns. The quadratic is an exact least-squares fit
+  of bytes = c0 + c1·n + c2·n². Timings are medians of 5. The store
+  measurement replays the 20-turn run 100 times and the 100-turn run 10 times
+  in `full` into a fresh SQLite store (`Store.save_run`), then reads one run
+  back (`Store.get_run`, the `/api/runs/{id}` body).
+- **Command:** `make bench-scale` (about a minute). The test suite re-checks
+  the raw and prefix-encoded sizes against the committed report
+  (`tests/test_bench_scale.py`). Compressed sizes are recorded with the codec
+  versions, because another zlib or liblzma build can differ by a few bytes.
+- **Machine:** 4 vCPU, AMD EPYC 7763, CPython 3.12.16. $0.
+- **Raw output:** `eval/results/bench_scale_sizes.json` (sizes, fit,
+  decision) and `eval/results/bench_scale.json` (timings, store).
+
+### Synthetic runs: bytes and what each codec recovers
+
+Each ratio is raw bytes over compressed bytes (compressed size in brackets).
+"prefix" is the prefix encoding alone; "prefix+gzip" and "prefix+xz" put the
+codec on top of it.
+
+| turns | envelopes | raw bytes | bytes/turn | largest line | gzip | bz2 | xz | prefix | prefix+gzip | prefix+xz |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 5 | 9 | 44,366 | 8,873 | 9,447 | 6.91× (6,423) | 4.6× (9,652) | 7.65× (5,800) | 2.93× (15,152) | 7.29× | 7.73× (5,736) |
+| 20 | 39 | 265,126 | 13,256 | 18,163 | 19.46× (13,624) | 14.33× (18,502) | 25.09× (10,568) | 6.07× (43,702) | 23.2× | 25.84× (10,260) |
+| 50 | 99 | 1,099,243 | 21,985 | 35,611 | 11.12× (98,813) | 19.67× (55,885) | 55.47× (19,816) | 10.9× (100,858) | 49.82× | 58.26× (18,868) |
+| 100 | 199 | 3,653,072 | 36,531 | 64,701 | 3.84× (951,034) | 22.2× (164,522) | 104.85× (34,840) | 18.59× (196,462) | 92.01× | 111.78× (32,680) |
+| 200 | 399 | 13,133,721 | 65,669 | 123,066 | 3.28× (4,003,968) | 17.87× (734,953) | 206.04× (63,744) | 33.83× (388,191) | 175.31× | 224.16× (58,592) |
+
+**Growth.** The fitted exponent over 5 to 200 turns is 1.539. Between
+neighbouring sizes it climbs: 1.29 (5→20), 1.55 (20→50), 1.73 (50→100), 1.85
+(100→200). The exact fit is bytes ≈ 492 + 7,395·n + 291.4·n². So bytes are
+quadratic, but the linear term (the system prompt and tool list every request
+carries) dominates until about 25 turns (7,395 / 291.4). That is why a slope
+over the whole range reads 1.5 and not 2. The hypothesis said "an exponent
+near 2". It holds for the n² term but not for the slope over this range. The
+n² coefficient is half of what each model request adds to the next: requests
+grow 581 bytes a turn (the reply and the tool result), and 581 / 2 ≈ 291.
+Model envelopes are 94% of the bytes at 5 turns and 98.5% at 100.
+
+**The gzip-window hypothesis: confirmed.** gzip recovers 19.5× at 20 turns,
+where the largest envelope is 18 KB. At 50 turns, with envelopes up to 35.6 KB,
+it drops to 11.1×. At 100 turns (64.7 KB) it is 3.8× and at 200 turns 3.3×.
+DEFLATE can only point back 32 KB. Once one envelope is longer than that, the
+previous envelope's copy of the same conversation is out of reach, and gzip
+compresses each envelope as if it were new text. The control is the prefix
+encoding. With the copies removed before gzip runs, gzip recovers 92× at 100
+turns instead of 3.8×. So the collapse is about the distance to the repeat,
+not the text. bz2's 900 KB blocks peak at 22× and fall back to 17.9× at 200
+turns, when the cassette is 15 blocks long. xz's 8 MB dictionary keeps
+finding the repeats: 105× at 100 turns and 206× at 200.
+
+**The decision.** At 100 turns the best codec is xz at 104.85×, which clears
+the 10× bar. The prefix encoding under xz is 32,680 bytes against 34,840 for xz
+alone, 1.07× smaller. The raw prefix encoding (196,462 bytes) is 5.6× *larger*
+than xz. Neither comes near 3×, so the rule chooses transparent `.jsonl.xz`
+cassettes and no schema change. That is what was built: a cassette path
+ending in `.xz` is read and written as xz (`Cassette.load`, `Cassette.dump`,
+so `replay record --out run.jsonl.xz`, `replay run`, `replay ci`, `replay
+diff` and the suite files take it as is). The file is plain xz, so the `xz`
+tool converts either way. Other compression suffixes (`.gz`, `.bz2`, `.zst`, …)
+are refused with the rename that fixes them, because gzip is the codec this
+table rules out.
+
+### Real recordings beside the synthetic fit
+
+"growth/turn" is the mean number of bytes each model request adds to the one
+before it (the reply and the tool results; it sets the n² term at c2 ≈
+growth / 2). "requests at 100 turns" projects this recording's model requests
+alone to 100 turns at that growth (100 · first + growth · 100 · 99 / 2). The
+same projection from the 5-turn synthetic run gives 3.52 MB. The measured
+100-turn run holds 3.60 MB of model envelopes (98.5% of 3.65 MB), so the
+projection is close.
+
+| cassette | turns | raw bytes | bytes/turn | largest line | model share | first request | growth/turn | gzip | bz2 | xz | prefix | requests at 100 turns |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| synthetic, 5 turns | 5 | 44,366 | 8,873 | 9,447 | 0.942 | 6,469 | 580 | 6.91× | 4.6× | 7.65× | 2.93× | 3.5 MB |
+| `live/cancel_pending_laptop.jsonl` | 5 | 84,880 | 16,976 | 19,044 | 0.934 | 12,543 | 1,369 | 11.27× | 9.18× | 12.85× | 2.92× | 8.0 MB |
+| `live/exchange_waterproof_boots.jsonl` | 6 | 126,419 | 21,070 | 27,470 | 0.907 | 12,531 | 2,562 | 11.15× | 9.73× | 13.59× | 2.82× | 13.9 MB |
+| `live/lookup_latest_order_total.jsonl` | 4 | 66,814 | 16,704 | 19,700 | 0.922 | 12,405 | 1,596 | 7.94× | 6.87× | 8.85× | 2.37× | 9.1 MB |
+| `live/modify_address_suite.jsonl` | 3 | 50,489 | 16,830 | 17,306 | 0.921 | 12,478 | 1,932 | 8.12× | 6.75× | 8.88× | 2.14× | 10.8 MB |
+| `live/return_damaged_bicycle.jsonl` | 5 | 92,071 | 18,414 | 21,575 | 0.915 | 12,486 | 2,011 | 10.8× | 8.92× | 12.41× | 2.72× | 11.2 MB |
+| `live/transfer_swapped_refunds.jsonl` | 5 | 86,020 | 17,204 | 19,206 | 0.945 | 12,539 | 1,405 | 10.15× | 8.1× | 11.54× | 2.9× | 8.2 MB |
+| `qwen/book_earliest_flight.jsonl` | 3 | 13,156 | 4,385 | 4,360 | 0.859 | 2,342 | 618 | 5.45× | 4.64× | 5.54× | 1.7× | 3.3 MB |
+| `qwen/cheapest_fare_in_euros.jsonl` | 3 | 12,897 | 4,299 | 4,202 | 0.866 | 2,353 | 556 | 5.46× | 4.66× | 5.56× | 1.73× | 3.0 MB |
+
+What the real traces say about the fit:
+
+- **The shape holds.** Model envelopes are 86% to 95% of every real cassette,
+  and each model request carries the one before it plus a fixed increment, as
+  in the synthetic run.
+- **Real Opus runs grow faster.** The live retail requests start at 12.5 KB
+  (a 6.1 KB policy plus a 6.1 KB tool list) against 6.5 KB synthetic. They
+  grow 1.4 to 2.6 KB a turn against 0.58 KB, because Opus's replies and the
+  retail tool results are longer. Projected to 100 turns, their model
+  requests alone come to 8.0 to 13.9 MB, against the synthetic run's
+  3.65 MB. The pydantic-ai agent on qwen2.5:7b, with a short prompt and short
+  replies, projects to 3.0 to 3.3 MB, close to the synthetic workload. So the
+  synthetic table is a lower bound for a retail-sized Opus agent, not a
+  typical case.
+- **Real text compresses better at equal length.** At 3 to 6 turns, xz
+  recovers 8.9× to 13.6× on the live retail cassettes against 7.65× on the
+  5-turn synthetic run. The live cassettes repeat English, JSON keys and the
+  tool list, where the synthetic text is uniform pseudo-words. So the
+  synthetic codec ratios are conservative, and the 10× bar is easier to
+  clear on real traces. These short real runs have no envelope near 32 KB
+  (the largest is 27 KB), so they cannot show the gzip collapse themselves.
+  At their measured growth, a live retail run would pass 32 KB at about
+  turn 8 to 15. (That is an extrapolation from the growth column, not a
+  measurement.)
+- The prefix encoding alone recovers 1.7× to 2.9× on the real cassettes,
+  against 5.5× to 13.6× for xz.
+
+### Timings (machine-dependent)
+
+Seconds, medians of 5 (recording: one run). "load" is `Cassette.loads` on the
+JSONL, or decompress then `loads`, which is what `Cassette.load` does for a
+`.jsonl.xz` path.
+
+| turns | record | load JSONL | load gzip | load bz2 | load xz | compress xz | compress bz2 | `full` replay |
+|---|---|---|---|---|---|---|---|---|
+| 5 | 0.006 | 0.0002 | 0.0003 | 0.0011 | 0.0005 | 0.0033 | 0.0047 | 0.004 |
+| 20 | 0.036 | 0.0013 | 0.0016 | 0.0064 | 0.0018 | 0.0144 | 0.0563 | 0.024 |
+| 50 | 0.157 | 0.0062 | 0.0076 | 0.0318 | 0.0080 | 0.0648 | 0.2225 | 0.100 |
+| 100 | 0.673 | 0.0325 | 0.0429 | 0.1200 | 0.0360 | 0.2423 | 0.8317 | 0.456 |
+| 200 | 2.537 | 0.2903 | 0.3066 | 0.5501 | 0.2850 | 1.0493 | 3.0614 | 1.660 |
+
+- `full` replay at 200 turns takes 1.7 s, under the 3 s the hypothesis allowed.
+- Compression barely changes load time. xz adds 0.3 to 3.5 ms up to 100
+  turns, and at 200 turns it measured 5 ms *faster*, which is noise. Parsing
+  13 MB of JSON costs far more than decompressing 64 KB. Loading is still
+  superlinear in turns, about ×9 from 100 to 200. So compression saves disk
+  and git, not parse time. The hypothesis held.
+- Writing xz costs 0.24 s at 100 turns and 1.05 s at 200, once per recording.
+  bz2 is the slowest to write and to read, 3.1 s and 0.55 s at 200 turns, and
+  recovers the least.
+
+### The run store (SQLite, not changed by this milestone)
+
+| load | cassette bytes | DB bytes | DB bytes per run | step JSON share | `save_run` median | `get_run` payload | `get_run` median |
+|---|---|---|---|---|---|---|---|
+| 100 runs × 20 turns | 265,126 | 28,209,152 | 282,092 | 0.914 | 0.006 s | 267,622 | 0.004 s |
+| 10 runs × 100 turns | 3,653,072 | 38,432,768 | 3,843,277 | 0.967 | 0.042 s | 3,665,429 | 0.232 s |
+
+The store keeps every step's request and response in full, so a stored run
+costs about what its cassette costs uncompressed: 282 KB a 20-turn run, 3.8 MB
+a 100-turn run, 91% to 97% of it step JSON. The dashboard's run page
+downloads 3.7 MB for one 100-turn run, and reading it back took 0.23 s in the
+committed run. That timing is noisy: an earlier run of the same command gave
+0.067 s. Compressed cassettes do not touch this.
+The store fix PLAN.md deferred (not copying an `exact` step's request, which
+the cassette already holds) is now the next storage problem, with this table
+as its baseline. DB file sizes vary by a few KB between runs (random run ids),
+so they are not byte-checked.
+
+### Across upstream releases of pydantic-ai
+
+The committed pydantic-ai cassettes were recorded on pydantic-ai-slim 2.61.0.
+`make bench-upstream` installs each release into a throwaway venv and replays
+both suites in `full` (needs network for PyPI; raw output
+`eval/results/upstream_pydantic_ai.json`):
+
+| pydantic-ai-slim | `replay.toml` (fake model) | `replay-qwen.toml` (qwen2.5:7b) |
+|---|---|---|
+| 2.58.0 | 3/3 pass, 0 of 15 steps approximate | 3/3 pass, 0 of 15 steps approximate |
+| 2.59.0 | 3/3 pass, 0 of 15 approximate | 3/3 pass, 0 of 15 approximate |
+| 2.60.0 | 3/3 pass, 0 of 15 approximate | 3/3 pass, 0 of 15 approximate |
+| 2.61.0 (recorded) | 3/3 pass, 0 of 15 approximate | 3/3 pass, 0 of 15 approximate |
+| 2.62.0 | 3/3 pass, 0 of 15 approximate | 3/3 pass, 0 of 15 approximate |
+
+Across these five releases the framework sent byte-identical requests for
+this agent, so a cassette survives the upgrade, and the matrix has no
+regression to catch. This is the evolution-round measurement, reproduced by
+a committed command.
+
 ## To measure
 
 - **SPRT savings vs the fixed-sample test.** `make bench-sprt` (offline, about
@@ -2102,3 +2309,6 @@ Project total: $3.326.
 
 API spend in M8: $0 (the rehearsals and the walkthrough are offline; the real
 PR costs Actions minutes, not API calls). Project total: $3.326.
+
+API spend in M13: $0 (fake-model runs and committed recordings). Project
+total: $3.326.

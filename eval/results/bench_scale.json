@@ -1,0 +1,127 @@
+{
+  "command": "make bench-scale",
+  "environment": {
+    "python": "3.12.16",
+    "implementation": "CPython",
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu_model": "AMD EPYC 7763 64-Core Processor",
+    "cpu_count": 4
+  },
+  "codec_versions": {
+    "zlib": "1.3.2",
+    "bz2": "libbz2 (Python 3.12.16)",
+    "liblzma": "5.8.3",
+    "gzip_level": 9,
+    "bz2_level": 9,
+    "xz_preset": 6
+  },
+  "runs": [
+    {
+      "turns": 5,
+      "record_s": 0.0061,
+      "load_s": {
+        "jsonl": 0.0002,
+        "gzip": 0.0003,
+        "bz2": 0.0011,
+        "xz": 0.0005
+      },
+      "compress_s": {
+        "gzip": 0.0004,
+        "bz2": 0.0047,
+        "xz": 0.0033
+      },
+      "replay_full_s": 0.004
+    },
+    {
+      "turns": 20,
+      "record_s": 0.0361,
+      "load_s": {
+        "jsonl": 0.0013,
+        "gzip": 0.0016,
+        "bz2": 0.0064,
+        "xz": 0.0018
+      },
+      "compress_s": {
+        "gzip": 0.0017,
+        "bz2": 0.0563,
+        "xz": 0.0144
+      },
+      "replay_full_s": 0.0238
+    },
+    {
+      "turns": 50,
+      "record_s": 0.1572,
+      "load_s": {
+        "jsonl": 0.0062,
+        "gzip": 0.0076,
+        "bz2": 0.0318,
+        "xz": 0.008
+      },
+      "compress_s": {
+        "gzip": 0.0105,
+        "bz2": 0.2225,
+        "xz": 0.0648
+      },
+      "replay_full_s": 0.0998
+    },
+    {
+      "turns": 100,
+      "record_s": 0.6725,
+      "load_s": {
+        "jsonl": 0.0325,
+        "gzip": 0.0429,
+        "bz2": 0.12,
+        "xz": 0.036
+      },
+      "compress_s": {
+        "gzip": 0.0712,
+        "bz2": 0.8317,
+        "xz": 0.2423
+      },
+      "replay_full_s": 0.4557
+    },
+    {
+      "turns": 200,
+      "record_s": 2.5366,
+      "load_s": {
+        "jsonl": 0.2903,
+        "gzip": 0.3066,
+        "bz2": 0.5501,
+        "xz": 0.285
+      },
+      "compress_s": {
+        "gzip": 0.2952,
+        "bz2": 3.0614,
+        "xz": 1.0493
+      },
+      "replay_full_s": 1.6595
+    }
+  ],
+  "store": [
+    {
+      "turns": 20,
+      "runs": 100,
+      "cassette_bytes": 265126,
+      "save_run_median_s": 0.006,
+      "save_run_max_s": 0.0161,
+      "db_bytes": 28209152,
+      "db_bytes_per_run": 282092,
+      "step_json_share": 0.914,
+      "get_run_payload_bytes": 267622,
+      "get_run_median_s": 0.004
+    },
+    {
+      "turns": 100,
+      "runs": 10,
+      "cassette_bytes": 3653072,
+      "save_run_median_s": 0.0422,
+      "save_run_max_s": 0.0449,
+      "db_bytes": 38432768,
+      "db_bytes_per_run": 3843277,
+      "step_json_share": 0.967,
+      "get_run_payload_bytes": 3665429,
+      "get_run_median_s": 0.232
+    }
+  ]
+}
