@@ -1239,14 +1239,35 @@ Next (evolution round 2, 2026-10-27; evidence and hypotheses in
     cassettes compress as `.jsonl.xz` with no schema change; see
     [RESULTS.md](RESULTS.md))
 
+Next (evolution round 3, 2026-10-28; evidence and hypotheses in
+[PLAN.md](PLAN.md), "Evolution round 3"):
+
+14. Long recordings that survive their process (each envelope appended to a
+    `.partial` file as it completes, so a killed recording replays what it
+    saw), and a cassette load that is linear in bytes: a pilot measurement
+    found load time dominated by the garbage collector rather than by JSON
+    parsing, as RESULTS.md M13 assumed, so the pause is scoped to
+    `Cassette.load` and `make bench-scale` measures it at 400 turns with peak
+    memory per run
+15. Does `model-live` survive the change it exists to test? qwen2.5:3b and an
+    edited prompt against the qwen2.5:7b cassettes, under `strict` and
+    `fallback`, every run classified by cause, with a same-day control and a
+    `temperature=0` arm
+16. Does frozen-world divergence compound on a long chain? A 9-call task whose
+    every argument comes from the previous result, recorded on qwen2.5:7b (the
+    first real recording past 6 turns), with a survival curve against the
+    2% per-call rate the short runs measured
+
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and running a flake suite's scenarios in parallel as well
-as their runs. The run store is the next storage problem: it keeps every
-step's request in full, so a stored 100-turn run is 3.8 MB and its run page
-downloads 3.7 MB (`make bench-scale`); storing an `exact` step's request by
-reference to its cassette is the candidate fix. Replaying the pydantic-ai
-cassettes across upstream releases is flat (2.58.0 to 2.62.0 replay the
-2.61.0 recordings exactly; `make bench-upstream`).
+as their runs. The run store keeps every step's request in full, so a stored
+100-turn run is 3.8 MB and its run page downloads 3.7 MB (`make bench-scale`);
+storing an `exact` step's request by reference to its cassette would recover
+most of that in `full` mode only, since live model steps are 85.9% to 94.5%
+of the committed real recordings' bytes and a `model-live` run must store them
+in full. Replaying the
+pydantic-ai cassettes across upstream releases is flat (2.58.0 to 2.62.0
+replay the 2.61.0 recordings exactly; `make bench-upstream`).
 
 ## Prior art
 
