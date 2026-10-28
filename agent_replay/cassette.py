@@ -6,11 +6,20 @@ the calls finished; the last line is a ``footer`` with the run's outcome.
 Versions are frozen once released. v2 added the ``clock`` and ``random``
 envelope kinds; v1 files are still read, through the frozen v1 models in
 :mod:`agent_replay._cassette_v1` and a migration, and every write is v2.
+
+A path ending in ``.xz`` (``run.jsonl.xz``) is the same JSONL in the xz format
+(stdlib :mod:`lzma`, preset 6), read and written transparently; the standard
+``xz`` tool converts either way. Every model envelope repeats the conversation
+so far, so bytes grow with the square of the turns; xz's 8 MB dictionary sees
+those copies (``make bench-scale``: 105x at 100 turns), where gzip's 32 KB
+window stops seeing them once one envelope outgrows it (3.8x), so ``.gz`` and
+other suffixes are refused rather than silently stored uncompressed.
 """
 
 from __future__ import annotations
 
 import json
+import lzma
 import os
 import tempfile
 from datetime import datetime
@@ -25,6 +34,10 @@ from agent_replay.errors import CassetteError
 
 SCHEMA_VERSION = 2
 READABLE_VERSIONS = (1, 2)
+COMPRESSED_SUFFIX = ".xz"
+XZ_PRESET = 6
+_XZ_MAGIC = b"\xfd7zXZ\x00"
+_REFUSED_SUFFIXES = (".gz", ".gzip", ".bz2", ".zst", ".zstd", ".lz4", ".zip", ".br")
 
 
 class Kind(StrEnum):
@@ -135,13 +148,20 @@ class Cassette(_Strict):
         return "\n".join(lines) + "\n"
 
     def dump(self, path: str | Path) -> None:
-        """Write atomically, so an interrupted recording never leaves half a cassette."""
+        """Write atomically, so an interrupted recording never leaves half a cassette.
+
+        A path ending in ``.xz`` is written xz-compressed.
+        """
         path = Path(path)
+        compressed = _is_compressed(path)
+        data = self.dumps().encode("utf-8")
+        if compressed:
+            data = lzma.compress(data, format=lzma.FORMAT_XZ, preset=XZ_PRESET)
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
         try:
-            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
-                fh.write(self.dumps())
+            with os.fdopen(fd, "wb") as fh:
+                fh.write(data)
             # mkstemp creates the file owner-only (0600); give the cassette the
             # permissions a plain open() would, so it can be shared like any source file.
             os.chmod(tmp, 0o666 & ~_umask())
@@ -177,16 +197,64 @@ class Cassette(_Strict):
 
     @classmethod
     def load(cls, path: str | Path) -> Cassette:
+        """Read a cassette; a path ending in ``.xz`` is decompressed first."""
         path = Path(path)
+        compressed = _is_compressed(path)
         try:
-            text = path.read_text(encoding="utf-8")
+            data = path.read_bytes()
         except FileNotFoundError as exc:
             raise CassetteError(
                 f"cassette {path} does not exist; record one with `replay record`"
             ) from exc
-        except (OSError, UnicodeDecodeError) as exc:
+        except OSError as exc:
+            raise CassetteError(f"cannot read cassette {path}: {exc}") from exc
+        if compressed:
+            try:
+                data = lzma.decompress(data, format=lzma.FORMAT_XZ)
+            except lzma.LZMAError as exc:
+                raise CassetteError(
+                    f"cannot read cassette {path}: not a valid xz file ({exc}); a plain "
+                    "JSONL cassette must not end in .xz (rename it, or compress it with `xz`)"
+                ) from exc
+        elif data.startswith(_XZ_MAGIC):
+            raise CassetteError(
+                f"cassette {path} is xz-compressed but its name does not end in .xz; "
+                f"rename it to {path.name}.xz"
+            )
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError as exc:
             raise CassetteError(f"cannot read cassette {path}: {exc}") from exc
         return cls.loads(text, source=str(path))
+
+
+def _is_compressed(path: Path) -> bool:
+    """Whether ``path`` names an xz cassette; other compression suffixes are an error."""
+    suffix = path.suffix.lower()
+    if suffix == COMPRESSED_SUFFIX:
+        return True
+    if suffix in _REFUSED_SUFFIXES:
+        raise CassetteError(
+            f"cassette {path}: {suffix} is not a supported compression; name it "
+            f"{path.with_suffix('').name}.xz (cassettes compress with xz: gzip's 32 KB "
+            "window misses the conversation every model request repeats)"
+        )
+    return False
+
+
+def check_cassette_name(path: str | Path) -> None:
+    """Refuse a compression suffix other than ``.xz`` before anything is recorded.
+
+    ``dump`` refuses it too, but a command that runs a live agent first should
+    fail before spending the calls, not after.
+    """
+    _is_compressed(Path(path))
+
+
+def is_cassette_path(path: str | Path) -> bool:
+    """Whether ``path`` is named like a cassette: ``*.jsonl`` or ``*.jsonl.xz``."""
+    name = Path(path).name.lower()
+    return name.endswith((".jsonl", ".jsonl" + COMPRESSED_SUFFIX))
 
 
 def _schema_version(source: str, line: str) -> int:

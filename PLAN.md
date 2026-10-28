@@ -1148,4 +1148,35 @@ it. M12 depends on M11's `identify` keys and is built after it.
     the Haiku suite, all passing. (f) Not done: whether the three `strict`
     endings would have passed with the real tool; no `fallback` run made the
     same call, and 20 runs per arm cannot resolve a one-run difference.
-- [ ] M13: Cassette bytes at scale — `eval/bench_scale.py` as `make bench-scale`: fake-model runs of 5, 20, 50, 100 and 200 turns with the retail-sized system prompt, and store measurements on 100 runs of 20 turns and 10 runs of 100 turns: cassette bytes with the fitted exponent, bytes new per turn, `Cassette.load` and `full` replay time, `save_run` time and database bytes, `get_run` payload bytes, with seeded, non-repeating tool results and system prompt, and gzip and xz (stdlib `zlib`, `lzma`) of the JSONL against a shared-prefix encoding prototype kept inside `eval/`, with the largest envelope's size beside each ratio; the bytes and bytes per turn of every committed real recording (the six live retail cassettes and the qwen2.5:7b ones) beside the synthetic fit, and the codecs' ratios on them, so the fit is checked against real traces; the upstream-release matrix of the pydantic-ai cassettes (2.58.0 to 2.62.0) as a row; then the fix the rule chooses: transparent compressed cassettes chosen by suffix (`replay record --out x.jsonl.xz`, `Cassette.load`, `replay ci`) with the best stdlib codec that recovers at least 10× at 100 turns, cassette schema v2 with the prefix encoding only if it beats that codec by more than 3×. Done when `make bench-scale` writes the table (raw and prefix-encoded sizes byte-stable and checked in CI; compressed sizes recorded with the zlib and liblzma versions; timings machine-dependent like `bench-replay`), the gzip-window hypothesis is answered, RESULTS.md holds it with the decision and its reason, and whichever fix the rule chose is in with tests and documented in the README.
+- [x] M13: Cassette bytes at scale — `eval/bench_scale.py` as `make bench-scale`: fake-model runs of 5, 20, 50, 100 and 200 turns with the retail-sized system prompt, and store measurements on 100 runs of 20 turns and 10 runs of 100 turns: cassette bytes with the fitted exponent, bytes new per turn, `Cassette.load` and `full` replay time, `save_run` time and database bytes, `get_run` payload bytes, with seeded, non-repeating tool results and system prompt, and gzip and xz (stdlib `zlib`, `lzma`) of the JSONL against a shared-prefix encoding prototype kept inside `eval/`, with the largest envelope's size beside each ratio; the bytes and bytes per turn of every committed real recording (the six live retail cassettes and the qwen2.5:7b ones) beside the synthetic fit, and the codecs' ratios on them, so the fit is checked against real traces; the upstream-release matrix of the pydantic-ai cassettes (2.58.0 to 2.62.0) as a row; then the fix the rule chooses: transparent compressed cassettes chosen by suffix (`replay record --out x.jsonl.xz`, `Cassette.load`, `replay ci`) with the best stdlib codec that recovers at least 10× at 100 turns, cassette schema v2 with the prefix encoding only if it beats that codec by more than 3×. Done when `make bench-scale` writes the table (raw and prefix-encoded sizes byte-stable and checked in CI; compressed sizes recorded with the zlib and liblzma versions; timings machine-dependent like `bench-replay`), the gzip-window hypothesis is answered, RESULTS.md holds it with the decision and its reason, and whichever fix the rule chose is in with tests and documented in the README.
+  - *M13 notes (2026-10-28).* Built as planned; results in RESULTS.md, M13.
+    (a) "Cassette schema v2" in the rule above means a new schema version:
+    cassettes are already at schema 2, so a prefix encoding would have been
+    v3. The rule did not choose it, so nothing changes. (b) bz2 (stdlib) was
+    measured beside gzip and xz, because the rule says "the best stdlib
+    codec". It peaks at 22× and loses to xz everywhere. (c) Hypotheses: bytes
+    are quadratic (c2 = 291 B/turn², half of each request's 581-byte growth),
+    but the fitted exponent over 5 to 200 turns is 1.54, not "near 2". The
+    linear term dominates until about 25 turns, and the slope between sizes
+    climbs from 1.29 to 1.85. gzip collapses as predicted, from 19.5× at 20
+    turns to 3.8× at 100, once envelopes outgrow its 32 KB window; gzip on the
+    prefix encoding recovers 92×, which pins the cause on the distance to the
+    repeat. xz keeps recovering (105×, 206×). The prefix encoding beats xz by
+    1.07× under xz, and the raw prefix encoding is 5.6× larger than xz (holds:
+    under 3×). `full` replay takes 1.7 s at 200 turns (holds: under 3 s), and
+    xz does not change load time (holds). (d) The real traces confirm the
+    shape (model envelopes 86% to 95%), grow 2.4 to 4.4× faster per turn on
+    Opus retail, and compress better than the synthetic run at equal turns
+    (not at equal bytes: they are about twice as long), so per turn the
+    synthetic table is the conservative case. (e) The fix is
+    transparent `.jsonl.xz` cassettes in `Cassette.load` and `dump`, with other
+    compression suffixes refused, and `--out` on `replay record`. (f) The run
+    store is untouched and is now the measured storage problem: 3.8 MB a
+    stored 100-turn run, 91% to 97% of it step JSON. The deferred "don't copy
+    an exact step's request" fix has this as its baseline. (g) The
+    upstream-release matrix is `make bench-upstream` (needs network, so it is
+    not part of `make bench`): 6/6 pass and 0 approximate on all five
+    releases. (h) Not done: PostgreSQL store bytes (no server here; SQLite
+    only), and real traces longer than six turns. No committed recording
+    reaches 32 KB per envelope, so the gzip collapse on real text is
+    extrapolated from the growth column, not observed.

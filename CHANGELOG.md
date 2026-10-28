@@ -40,6 +40,15 @@ every older version.
 - `make eval-verdict-curve` (in `make eval`): how often a subset of n runs gives the
   all-runs fixed-threshold verdict, for every committed flake report.
 
+- xz-compressed cassettes: a cassette path ending in `.xz` (`run.jsonl.xz`) is read and
+  written as xz everywhere a cassette goes (`replay record --out run.jsonl.xz`, `replay
+  run`, `replay ci` suites, `replay diff`, `Cassette.load` / `dump`). The file is plain
+  xz, so the `xz` tool converts either way. `.gz`, `.bz2`, `.zst` and other compression
+  suffixes are refused with the rename that fixes them. `replay record` also takes `--out`.
+- `make bench-scale`: cassette bytes, codecs, load, replay and run-store timings for runs
+  of 5 to 200 turns and for every committed real recording. `make bench-upstream`: the
+  pydantic-ai cassettes replayed on pydantic-ai-slim 2.58.0 to 2.62.0.
+
 ### Changed
 
 - A run whose model has no price is reported as `unpriced` (or `$x + N unpriced

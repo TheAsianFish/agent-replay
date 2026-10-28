@@ -7,7 +7,7 @@
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
 	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough \
 	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline \
-	eval-pydantic-ai-arms eval-verdict-curve
+	eval-pydantic-ai-arms eval-verdict-curve bench-scale bench-scale-record bench-upstream
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -108,8 +108,27 @@ bench-replay-record:
 eval: eval-mutations eval-judge-smoke eval-judge-objective eval-llmbar-heuristics token-rates \
 	eval-pydantic-ai-offline eval-verdict-curve
 
-# Every offline benchmark: the sequential gate simulation and replay speed. No key.
-bench: bench-sprt bench-replay
+# Every offline benchmark: the sequential gate simulation, replay speed and cassette bytes
+# at scale. No key.
+bench: bench-sprt bench-replay bench-scale
+
+# M13: cassette bytes for fake-model runs of 5 to 200 turns and for every committed real
+# recording, through gzip, bz2 and xz and a shared-prefix encoding, and the decision rule;
+# then load, replay and run-store timings (about a minute). The sizes report is committed and
+# byte-stable apart from the compressed sizes (recorded with the codec versions); the test
+# suite re-checks its raw and prefix-encoded sizes. Timings depend on the machine, so they go
+# to .replay/ unless `make bench-scale-record` rewrites the committed copy.
+BENCH_SCALE_OUT ?= .replay/bench_scale.json
+bench-scale:
+	uv run python -m eval.bench_scale --out $(BENCH_SCALE_OUT)
+
+bench-scale-record:
+	$(MAKE) bench-scale BENCH_SCALE_OUT=eval/results/bench_scale.json
+
+# The pydantic-ai cassettes (recorded on 2.61.0) replayed in full on pydantic-ai-slim 2.58.0
+# to 2.62.0, each in a throwaway venv under .replay/upstream/. Needs network (PyPI).
+bench-upstream:
+	uv run python -m eval.upstream_matrix --out eval/results/upstream_pydantic_ai.json
 
 # The judge against the deterministic checks on the live retail recordings and the
 # seeded mutants. Offline from the committed verdict cache; drop --offline to judge

@@ -81,9 +81,14 @@ make ui           npm ci + build the dashboard into agent_replay/server/static
 make ui-check     dashboard: check:types, typecheck, lint, vitest
 make serve        replay serve over $REPLAY_DB_URL
 make eval         every offline evaluation (mutations, judge smoke + objective, LLMBar floors, token rates)
-make bench        every offline benchmark (bench-sprt, bench-replay)
+make bench        every offline benchmark (bench-sprt, bench-replay, bench-scale)
 make bench-replay recorder overhead per boundary and full replay vs live duration (to .replay/; not byte-stable)
 make bench-replay-record  the same, rewriting the committed eval/results/bench_replay.json that RESULTS.md quotes
+make bench-scale  cassette bytes for fake-model runs of 5 to 200 turns and every committed real recording,
+                  through gzip, bz2, xz and a shared-prefix encoding, the M13 decision, then load, replay and
+                  store timings (to .replay/); the sizes report is committed and its raw and prefix sizes are
+                  re-checked by tests/test_bench_scale.py (`make bench-scale-record` rewrites the timings)
+make bench-upstream  the pydantic-ai cassettes on pydantic-ai-slim 2.58.0 to 2.62.0, each in a venv (network)
 make walkthrough  record docs/walkthrough (mp4 + GIF) from make demo-data with Playwright and ffmpeg
 make regression-pr  open a PR that seeds a regression, capture its failing replay check and comment
                   into eval/results/regression_pr/ and docs/screenshots/pr-comment.png, close it
