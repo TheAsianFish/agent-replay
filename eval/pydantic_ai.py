@@ -26,12 +26,21 @@
    calls and what reached the wire (model, temperature, whether the guard was in the
    system prompt), and ``--swap`` writes the aligned diff of the first failed
    qwen2.5:3b ``strict`` run against its cassette beside the report.
+5. M16, ``--long``: the rebooking chain (:data:`LONG_SCENARIO`, at least 9 served tool
+   calls, each argument read from the previous result) under ``strict`` and
+   ``fallback``, 20 runs per arm (15 when its recording took over 150 s). Each run's
+   tool steps are kept as a status sequence, and each arm gets the survival curve (the
+   share of runs with no world step by served-call index, against the independence
+   prediction from M12's short runs), the rate of a world step after an earlier one in
+   the same run against the arm's base rate, and the identity keys' firings
+   (:func:`long_analysis`).
 
 Usage::
 
     uv run python -m eval.pydantic_ai [--runs 10] [--out eval/results/m9_flake_qwen.json]
     uv run python -m eval.pydantic_ai --arms strict,fallback --runs 20
     uv run python -m eval.pydantic_ai --swap
+    uv run python -m eval.pydantic_ai --long
     uv run python -m eval.pydantic_ai --arms strict --model qwen2.5:3b --prompt-variant no_guard
 """
 
@@ -39,19 +48,22 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import dataclasses
 import json
+import math
 import os
 import subprocess
 import sys
 import time
 import urllib.request
+from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, get_args
 
-from agent_replay.cassette import Cassette
+from agent_replay.cassette import Cassette, Kind
 from agent_replay.ci import Overrides, RunSink, ScenarioReport, load_suite, run_suite
 from agent_replay.diff import diff_steps, steps_from_cassette, steps_from_trajectory
 from agent_replay.diff import summary as diff_summary
@@ -70,6 +82,8 @@ CLIENT = "examples.pydantic_ai_agent.agent:make_client"
 OUT = ROOT / "eval" / "results" / "m9_flake_qwen.json"
 ARMS_OUT = ROOT / "eval" / "results" / "m12_arms_qwen.json"
 SWAP_OUT = ROOT / "eval" / "results" / "m15_swap_qwen.json"
+LONG_OUT = ROOT / "eval" / "results" / "m16_long_qwen.json"
+LONG_RECORDING_LOG = ROOT / "eval" / "results" / "m16_qwen_recording.json"
 SMALL_MODEL = "qwen2.5:3b"
 AGENTS: dict[tuple[PromptVariant, float | None], str] = {
     ("recording", None): "examples.pydantic_ai_agent.agent:run",
@@ -566,6 +580,234 @@ def run_swap(
     return result
 
 
+LONG_SCENARIO = "trace_rebooking_chain"
+LONG_ARMS = (
+    Arm("strict", "strict", scenarios=(LONG_SCENARIO,)),
+    Arm("fallback", "fallback", scenarios=(LONG_SCENARIO,)),
+)
+"""M16's arms: the recording model and prompt, under each policy."""
+LONG_RUNS, LONG_RUNS_SLOW, SLOW_RUN_S = 20, 15, 150.0
+SHORT_RUN_RATE = (3, 143)
+"""World steps per served tool call on M12's short runs (``m12_arms_qwen.json``: 3
+unrecorded of 143 served tool steps), the rate an independent per-call model predicts
+from."""
+SHORTEST_CHAIN = 9
+"""Served tool calls on the chain's shortest path: 8 ``get_booking`` and 1 conversion."""
+LEVEL = 0.95
+
+
+def is_world(status: str) -> bool:
+    """A tool step off the recorded path: served from another request's recording
+    (``approximate``) or not in the cassette (``unrecorded``, ``fallback``)."""
+    return status != "exact"
+
+
+def identity_firings(calls: Sequence[dict[str, Any]], recorded: Counter[str]) -> int:
+    """Calls the identify keys turned away: off the recording while unused recordings of
+    the same tool remained (under ``strict`` the run's error names the keys; under
+    ``fallback`` the real tool ran). A call of a tool the cassette has no more of is
+    off the path by count, not by identity."""
+    served: Counter[str] = Counter()
+    firings = 0
+    for call in calls:
+        if is_world(call["status"]) and call["status"] != "approximate":
+            firings += served[call["name"]] < recorded[call["name"]]
+        else:
+            served[call["name"]] += 1
+    return firings
+
+
+def survival_curve(sequences: Sequence[Sequence[str]], per_call: float) -> list[dict[str, Any]]:
+    """By served-call index n (from 1): the runs still at risk (n calls reached, no world
+    step before), the world steps at n, the product-limit share with no world step
+    through n (a run that ended earlier leaves the risk set, it does not count as a
+    survivor), the plain share of all runs with no world step through n, and the
+    independence prediction ``(1 - per_call)^n``."""
+    runs = len(sequences)
+    first = [next((i for i, s in enumerate(q, 1) if is_world(s)), None) for q in sequences]
+    curve, survival = [], 1.0
+    for n in range(1, max((len(q) for q in sequences), default=0) + 1):
+        at_risk = sum(
+            1
+            for q, f in zip(sequences, first, strict=True)
+            if len(q) >= n and (f is None or f >= n)
+        )
+        world = sum(1 for f in first if f == n)
+        survival *= 1 - world / at_risk if at_risk else 1.0
+        curve.append(
+            {
+                "index": n,
+                "at_risk": at_risk,
+                "world_steps": world,
+                "survival": round(survival, 4),
+                "share_without_world_step": round(
+                    sum(1 for f in first if f is None or f > n) / runs, 4
+                ),
+                "independent": round((1 - per_call) ** n, 4),
+            }
+        )
+    return curve
+
+
+def clustering(sequences: Sequence[Sequence[str]], minimum: int = 5) -> dict[str, Any]:
+    """Whether world steps cluster within runs: the share of steps that are world steps
+    among those with an earlier world step in the same run, against the share among all
+    steps. Independence predicts a ratio near 1; the hypothesis is at least 3. With fewer
+    than ``minimum`` world steps the ratio is reported as not measurable."""
+    steps = sum(len(q) for q in sequences)
+    world = sum(1 for q in sequences for s in q if is_world(s))
+    after = after_world = 0
+    for q in sequences:
+        seen = False
+        for status in q:
+            if seen:
+                after += 1
+                after_world += is_world(status)
+            seen |= is_world(status)
+    base = world / steps if steps else None
+    conditional = after_world / after if after else None
+    measurable = world >= minimum and bool(base) and conditional is not None
+    ratio = conditional / base if measurable and base and conditional is not None else None
+    return {
+        "tool_steps": steps,
+        "world_steps": world,
+        "base_rate": None if base is None else round(base, 4),
+        "steps_after_a_world_step": after,
+        "world_steps_after_a_world_step": after_world,
+        "conditional_rate": None if conditional is None else round(conditional, 4),
+        "ratio": None if ratio is None else round(ratio, 2),
+        "measurable": measurable,
+        "minimum_world_steps": minimum,
+        "clusters": None if ratio is None else ratio >= 3,
+    }
+
+
+def _binomial_cdf(k: int, n: int, p: float) -> float:
+    return sum(math.comb(n, i) * p**i * (1 - p) ** (n - i) for i in range(k + 1))
+
+
+def exact_interval(k: int, n: int, level: float = LEVEL) -> tuple[float, float]:
+    """The two-sided Clopper-Pearson interval for ``k`` successes in ``n`` trials, by
+    bisection on the binomial tail (stdlib only)."""
+    tail = (1 - level) / 2
+
+    def solve(target: float, k_: int) -> float:  # the p at which P(X <= k_) == target
+        lo, hi = 0.0, 1.0
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if _binomial_cdf(k_, n, mid) > target else (lo, mid)
+        return (lo + hi) / 2
+
+    lower = 0.0 if k == 0 else solve(1 - tail, k - 1)
+    upper = 1.0 if k == n else solve(tail, k)
+    return round(lower, 4), round(upper, 4)
+
+
+def binomial_range(n: int, p: float, level: float = LEVEL) -> tuple[int, int]:
+    """The central range of counts a Binomial(n, p) falls in with at least ``level``."""
+    tail = (1 - level) / 2
+    lower = next(k for k in range(n + 1) if _binomial_cdf(k, n, p) > tail)
+    upper = next(k for k in range(n + 1) if _binomial_cdf(k, n, p) >= 1 - tail)
+    return lower, upper
+
+
+def long_analysis(scenario: dict[str, Any], recorded: Counter[str]) -> dict[str, Any]:
+    """M16's reading of one arm's runs of the chain (see the module docstring)."""
+    per_call = SHORT_RUN_RATE[0] / SHORT_RUN_RATE[1]
+    rows = scenario["outcomes"]
+    sequences = [[c["status"] for c in r.get("tool_calls", [])] for r in rows]
+    firings = [identity_firings(r.get("tool_calls", []), recorded) for r in rows]
+    for row, seq, fired in zip(rows, sequences, firings, strict=True):
+        row["statuses"] = seq
+        row["first_world_step"] = next((i for i, s in enumerate(seq, 1) if is_world(s)), None)
+        row["identity_firings"] = fired
+    runs = len(rows)
+    ended = sum(1 for r in rows if r["cause"] == "unrecorded")
+    with_world = sum(1 for r in rows if r["first_world_step"] is not None)
+    lengths = [len(q) for q in sequences]
+    predicted = 1 - (1 - per_call) ** SHORTEST_CHAIN
+    return {
+        "served_calls_per_run": lengths,
+        "mean_served_calls": round(sum(lengths) / runs, 2) if runs else None,
+        "runs_with_a_world_step": with_world,
+        "world_endings": {
+            "runs": ended,
+            "of": runs,
+            "interval": list(exact_interval(ended, runs)) if runs else None,
+            "independent_share_at_shortest_chain": round(predicted, 4),
+            "independent_count": round(predicted * runs, 2),
+            "independent_range": list(binomial_range(runs, predicted)) if runs else None,
+        },
+        "identity_firings": sum(firings),
+        "runs_with_an_identity_firing": sum(1 for f in firings if f),
+        "clustering": clustering(sequences),
+        "survival": survival_curve(sequences, per_call),
+    }
+
+
+def long_runs(log: Path = LONG_RECORDING_LOG) -> int:
+    """Runs per arm: :data:`LONG_RUNS`, or :data:`LONG_RUNS_SLOW` when the chain's live
+    recording took over :data:`SLOW_RUN_S` (its kept attempt, else its slowest)."""
+    if not log.exists():
+        return LONG_RUNS
+    attempts = json.loads(log.read_text(encoding="utf-8")).get("attempts", [])
+    kept = [a["wall_s"] for a in attempts if a.get("passed")]
+    walls = kept or [a["wall_s"] for a in attempts]
+    return LONG_RUNS_SLOW if walls and max(walls) > SLOW_RUN_S else LONG_RUNS
+
+
+def run_long(
+    runs: int,
+    out: Path,
+    *,
+    client: str = CLIENT,
+    suite: Path = QWEN_SUITE,
+    environment: dict[str, Any] | None = None,
+    sink: RunSink | None = None,
+) -> dict[str, Any]:
+    """M16: :data:`LONG_ARMS` on the chain, ``runs`` runs each; the report is rewritten
+    after every arm so a stopped run keeps the arm it finished."""
+    path = suite.parent / next(
+        s.cassette for s in load_suite(suite).scenario if s.name == LONG_SCENARIO
+    )
+    cassette = Cassette.load(path)
+    recorded = Counter(e.name for e in cassette.envelopes if e.kind is Kind.TOOL)
+    result: dict[str, Any] = {
+        "command": "uv run python -m eval.pydantic_ai --long",
+        "suite": str(suite.relative_to(ROOT)) if suite.is_relative_to(ROOT) else str(suite),
+        "scenario": LONG_SCENARIO,
+        "cassette": str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path),
+        "cassette_model": cassette.header.metadata.get("model"),
+        "cassette_provider": cassette.header.metadata.get("provider"),
+        "recorded_tool_calls": dict(sorted(recorded.items())),
+        "client": client,
+        "mode": "model-live",
+        "identify": "the suite's [defaults.identify] keys",
+        "short_run_rate": {"world_steps": SHORT_RUN_RATE[0], "served": SHORT_RUN_RATE[1]},
+        "environment": environment if environment is not None else describe(),
+        "causes": CAUSE_MEANING,
+        "arms": {},
+    }
+    out.parent.mkdir(parents=True, exist_ok=True)
+    for arm in LONG_ARMS:
+        summary, _ = run_arm(
+            dataclasses.replace(arm, runs=runs), client=client, suite=suite, sink=sink
+        )
+        for s in summary["scenarios"]:
+            s["long"] = long_analysis(s, recorded)
+            long = s["long"]
+            print(
+                f"  {arm.label}: {long['runs_with_a_world_step']}/{s['runs']} runs with a world "
+                f"step, {long['identity_firings']} identity firings, clustering "
+                f"{long['clustering']['ratio']}",
+                flush=True,
+            )
+        result["arms"][arm.label] = summary
+        out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"wrote {out}")
+    return result
+
+
 def parse_arms(text: str) -> tuple[Policy, ...]:
     arms = tuple(a.strip() for a in text.split(",") if a.strip())
     known = get_args(Policy.__value__)
@@ -601,7 +843,9 @@ def _custom_arms(args: argparse.Namespace, parser: argparse.ArgumentParser) -> t
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--runs", type=int, default=10, help="model-live runs per scenario")
+    parser.add_argument(
+        "--runs", type=int, default=None, help="model-live runs per scenario (default 10)"
+    )
     parser.add_argument("--out", type=Path, default=OUT, help="raw flake report")
     parser.add_argument("--offline", action="store_true", help="only the full-mode replays")
     parser.add_argument(
@@ -622,6 +866,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--swap-out", type=Path, default=SWAP_OUT, help="raw report of --swap")
     parser.add_argument(
+        "--long",
+        action="store_true",
+        help="M16: the rebooking chain under strict and fallback (--runs: default 20, or "
+        "15 when its recording took over 150 s)",
+    )
+    parser.add_argument("--long-out", type=Path, default=LONG_OUT, help="raw report of --long")
+    parser.add_argument(
         "--model", default=None, help=f"--arms: the live model (default {MODEL}, the recorder)"
     )
     parser.add_argument(
@@ -635,6 +886,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     swapped = (args.model, args.prompt_variant, args.temperature) != (None, "recording", None)
+    if args.long and (args.arms or args.swap or swapped):
+        parser.error("--long runs its own arms; it takes no --arms, --swap or live-side flags")
+    if args.runs is None and not args.long:
+        args.runs = 10
     if swapped and not args.arms:
         parser.error("--model, --prompt-variant and --temperature change an --arms run")
     arms = SWAP_ARMS if args.swap else _custom_arms(args, parser) if swapped else ()
@@ -651,7 +906,9 @@ def main(argv: list[str] | None = None) -> int:
             f"{', '.join(missing)} (ollama serve; {pulls}; or set REPLAY_OLLAMA_URL)"
         )
         return 0
-    if args.swap:
+    if args.long:
+        run_long(args.runs or long_runs(), args.long_out.resolve())
+    elif args.swap:
         run_swap(arms, args.swap_out.resolve(), probe=probe_temperature())
     elif arms:
         # Never the committed M12 report: an ad hoc arm writes to .replay/ unless told.

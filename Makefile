@@ -7,7 +7,7 @@
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
 	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough \
 	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline \
-	eval-pydantic-ai-arms eval-pydantic-ai-swap record-pydantic-ai-chain eval-verdict-curve bench-scale bench-scale-record bench-upstream
+	eval-pydantic-ai-arms eval-pydantic-ai-swap eval-pydantic-ai-long record-pydantic-ai-chain eval-verdict-curve bench-scale bench-scale-record bench-upstream
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -211,6 +211,15 @@ eval-pydantic-ai-arms:
 # CPU only. Locally or from the manual Ollama workflow, never on a PR.
 eval-pydantic-ai-swap:
 	uv run python -m eval.pydantic_ai --swap
+
+# M16: the rebooking chain (9 served tool calls, each argument from the previous result)
+# in model-live under strict and fallback, 20 runs each (15 if its recording took over
+# 150 s), every run's per-step statuses, the survival curve by served-call index, the
+# clustering rate and the identify keys' firings, into eval/results/m16_long_qwen.json.
+# Needs Ollama serving qwen2.5:7b (skipped without it); CPU only, about 35 minutes on
+# 4 CPUs. Locally or from the manual Ollama workflow, never on a PR.
+eval-pydantic-ai-long:
+	uv run python -m eval.pydantic_ai --long
 
 # M12: how often a subset of n runs gives the all-runs fixed-threshold verdict, for every
 # committed flake report (seeded draws without replacement; offline, byte-stable).

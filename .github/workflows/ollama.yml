@@ -3,7 +3,8 @@ name: Local model (Ollama)
 # The pydantic-ai example against qwen2.5:7b on the runner's CPU: re-record its live
 # cassettes and/or run `make eval-pydantic-ai` (replay flake in model-live, 10 runs per
 # scenario), or with `arms` the M12 strict and fallback arms (make eval-pydantic-ai-arms),
-# or with `swap` the M15 model, prompt and temperature arms (make eval-pydantic-ai-swap).
+# or with `swap` the M15 model, prompt and temperature arms (make eval-pydantic-ai-swap),
+# or with `long` the M16 rebooking chain under strict and fallback (make eval-pydantic-ai-long).
 # Free (an open model, no key) but slow: started by hand only, never on a
 # push or pull request. Results come back as an artifact to review and commit.
 on:
@@ -23,6 +24,10 @@ on:
         default: false
       swap:
         description: "Instead of the flake: the M15 swap arms on qwen2.5:3b and qwen2.5:7b (make eval-pydantic-ai-swap)"
+        type: boolean
+        default: false
+      long:
+        description: "Instead of the flake: the M16 rebooking chain, strict and fallback (make eval-pydantic-ai-long)"
         type: boolean
         default: false
 
@@ -62,14 +67,17 @@ jobs:
         if: ${{ inputs.record }}
         run: make record-pydantic-ai
       - name: replay ci in full, then replay flake in model-live
-        if: ${{ !inputs.arms && !inputs.swap }}
+        if: ${{ !inputs.arms && !inputs.swap && !inputs.long }}
         run: uv run python -m eval.pydantic_ai --runs ${{ inputs.runs }}
       - name: replay ci in full, then the strict and fallback arms in model-live
-        if: ${{ inputs.arms }}
+        if: ${{ inputs.arms && !inputs.long }}
         run: make eval-pydantic-ai-arms
       - name: replay ci in full, then the M15 swap arms in model-live
-        if: ${{ inputs.swap && !inputs.arms }}
+        if: ${{ inputs.swap && !inputs.arms && !inputs.long }}
         run: make eval-pydantic-ai-swap
+      - name: replay ci in full, then the M16 rebooking chain in model-live
+        if: ${{ inputs.long }}
+        run: make eval-pydantic-ai-long
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -78,5 +86,6 @@ jobs:
             eval/results/m9_*
             eval/results/m12_*
             eval/results/m15_*
+            eval/results/m16_*
             examples/pydantic_ai_agent/cassettes/qwen/
             /tmp/ollama.log
