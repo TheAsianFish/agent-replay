@@ -102,6 +102,15 @@ def test_a_guessed_identity_is_counted_and_fallback_runs_the_tool(tmp_path: Path
     assert diff["markdown"] == "swap.diff.md"
 
 
+def test_the_report_directory_is_created_before_the_first_arm(tmp_path: Path) -> None:
+    # The ad hoc default is .replay/arms_swapped.json, absent in a fresh clone: the
+    # report must not fail to write after an arm's runs have been spent.
+    arm = dataclasses.replace(pydantic_ai.SWAP_ARMS[-1], runs=1)
+    out = tmp_path / "fresh" / ".replay" / "arms_swapped.json"
+    pydantic_ai.run_swap((arm,), out, client=FAKE, environment={}, probe=None)
+    assert json.loads(out.read_text(encoding="utf-8"))["arms"][arm.label]["scenarios"]
+
+
 def test_identical_and_differing_runs_are_counted(tmp_path: Path) -> None:
     arm = dataclasses.replace(pydantic_ai.SWAP_ARMS[-1], runs=3)
     s = _scenario(_swap(tmp_path, arms=(arm,)), arm.label, "book_earliest_flight")

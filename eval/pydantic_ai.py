@@ -547,6 +547,7 @@ def run_swap(
         "arms": {},
         "diff": None,
     }
+    out.parent.mkdir(parents=True, exist_ok=True)
     for arm in arms:
         summary, capture = run_arm(arm, client=client, suite=suite, sink=sink)
         result["arms"][arm.label] = summary
