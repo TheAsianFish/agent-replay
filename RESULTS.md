@@ -2579,8 +2579,12 @@ What the 170 runs say, against the plan's hypotheses:
   `amount: 123.45`. These are the first identity endings ever on this prompt's
   model: M12 had 0 in 80 runs, and the M11 keys had only fired on seeded
   mutations before. The fare gate fails, 2 / 20 against the control's
-  18 / 20. At the control's rate a drop to 2 or fewer has a binomial
-  probability below 10⁻¹⁵ (`math.comb`), so the prompt change caused it.
+  18 / 20. Fisher's exact test (one-sided, hypergeometric, `math.comb`)
+  puts the chance of a split this lopsided between two equal arms at
+  2.6 × 10⁻⁷ for the fare and 0.0069 for the booking (2 / 20 against
+  10 / 20), so the prompt change caused both drops. (Treating the control's
+  18 / 20 as the true rate, as the build first did, gives 1.6 × 10⁻¹⁶, but
+  ignores that the control is itself a 20-run sample.)
   The converted amounts (350, 150, 123.45, 125, 250) appear nowhere in the
   search result (243, 189, 212). The mechanism is the one the guard was
   written for. A 10-run re-run with the harness's `parallel_tool_replies`
@@ -2594,9 +2598,13 @@ What the 170 runs say, against the plan's hypotheses:
   10 / 20 (4 to 13). Holds.** It matches M12's `strict` arm almost exactly
   (18 and 9). It also produced the first identity endings on the shipped
   prompt: 2 booking runs chose AS330, the same mistake 3b makes every time.
-  Its third unrecorded ending was a `convert_currency` after a correct
-  booking, a tool the booking recording never called (by tool, not by
-  identity). The swap arms' differences from the control are the change's
+  Its third unrecorded ending (run 6) was different: it searched, booked
+  DL2207 correctly, then called `convert_currency` (158 USD to EUR), a tool
+  the booking recording never called (by tool, not by identity), and
+  `strict` stopped it before it answered. The write was already right, so
+  this is the world's ending in M12's sense: a path the recording lacks, not
+  a wrong argument. Whether it would have passed is unknown (it never
+  answered). The swap arms' differences from the control are the change's
   effect, not a different day.
 - **(d) At `temperature=0` the 10 trajectories are identical: one tool path
   (search, then DL2207), one answer word for word, all 10 pass. Holds.** That
@@ -2604,7 +2612,8 @@ What the 170 runs say, against the plan's hypotheses:
   sampled pass rate is 17 / 40 in M12 and 10 / 20 in the control, which the
   fixed 0.75 rule fails. Greedy decoding picks one
   trajectory from the distribution, and here it happens to be a passing one.
-  Ten repeats of that one trajectory measure nothing about the other 55%.
+  Ten repeats of that one trajectory measure nothing about the 23 of 40
+  M12 runs (and 10 of 20 control runs) that failed.
   The agent ships at default sampling, so a temperature-0 CI run tests a
   different agent from the one users get.
 
@@ -2612,13 +2621,16 @@ What the 170 runs say, against the plan's hypotheses:
 test. With the model or prompt swapped, the frozen world served every step
 the new model asked for that the recording had (0 approximate in 170 runs).
 It stopped every run that asked for something else, and in this sample
-those requests were always wrong. The gate's verdict was the model's in
+those requests were wrong in every swap arm: each of the 55 identity endings
+named a flight or amount the ground truth rules out. The gate's verdict was the model's in
 every arm: 3b fails under both policies, the guardless prompt fails, and
 the control is unchanged. Under `strict`, the cause column overstates the
 world's share whenever the model guesses an argument. Read it beside a
 `fallback` arm, or the pass counts, before blaming the recording. The
-limit is still the one M12 found: a different *correct* path (a different
-but valid argument) would end the same way, and this sample had none.
+limit is still the one M12 found: a different *correct* path ends the same
+way. The control had one (run 6, a correct booking followed by an extra
+conversion), so the cause column can understate the world's share as well
+as overstate it; a single `strict` arm cannot tell the two apart.
 
 ### No guard, with replies that ask for several tools
 
