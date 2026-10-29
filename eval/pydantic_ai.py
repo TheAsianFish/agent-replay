@@ -92,10 +92,13 @@ CAUSE_MEANING = {
 
 
 def replay_full() -> bool:
-    """Both suites in ``full``: all pass, and no step is served approximately."""
+    """Both suites in ``full``: all pass, and no step is served approximately. The
+    committed cassettes were recorded on :data:`MODEL`, so an exported
+    ``$REPLAY_OLLAMA_MODEL`` is set aside here: it would change every model request."""
     ok = True
     for suite in SUITES:
-        report = run_suite(suite, overrides=Overrides(mode="full"))
+        with live_model(MODEL):
+            report = run_suite(suite, overrides=Overrides(mode="full"))
         for s in report.scenarios:
             approximate = s.steps.by_status.get("approximate", 0)
             verdict = "PASS" if s.passed and not approximate else "FAIL"

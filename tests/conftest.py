@@ -67,6 +67,13 @@ def _no_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(socket, "getaddrinfo", _blocked)
 
 
+@pytest.fixture(autouse=True)
+def _recorded_live_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The pydantic-ai example's committed cassettes were recorded on its default model;
+    an exported ``REPLAY_OLLAMA_MODEL`` would make every replay of them approximate."""
+    monkeypatch.delenv("REPLAY_OLLAMA_MODEL", raising=False)
+
+
 def _sk_kappa(a: Sequence[int], b: Sequence[int], *, weights: Any = None) -> float:
     from sklearn.metrics import cohen_kappa_score  # noqa: PLC0415 - dev dependency, oracle only
 

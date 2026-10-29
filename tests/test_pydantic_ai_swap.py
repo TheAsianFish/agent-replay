@@ -207,3 +207,12 @@ def test_a_reply_with_several_tool_calls_is_counted(tmp_path: Path) -> None:
     assert row["parallel_tool_replies"] == 1
     assert (row["cause"], row["identity"]) == ("unrecorded", True)
     assert [c["status"] for c in row["tool_calls"]] == ["exact", "unrecorded"]
+
+
+def test_the_full_replay_ignores_an_exported_live_model(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("REPLAY_OLLAMA_MODEL", "qwen2.5:3b")
+    assert pydantic_ai.replay_full()
+    assert ", 0 approximate" in capsys.readouterr().out
+    assert agent.live_model() == "qwen2.5:3b"  # restored after the replay
