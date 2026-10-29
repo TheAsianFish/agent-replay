@@ -888,6 +888,8 @@ def main(argv: list[str] | None = None) -> int:
     swapped = (args.model, args.prompt_variant, args.temperature) != (None, "recording", None)
     if args.long and (args.arms or args.swap or swapped):
         parser.error("--long runs its own arms; it takes no --arms, --swap or live-side flags")
+    if args.runs is not None and args.runs < 1:
+        parser.error(f"--runs must be at least 1; got {args.runs}")
     if args.runs is None and not args.long:
         args.runs = 10
     if swapped and not args.arms:
@@ -907,7 +909,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     if args.long:
-        run_long(args.runs or long_runs(), args.long_out.resolve())
+        run_long(long_runs() if args.runs is None else args.runs, args.long_out.resolve())
     elif args.swap:
         run_swap(arms, args.swap_out.resolve(), probe=probe_temperature())
     elif arms:

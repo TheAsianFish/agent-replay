@@ -189,6 +189,12 @@ def test_runs_per_arm_drop_to_fifteen_when_the_recording_was_slow(tmp_path: Path
     assert pydantic_ai.long_runs(log) == 15  # none passed: the slowest attempt decides
 
 
+def test_runs_must_be_positive(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        pydantic_ai.main(["--long", "--runs", "0"])
+    assert "--runs must be at least 1" in capsys.readouterr().err
+
+
 def test_long_takes_no_other_arms(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         pydantic_ai.main(["--long", "--swap"])
