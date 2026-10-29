@@ -78,6 +78,7 @@ make eval-pydantic-ai  replay ci in full on both of its suites; with Ollama, rep
 make eval-pydantic-ai-arms  M12: its qwen-recorded scenarios under strict and fallback, 20 runs each
 make eval-pydantic-ai-swap  M15: the same with the live side changed (qwen2.5:3b, the prompt without
                   its guard line, temperature 0, a 7b control) into eval/results/m15_swap_qwen*
+make record-pydantic-ai-chain  M16: the rebooking chain's qwen2.5:7b recording attempts (5, logged)
 make demo-data    real replay ci / replay flake runs of the retail example into .replay/demo.db
 make openapi      regenerate dashboard/openapi.json (then `npm run gen:types` in dashboard/)
 make ui           npm ci + build the dashboard into agent_replay/server/static

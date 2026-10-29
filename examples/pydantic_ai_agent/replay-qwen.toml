@@ -68,8 +68,10 @@ checks = [
 
 # Eight get_booking calls, each on the reference the previous result named, then
 # one conversion of the total: the shortest path is 9 tool calls in 10 model turns,
-# so the limits leave room for a retry or two and no more. Its world comes from the
-# fake-model recording.
+# so the limits leave room for a retry or two and no more. qwen2.5:7b followed the
+# chain to the right original in all 5 recording attempts and got the total wrong
+# in all 5 (eval/results/m16_qwen_recording.json), so, as for the cancellation, its
+# world comes from the fake-model recording.
 [[scenario]]
 name = "trace_rebooking_chain"
 cassette = "cassettes/trace_rebooking_chain.jsonl"
