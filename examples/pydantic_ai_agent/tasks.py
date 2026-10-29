@@ -43,6 +43,16 @@ TASKS: dict[str, Task] = {
             answer=("243",),
             writes=(("cancel_booking", {"booking_ref": "QX7Y2K"}),),
         ),
+        Task(
+            "trace_rebooking_chain",
+            "I'm Lee Park. My booking K7W2QD was rebooked from an earlier booking, which "
+            "was itself rebooked, and so on. Follow the chain back to the original "
+            "booking and tell me its reference and the total I paid across every "
+            "booking in the chain, in euros.",
+            # Eight links (tools.CHAIN), one get_booking each, the original P6B2LH last:
+            # $200.00 plus seven $25.00 change fees is $375.00, 345.00 EUR at 0.92.
+            answer=("P6B2LH", "345"),
+        ),
     )
 }
 

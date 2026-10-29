@@ -40,6 +40,7 @@ byte-stable ones and fails on any change.
 | Live flake on a local model | qwen2.5:7b, `model-live`, 10 runs each: 10/10, 2/10, 0/10; 1 approximate step in 30 runs; 1026 s on 4 vCPU (AMD EPYC 7763); $0 | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai` (Ollama) | measured, local model |
 | Frozen world vs the model (`model-live`, real model) | qwen2.5:7b, 20 runs per arm: `strict` 18/20 and 9/20, `fallback` 19/20 and 8/20; world-caused endings 0 and 3 of 20 under `strict` (an invented `get_booking` the recording never made), 0 by identity, 0 approximate steps in 80 runs; `cheapest_fare_in_euros` pooled with M9 47/50; 3090 s on 4 vCPU (AMD EPYC 7763); $0 | Frozen-world bias (M12) | `make eval-pydantic-ai-arms` (Ollama) | measured, local model |
 | Model and prompt swaps in `model-live` (real model) | qwen2.5:7b cassettes, 20 runs each: qwen2.5:3b 0 / 20 and 0 / 20 under both `strict` and `fallback` (32 of 40 `strict` runs end by identity, all on the model's wrong argument); 7b without the prompt's guard line 2 / 20 and 2 / 20 (23 identity endings, guessed amounts from parallel tool calls) against the same-day control's 18 / 20 and 10 / 20; `temperature=0` 10 / 10 identical passing runs of a booking that passes 17 / 40 sampled; 0 approximate steps in 170 runs; 4778 s on 4 vCPU (AMD EPYC 7763); $0 | `model-live` survives the change (M15) | `make eval-pydantic-ai-swap` (Ollama) | measured, local model |
+| Frozen-world divergence on a long chain (`model-live`, real model) | qwen2.5:7b, an 8-link rebooking chain (9 served tool calls on the shortest path), 20 runs per arm: 0 / 20 under `strict` and `fallback` alike; 320 of 320 chain lookups served exact; 1 world step in 321 served tool calls (0.31%, against 3 / 143 = 2.1% on M12's short runs); `strict` world endings 1 / 20 (Clopper-Pearson 0.1% to 24.9%) beside 3.47 predicted by independence; clustering not measurable (0 world steps under `fallback`); identity keys fired once in 40 runs; 39 of 40 runs answered a euro total without calling `convert_currency`; no qwen recording passed in 5 attempts; 1703 s on 4 vCPU (AMD EPYC 9V45); $0 | Divergence on a long chain (M16) | `make eval-pydantic-ai-long` (Ollama) | measured, local model |
 | Verdict-stability curve | 5 runs agree with the all-runs fixed-threshold verdict in ≥ 95% of draws on all 15 committed scenarios, but on only 1 of the 4 new M12 rows (90.3% to 94.3%; 0.15 to 0.35 from the 0.75 threshold); 13 of 19 rows pass 0% or 100% | Frozen-world bias (M12) | `make eval-verdict-curve` | measured, offline |
 | Cassette bytes at scale | quadratic (c2 291 bytes/turn², fitted exponent 1.54 over 5 to 200 turns, 1.85 from 100 to 200); 3.65 MB at 100 turns; gzip 19.5× at 20 turns → 3.8× at 100 (envelopes outgrow its 32 KB window), xz 105×; prefix encoding under xz only 1.07× more, so `.jsonl.xz` and no schema change; `full` replay 1.7 s at 200 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline (sizes byte-stable) |
 | Real recordings vs the fit | live Opus retail requests grow 1.4 to 2.6 KB a turn (synthetic 0.58), projecting to 8.0 to 13.9 MB of requests at 100 turns; xz 8.9× to 13.6× at 3 to 6 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline |
@@ -51,7 +52,7 @@ byte-stable ones and fails on any change.
 | D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
 
 API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
-M15 $0; the live runs of M9, M12 and M15 used qwen2.5:7b and qwen2.5:3b on a
+M16 $0; the live runs of M9, M12, M15 and M16 used qwen2.5:7b and qwen2.5:3b on a
 local CPU).
 
 ## Live recording smoke test (M1)
@@ -2699,6 +2700,177 @@ Read top to bottom: 3b's first reply put the search arguments under an
 pydantic-ai's validation error (`"type":"missing"`) where 7b's carried the
 flight list, and 3b answered in text instead of retrying. The run made
 neither tool call the recording has.
+
+## Does frozen-world divergence compound on a long chain? (M16)
+
+M12 measured the frozen world on short runs: 3 of 143 served tool calls left
+the recorded path (`m12_arms_qwen.json`), all three an invented `get_booking`
+on the booking task. If that 2.1% applies independently to every call, a run
+of 9 served calls leaves the path 17% of the time, and if it clusters (one
+miss puts the model off course for the next) long runs are worse still. This
+milestone builds a task long enough to tell and runs it on qwen2.5:7b.
+
+- **Task:** `trace_rebooking_chain` in the pydantic-ai travel desk. The fixed
+  world gains an eight-booking chain for "Lee Park" (`CHAIN` in
+  `examples/pydantic_ai_agent/tools.py`); each booking names the one it was
+  rebooked from (`rebooked_from`), the original has none. The traveller gives
+  the newest reference, K7W2QD, and asks for the original's reference and the
+  total paid across the chain in euros: $200.00 plus seven $25.00 change fees
+  is $375.00, 345.00 EUR. The shortest path is 8 `get_booking` calls, each on
+  a reference only the previous result holds (so parallel calls cannot
+  shorten it), then one `convert_currency`: 9 served tool calls, 10 model
+  turns. The chain bookings are a `RebookedBooking` subclass, so the two
+  older bookings serialise exactly as before: every committed cassette still
+  replays with 0 approximate steps, and both pydantic-ai suites in
+  `tools-live --fail-on-tool-drift` compare 30 live tool results with 0
+  drift (below).
+- **Checks** (both suites): `in_order` sequence of 8 `get_booking` then
+  `convert_currency`; `answer_states` for P6B2LH and 345; no writes; at most
+  12 tool calls and 14 model calls. The step limits moved into each scenario,
+  so the three short scenarios keep 8 and 6.
+- **Recording:** up to 5 qwen2.5:7b attempts (`make record-pydantic-ai-chain`,
+  log `eval/results/m16_qwen_recording.json`). None passed: every attempt
+  walked all 8 links to P6B2LH, then four answered with a total of their own
+  without converting (25, 500 and 260 USD, and "200 plus 100"), and one
+  converted 25 USD.
+  As M9 did for the cancellation, the qwen suite serves the chain from the
+  fake-model recording. In `model-live` only tool steps are served, and the
+  chain's tool results do not depend on who recorded them, so the world is
+  the one qwen would have recorded, except the conversion: the fake
+  recording holds the right amount, 375.
+- **Arms** (`eval/pydantic_ai.py --long`, `LONG_ARMS`): qwen2.5:7b (digest
+  `845dbda0…`, the recording prompt, default sampling) in `model-live` with
+  the suite's `identify` keys, 20 runs under `strict` and 20 under
+  `fallback`, one at a time. 20 runs, not 15: the slowest recording attempt
+  took 59.4 s, under the 150 s cut.
+- **What is counted:** each run's tool steps as a status sequence. A *world
+  step* is any step not served `exact` (approximate, unrecorded, fallback).
+  An *identity firing* is an unrecorded or fallback call made while unused
+  recordings of the same tool remained (`identity_firings`). The survival
+  curve is the product-limit share of runs with no world step through
+  served-call index n (a run that finished earlier leaves the risk set),
+  with the at-risk count, beside `(1 − 3/143)^n`. Clustering is the rate of
+  world steps among steps that follow an earlier world step in the same run,
+  divided by the arm's base rate, reported only with at least 5 world steps.
+  Intervals are Clopper-Pearson (`exact_interval`, stdlib bisection on the
+  binomial tail, checked against scipy in the tests).
+- **Machine:** 4 vCPU, AMD EPYC 9V45 (not M15's EPYC 7763), CPU only,
+  Ollama 0.40.11. $0.
+- **Raw output:** `eval/results/m16_long_qwen.json` (every run's statuses,
+  tool calls with inputs, answer, cause, error and seconds; per arm the
+  survival curve, clustering, identity firings and world endings).
+
+```
+$ make eval-pydantic-ai-long
+uv run python -m eval.pydantic_ai --long
+  ... (the eight full-mode replays, all PASS, 0 approximate)
+PASS replay-qwen.toml trace_rebooking_chain: 19 steps, 0 approximate
+arm strict: 20 model-live runs of trace_rebooking_chain (qwen2.5:7b, recording, temperature None, strict)
+  trace_rebooking_chain: 0/20 passed (1 unrecorded, 19 model); 1 by identity, 2 tool paths
+  wall time 849.4 s
+  strict: 1/20 runs with a world step, 1 identity firings, clustering None
+arm fallback: 20 model-live runs of trace_rebooking_chain (qwen2.5:7b, recording, temperature None, fallback)
+  trace_rebooking_chain: 0/20 passed (20 model); 0 by identity, 1 tool paths
+  wall time 853.1 s
+  fallback: 0/20 runs with a world step, 0 identity firings, clustering None
+wrote eval/results/m16_long_qwen.json
+```
+
+| `model-live`, `trace_rebooking_chain` (qwen2.5:7b, 20 runs) | Passed | passed / unrecorded / approximate / model | By identity | Gate | Served tool calls per run | World steps | Seconds per run (min / median / max) | Wall |
+|---|---|---|---|---|---|---|---|---|
+| M16 `strict` | 0 / 20 | 0 / 1 / 0 / 19 | 1 | fail | 8 (19 runs), 9 (1 run) | 1 in 161 | 40.8 / 41.7 / 49.8 | 849 s |
+| M16 `fallback` | 0 / 20 | 0 / 0 / 0 / 20 | 0 | fail | 8 (all 20) | 0 in 160 | 41.1 / 42.1 / 48.3 | 853 s |
+
+The M9, M12 and M15 rows above are unchanged.
+
+**Survival by served-call index** (both arms: at risk, world steps there,
+product-limit survival; independence `(1 − 3/143)^n`):
+
+| n | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|
+| `strict` at risk / world / survival | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 1 / 1 / 0.0 |
+| `fallback` at risk / world / survival | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | 20 / 0 / 1.0 | — |
+| independence | 0.979 | 0.959 | 0.938 | 0.919 | 0.899 | 0.881 | 0.862 | 0.844 | 0.826 |
+
+The 0.0 at n = 9 rests on one run, the only one that reached a ninth call.
+
+**The hypotheses:**
+
+- **Clustering (the decision test): not measurable.** The `fallback` arm had
+  0 world steps in 160 served calls, short of the 5 the test needs, so it is
+  reported as not measurable, not as refuted. (`strict` had 1, and a
+  `strict` run ends at its first world step, so it can never show a second.)
+- **`strict` world endings: 1 of 20 (Clopper-Pearson 95%: 0.1% to 24.9%),
+  beside 3.47 predicted by independence at 9 calls (95% range 1 to 7).**
+  Inside the range, and, as the plan said, 20 runs cannot separate 1 from
+  3.5: this count is descriptive. The one ending (run 14) read all 8 links,
+  then converted 325 USD where the chain totals 375, and the identify key on
+  `amount` stopped it: a model error the keys caught, not a path the
+  recording lacked.
+- **The identify keys fire at least 5 times in 40 runs: refuted, 1.** The
+  plan expected a chain of references to be where a model mis-copies one.
+  It never did: 320 of 320 `get_booking` calls (40 runs × 8 links) carried
+  the exact reference the previous result named, and all 40 lookups in the
+  5 recording attempts did too.
+- **The survival curve against `(1 − 3/143)^n`:** every run survived its 8
+  lookups (40 of 40) where independence at the short-run rate predicts
+  0.844. Forty clean 8-lookup prefixes have probability 0.844^40 = 0.0011
+  under that model. The per-call rate on this chain is 1 world step in 321
+  served calls, 0.31% (0.01% to 1.72%), against M12's 2.1% (0.43% to 6.0%);
+  for the lookups alone it is 0 of 320 (at most 1.15%). A one-sided Fisher
+  test of 1 / 321 against 3 / 143 gives 0.089, so the two rates are not
+  shown to differ, but the independent-per-call model with M12's rate is
+  rejected for this chain.
+
+**Whose failure, then.** Every run failed, and it was the model in 39 of
+40: with all served steps exact, 39 runs (19 `strict`, 20 `fallback`) never
+called `convert_currency` and answered with a euro figure of their own
+making. 39 named the right original, P6B2LH. 38 of the 39 stated a USD
+total: 500 (10 runs), 250 (9), 260 (4), 275 (3), 251 (2), 25 (2), 150 (2),
+255 (2), and 625, 325, 125 and 175 once each, never 375. Of the 9 runs that
+showed their working, 7 summed fewer payments than they had read ("25 * 6 =
+150", five $25 fees plus $200 = 275, seven fees without the fare = 175), one
+counted ten fees ("25 * 10 = 250"), and one wrote the right expression and
+added it wrong ("25 * 7 + 200 = 325"). The euro figure beside each total implies a rate
+of 0.71 to 0.90 EUR per USD, never the world's 0.92: the conversion was
+invented along with the sum. The `fallback` arm confirms it: with the real tool
+behind any call the recording lacked, there was no such call, and the pass
+count was the same 0 / 20. The `in_order` sequence check failed 39 runs and
+`answer_states` all 40.
+
+**What this means for `model-live`.** On this chain, frozen-world
+divergence does not compound: it hardly happens. The short-run 2.1% is not
+a per-call constant. M12's three world steps were decisions (an extra
+`get_booking` on a booking task), and a forced chain whose arguments are
+printed verbatim in the previous result leaves no decision to make until the
+end. The risk on a long run sits where the model computes or chooses, and
+there the identify keys stop a wrong value under `strict` the way M15
+showed, which `fallback` then attributes to the model. The limits are real:
+one model, one task, 40 runs. A chain needing a computed or chosen argument
+at every link, or a model weaker at copying, could behave differently. The
+first real cassette past 6 turns did not happen either: no qwen2.5:7b
+attempt passed, so `make bench-scale` has no new real row (its sizes
+report is unchanged, re-checked by `tests/test_bench_scale.py`), and the
+longest committed real trace is still the 6-turn retail recording.
+
+### Drift and full replay with the chain in the world
+
+```
+$ uv run replay ci examples/pydantic_ai_agent/replay.toml --mode tools-live --fail-on-tool-drift
+PASS cheapest_fare_in_euros (tools-live; 3 exact, 2 live)
+PASS book_earliest_flight (tools-live; 3 exact, 2 live)
+PASS cancel_refundable_booking (tools-live; 3 exact, 2 live)
+PASS trace_rebooking_chain (tools-live; 10 exact, 9 live)
+4/4 scenario(s) passed: passed
+$ uv run replay ci examples/pydantic_ai_agent/replay-qwen.toml --mode tools-live --fail-on-tool-drift
+  ... the same four rows, 4/4 passed
+```
+
+`no_tool_drift`: 2, 2, 2 and 9 live tool results matched the recording in
+each suite, 0 drifted (30 compared). `make eval-pydantic-ai-offline` (in
+`make eval`) replays both suites in `full`: the chain 19 steps, 0
+approximate, and the other six scenarios unchanged at 5 steps, 0
+approximate.
 
 ## To measure
 

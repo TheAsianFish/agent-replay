@@ -1,0 +1,4352 @@
+{
+  "arms": {
+    "fallback": {
+      "agent": "examples.pydantic_ai_agent.agent:run",
+      "model": "qwen2.5:7b",
+      "policy": "fallback",
+      "prompt_variant": "recording",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 20,
+            "passed": 0,
+            "unrecorded": 0
+          },
+          "classification": "failing",
+          "decision": "fail",
+          "distinct_outputs": 20,
+          "distinct_tool_paths": 1,
+          "failures": {
+            "rule:answer_states": 20,
+            "tool_sequence": 20
+          },
+          "long": {
+            "clustering": {
+              "base_rate": 0.0,
+              "clusters": null,
+              "conditional_rate": null,
+              "measurable": false,
+              "minimum_world_steps": 5,
+              "ratio": null,
+              "steps_after_a_world_step": 0,
+              "tool_steps": 160,
+              "world_steps": 0,
+              "world_steps_after_a_world_step": 0
+            },
+            "identity_firings": 0,
+            "mean_served_calls": 8.0,
+            "runs_with_a_world_step": 0,
+            "runs_with_an_identity_firing": 0,
+            "served_calls_per_run": [
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "survival": [
+              {
+                "at_risk": 20,
+                "independent": 0.979,
+                "index": 1,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.9585,
+                "index": 2,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.9384,
+                "index": 3,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.9187,
+                "index": 4,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.8994,
+                "index": 5,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.8805,
+                "index": 6,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.8621,
+                "index": 7,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.844,
+                "index": 8,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              }
+            ],
+            "world_endings": {
+              "independent_count": 3.47,
+              "independent_range": [
+                1,
+                7
+              ],
+              "independent_share_at_shortest_chain": 0.1737,
+              "interval": [
+                0.0,
+                0.1684
+              ],
+              "of": 20,
+              "runs": 0
+            }
+          },
+          "name": "trace_rebooking_chain",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 0,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain, in USD, is 251.00. Converting this to euros, we get 223.42 EUR.\n\n223.42 EUR",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/0",
+              "seconds": 43.2,
+              "seed": 489586135,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 1,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain is 500.00 USD, which converts to 437.50 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/1",
+              "seconds": 41.6,
+              "seed": 1781091649,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 2,
+              "output": "The original booking reference is P6B2LH. The total amount paid across all bookings in the chain is 260.00 USD, which is 230.00 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/2",
+              "seconds": 41.4,
+              "seed": 4078968059,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 3,
+              "output": "The original booking reference is P6B2LH and the total paid across all bookings in the chain is 250.00 USD, which is 225.00 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/3",
+              "seconds": 41.1,
+              "seed": 2217159789,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 4,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain is 500.00 USD, which is 437.50 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/4",
+              "seconds": 41.3,
+              "seed": 440646094,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 5,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain, in USD, is 25.00. Converting this to euros, the total is 22.30 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/5",
+              "seconds": 42.3,
+              "seed": 1833208152,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 6,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain, in USD, is 25 * 6 = 150. Converting 150 USD to EUR gives us 130.77 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/6",
+              "seconds": 43.2,
+              "seed": 4098742498,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 7,
+              "output": "The original booking reference is P6B2LH, and the total paid across every booking in the chain is 500.00 USD, which is approximately 421.05 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/7",
+              "seconds": 41.5,
+              "seed": 2202724468,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 8,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain, in USD, was 25.00 + 25.00 + 25.00 + 25.00 + 25.00 + 200.00 = 275.00 USD. Converting this to euros, we get 239.58 EUR.\n\n239.58 EUR",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/8",
+              "seconds": 48.3,
+              "seed": 334886373,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 9,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain is 25 * 7 + 200 = 325 USD. The total amount in euros is 231.25 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/9",
+              "seconds": 43.0,
+              "seed": 1693631859,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 10,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain is 500.00 USD, which is approximately 441.00 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/10",
+              "seconds": 41.8,
+              "seed": 4117399402,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 11,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain is 25.00 USD. Converting this to euros, we get 21.42 EUR.\n\n21.42 EUR",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/11",
+              "seconds": 42.2,
+              "seed": 2188228604,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 12,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain is 255.0 USD, which converts to 228.75 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/12",
+              "seconds": 41.2,
+              "seed": 459597382,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 13,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across every booking in the chain, in USD, was 250.00. Converting this to euros, we get 216.41 EUR.\n\n216.41 EUR",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/13",
+              "seconds": 43.5,
+              "seed": 1818482384,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 14,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain is $500.00, which is \u20ac416.67 in euros.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/14",
+              "seconds": 41.6,
+              "seed": 4060562291,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 15,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain, in USD, is 25.0 + 25.0 + 25.0 + 25.0 + 25.0 + 200.0 = 275.0 USD. Converting this to euros, we get 238.27 EUR.\n\n238.27 EUR",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/15",
+              "seconds": 47.6,
+              "seed": 2231399397,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 16,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain is 260.00 USD. Converted to euros, this is 224.21 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/16",
+              "seconds": 41.9,
+              "seed": 470360671,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 17,
+              "output": "The original booking reference is P6B2LH and the total amount paid across all bookings in the chain is 25 * 5 = 125 USD. This amount in euros is 109.38 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/17",
+              "seconds": 42.0,
+              "seed": 1796084425,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 18,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain is 25 * 6 = 150 USD. In euros, this amount is 130.50 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/18",
+              "seconds": 42.1,
+              "seed": 4222685016,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 19,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain is 250.00 USD. This amount, converted to euros, is 218.75 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/19",
+              "seconds": 42.4,
+              "seed": 2360754126,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            }
+          ],
+          "passes": 0,
+          "passes_with_an_approximate_step": 0,
+          "run_seconds_total": 853.2,
+          "runs": 20,
+          "runs_with_a_fallback_step": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "settings": {
+        "alpha": 0.05,
+        "beta": 0.05,
+        "concurrency": 1,
+        "confidence": 0.95,
+        "gate": "sprt",
+        "max_runs": 20,
+        "min_pass_rate": 0.8,
+        "p_fail": 0.6,
+        "p_pass": 0.9,
+        "runs_per_minute": null,
+        "seed": 0
+      },
+      "stats_impl": "baseline",
+      "temperature": null,
+      "wall_s": 853.1
+    },
+    "strict": {
+      "agent": "examples.pydantic_ai_agent.agent:run",
+      "model": "qwen2.5:7b",
+      "policy": "strict",
+      "prompt_variant": "recording",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 19,
+            "passed": 0,
+            "unrecorded": 1
+          },
+          "classification": "failing",
+          "decision": "fail",
+          "distinct_outputs": 20,
+          "distinct_tool_paths": 2,
+          "failures": {
+            "error:UnrecordedCallError": 1,
+            "rule:answer_states": 20,
+            "tool_sequence": 19
+          },
+          "long": {
+            "clustering": {
+              "base_rate": 0.0062,
+              "clusters": null,
+              "conditional_rate": null,
+              "measurable": false,
+              "minimum_world_steps": 5,
+              "ratio": null,
+              "steps_after_a_world_step": 0,
+              "tool_steps": 161,
+              "world_steps": 1,
+              "world_steps_after_a_world_step": 0
+            },
+            "identity_firings": 1,
+            "mean_served_calls": 8.05,
+            "runs_with_a_world_step": 1,
+            "runs_with_an_identity_firing": 1,
+            "served_calls_per_run": [
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              9,
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "survival": [
+              {
+                "at_risk": 20,
+                "independent": 0.979,
+                "index": 1,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.9585,
+                "index": 2,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.9384,
+                "index": 3,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.9187,
+                "index": 4,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.8994,
+                "index": 5,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.8805,
+                "index": 6,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.8621,
+                "index": 7,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 20,
+                "independent": 0.844,
+                "index": 8,
+                "share_without_world_step": 1.0,
+                "survival": 1.0,
+                "world_steps": 0
+              },
+              {
+                "at_risk": 1,
+                "independent": 0.8263,
+                "index": 9,
+                "share_without_world_step": 0.95,
+                "survival": 0.0,
+                "world_steps": 1
+              }
+            ],
+            "world_endings": {
+              "independent_count": 3.47,
+              "independent_range": [
+                1,
+                7
+              ],
+              "independent_share_at_shortest_chain": 0.1737,
+              "interval": [
+                0.0013,
+                0.2487
+              ],
+              "of": 20,
+              "runs": 1
+            }
+          },
+          "name": "trace_rebooking_chain",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 0,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain is 500.00 USD, which converts to 425.00 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/0",
+              "seconds": 41.3,
+              "seed": 489586135,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 1,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain is $625.00. This amount, when converted to euros, is \u20ac512.50.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/1",
+              "seconds": 41.9,
+              "seed": 1781091649,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 2,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain is $500.00, which is approximately \u20ac428.57 in euros.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/2",
+              "seconds": 42.2,
+              "seed": 4078968059,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 3,
+              "output": "The original booking reference is P6B2LH and the total paid across all bookings in the chain is 260.00 USD, which is 230.00 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/3",
+              "seconds": 41.1,
+              "seed": 2217159789,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 4,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across every booking in the chain is 250.00 USD, which is equivalent to 223.18 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/4",
+              "seconds": 41.6,
+              "seed": 440646094,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 5,
+              "output": "The original booking reference is P6B2LH, and the total paid across every booking in the chain is 25 * 10 = 250 USD. Converting this to euros, we get 220.50 EUR.\n\n220.50 EUR",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/5",
+              "seconds": 43.6,
+              "seed": 1833208152,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 6,
+              "output": "The original booking reference is P6B2LH and the total amount paid across all bookings in the chain is 260.00 USD, which is 224.00 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/6",
+              "seconds": 41.5,
+              "seed": 4098742498,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 7,
+              "output": "The original booking reference is P6B2LH and the total paid across all bookings in the chain is 250.00 USD, which is approximately 223.18 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/7",
+              "seconds": 41.4,
+              "seed": 2202724468,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 8,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain is 500.00 USD, which is approximately 441.00 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/8",
+              "seconds": 41.6,
+              "seed": 334886373,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 9,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain, in USD, is 251.00. Converting this to euros, we get 223.17 euros.\n\n223.17 euros",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/9",
+              "seconds": 43.4,
+              "seed": 1693631859,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 10,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across every booking in the chain is 500.00 USD, which converts to 428.73 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/10",
+              "seconds": 42.2,
+              "seed": 4117399402,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 11,
+              "output": "The original booking reference is P6B2LH. The total amount paid across all bookings in the chain, in euros, is 550.00 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/11",
+              "seconds": 40.8,
+              "seed": 2188228604,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 12,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain, in USD, is 25.00 + 25.00 + 25.00 + 25.00 + 25.00 + 200.00 = 275.00. Converting 275.00 USD to EUR, we get 236.97 EUR.\n\n236.97 EUR",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/12",
+              "seconds": 49.8,
+              "seed": 459597382,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 13,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain is 250.00 USD, which is 225.00 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/13",
+              "seconds": 41.4,
+              "seed": 1818482384,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "unrecorded",
+              "error": "UnrecordedCallError: the agent made a tool call 'convert_currency' that the cassette never recorded (or made it more times than recorded); request: {\"amount\":325.0,\"from_currency\":\"USD\",\"to_currency\":\"EUR\"}. 1 unused recording(s) of 'convert_currency' remain, none for amount=325.0, from_currency=\"USD\", to_currency=\"EUR\" (the suite's identify keys). If the change is intended, re-record the cassette with `replay record`, or replay with --policy fallback (perform it for real) or --policy synth (stub it).",
+              "failed_checks": [
+                "rule:answer_states"
+              ],
+              "first_world_step": 9,
+              "guard_in_system": [
+                true
+              ],
+              "identity": true,
+              "identity_firings": 1,
+              "index": 14,
+              "output": null,
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/14",
+              "seconds": 47.6,
+              "seed": 4060562291,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "unrecorded"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9,
+                "unrecorded": 1
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "amount": 325.0,
+                    "from_currency": "USD",
+                    "to_currency": "EUR"
+                  },
+                  "name": "convert_currency",
+                  "status": "unrecorded"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 15,
+              "output": "The original booking reference is P6B2LH. Across all bookings in the chain, you paid a total of 250.00 USD. Converted to euros, this is 223.55 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/15",
+              "seconds": 41.8,
+              "seed": 2231399397,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 16,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain is 25 * 7 = 175 USD, which is approximately 153.13 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/16",
+              "seconds": 41.7,
+              "seed": 470360671,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 17,
+              "output": "The original booking reference is P6B2LH and the total paid across all bookings in the chain is 255.00 USD, which is 228.75 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/17",
+              "seconds": 41.1,
+              "seed": 1796084425,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 18,
+              "output": "The original booking reference is P6B2LH, and the total paid across all bookings in the chain is 500.00 USD. Converting this to euros, we get 421.75 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/18",
+              "seconds": 41.9,
+              "seed": 4222685016,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "tool_sequence",
+                "rule:answer_states"
+              ],
+              "first_world_step": null,
+              "guard_in_system": [
+                true
+              ],
+              "identity": false,
+              "identity_firings": 0,
+              "index": 19,
+              "output": "The original booking reference is P6B2LH, and the total amount paid across all bookings in the chain is 250.00 USD, which is equivalent to 223.18 EUR.",
+              "parallel_tool_replies": 0,
+              "passed": false,
+              "request_models": [
+                "qwen2.5:7b"
+              ],
+              "request_temperatures": [
+                null
+              ],
+              "run_id": "trace_rebooking_chain/19",
+              "seconds": 41.5,
+              "seed": 2360754126,
+              "statuses": [
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact",
+                "exact"
+              ],
+              "steps": {
+                "exact": 8,
+                "live": 9
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "booking_ref": "K7W2QD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "R4N8XC"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "T2M6PB"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "H9F3VL"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "Z5Q1JD"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "C8X4RN"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "M3V7TE"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "booking_ref": "P6B2LH"
+                  },
+                  "name": "get_booking",
+                  "status": "exact"
+                }
+              ]
+            }
+          ],
+          "passes": 0,
+          "passes_with_an_approximate_step": 0,
+          "run_seconds_total": 849.4,
+          "runs": 20,
+          "runs_with_a_fallback_step": 0,
+          "unrecorded_by_identity": 1
+        }
+      ],
+      "settings": {
+        "alpha": 0.05,
+        "beta": 0.05,
+        "concurrency": 1,
+        "confidence": 0.95,
+        "gate": "sprt",
+        "max_runs": 20,
+        "min_pass_rate": 0.8,
+        "p_fail": 0.6,
+        "p_pass": 0.9,
+        "runs_per_minute": null,
+        "seed": 0
+      },
+      "stats_impl": "baseline",
+      "temperature": null,
+      "wall_s": 849.4
+    }
+  },
+  "cassette": "examples/pydantic_ai_agent/cassettes/trace_rebooking_chain.jsonl",
+  "cassette_model": "qwen2.5:7b",
+  "cassette_provider": "fake",
+  "causes": {
+    "approximate": "a step was served approximately (another request's recording) and a check then failed: possibly the frozen world's fault",
+    "model": "a check failed (or the agent raised) with every served step exact: the model's own failure",
+    "passed": "every check passed",
+    "unrecorded": "a call no unused recording matched (by tool, or by the identify keys) ended the run under strict: the frozen world's limit"
+  },
+  "client": "examples.pydantic_ai_agent.agent:make_client",
+  "command": "uv run python -m eval.pydantic_ai --long",
+  "environment": {
+    "cpu": "AMD EPYC 9V45 96-Core Processor",
+    "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "logical_cpus": 4,
+    "model": "qwen2.5:7b",
+    "ollama": "0.40.11",
+    "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.43"
+  },
+  "identify": "the suite's [defaults.identify] keys",
+  "mode": "model-live",
+  "recorded_tool_calls": {
+    "convert_currency": 1,
+    "get_booking": 8
+  },
+  "scenario": "trace_rebooking_chain",
+  "short_run_rate": {
+    "served": 143,
+    "world_steps": 3
+  },
+  "suite": "examples/pydantic_ai_agent/replay-qwen.toml"
+}

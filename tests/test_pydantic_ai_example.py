@@ -17,7 +17,7 @@ from agent_replay.runner import record, replay
 from agent_replay.trajectory import StepStatus
 from examples.pydantic_ai_agent import agent, environment, fake_model, rules
 from examples.pydantic_ai_agent.tasks import TASKS
-from examples.pydantic_ai_agent.tools import BOOKINGS, book_flight, cancel_booking, reset
+from examples.pydantic_ai_agent.tools import BOOKINGS, CHAIN, book_flight, cancel_booking, reset
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "pydantic_ai_agent"
 SUITES = ["replay.toml", "replay-qwen.toml"]
@@ -83,7 +83,7 @@ def test_tools_act_on_bookings_that_reset_every_run():
     assert book_flight("dl2207", "Ana Lima").booking_ref == "NEW001"
     assert cancel_booking("QX7Y2K").status == "cancelled"
     reset()
-    assert set(BOOKINGS) == {"QX7Y2K", "HB4M9T"}
+    assert set(BOOKINGS) == {"QX7Y2K", "HB4M9T", *CHAIN}
     assert BOOKINGS["QX7Y2K"].status == "confirmed"
     with pytest.raises(ModelRetry, match="full"):
         book_flight("AA178", "Ana Lima")

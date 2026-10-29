@@ -7,7 +7,7 @@
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
 	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough \
 	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline \
-	eval-pydantic-ai-arms eval-pydantic-ai-swap eval-verdict-curve bench-scale bench-scale-record bench-upstream
+	eval-pydantic-ai-arms eval-pydantic-ai-swap eval-pydantic-ai-long record-pydantic-ai-chain eval-verdict-curve bench-scale bench-scale-record bench-upstream
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -176,7 +176,14 @@ pydantic-ai-cassettes:
 # eval/results/m9_qwen_recording.json. Needs `ollama serve` and `ollama pull qwen2.5:7b`;
 # CPU only, several minutes. Locally or from the manual Ollama workflow, never on a PR.
 record-pydantic-ai:
-	uv run python -m examples.pydantic_ai_agent.record_all --live
+	uv run python -m examples.pydantic_ai_agent.record_all --live --task cheapest_fare_in_euros \
+		--task book_earliest_flight --task cancel_refundable_booking
+
+# M16: the same for the rebooking chain, logged to eval/results/m16_qwen_recording.json
+# (none of its 5 attempts passed, so its qwen suite scenario serves the fake-model world).
+record-pydantic-ai-chain:
+	uv run python -m examples.pydantic_ai_agent.record_all --live --task trace_rebooking_chain \
+		--log eval/results/m16_qwen_recording.json
 
 # Both of its suites replayed in full (every step exact, 0 approximate); then, when Ollama
 # serves qwen2.5:7b, `replay flake` in model-live, 10 runs per scenario, raw report and
@@ -204,6 +211,15 @@ eval-pydantic-ai-arms:
 # CPU only. Locally or from the manual Ollama workflow, never on a PR.
 eval-pydantic-ai-swap:
 	uv run python -m eval.pydantic_ai --swap
+
+# M16: the rebooking chain (9 served tool calls, each argument from the previous result)
+# in model-live under strict and fallback, 20 runs each (15 if its recording took over
+# 150 s), every run's per-step statuses, the survival curve by served-call index, the
+# clustering rate and the identify keys' firings, into eval/results/m16_long_qwen.json.
+# Needs Ollama serving qwen2.5:7b (skipped without it); CPU only, about 35 minutes on
+# 4 CPUs. Locally or from the manual Ollama workflow, never on a PR.
+eval-pydantic-ai-long:
+	uv run python -m eval.pydantic_ai --long
 
 # M12: how often a subset of n runs gives the all-runs fixed-threshold verdict, for every
 # committed flake report (seeded draws without replacement; offline, byte-stable).

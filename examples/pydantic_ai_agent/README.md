@@ -30,13 +30,14 @@ uv run replay ci examples/pydantic_ai_agent/replay-qwen.toml   # qwen2.5:7b reco
 # With Ollama: `ollama serve` and `ollama pull qwen2.5:7b`
 make eval-pydantic-ai     # replay ci in full, then replay flake in model-live (10 runs each)
 make record-pydantic-ai   # re-record the qwen2.5:7b cassettes
+make eval-pydantic-ai-long  # the rebooking chain under strict and fallback (20 runs each)
 ```
 
 | File | What it is |
 |---|---|
 | `agent.py` | The agent (`run`, and `run_streaming` through `agent.run_stream`), and `make_client` for Ollama (`REPLAY_OLLAMA_URL`, default `http://localhost:11434`) |
-| `tools.py` | Five tools over a fixed world of six flights and two bookings |
-| `tasks.py` | Three tasks and their right answers |
+| `tools.py` | Five tools over a fixed world of six flights, two bookings and an eight-booking rebooking chain (`CHAIN`) |
+| `tasks.py` | Four tasks and their right answers |
 | `rules.py` | `rule` checks on outcomes: the writes, the figure in the answer, lookup before write |
 | `replay.toml`, `replay-qwen.toml` | The suites: `in_order` sequences and the rules, over the fake and the qwen2.5:7b recordings |
 | `fake_model.py` | A deterministic model, so the fake cassettes record with no server |
@@ -48,6 +49,13 @@ The checks judge outcomes, not the recorded path: a sequence check in
 check the bookings and the figure in the answer. An `exact` sequence check
 would measure agreement with one recording, which a different model fails for
 the wrong reason.
+
+`trace_rebooking_chain` is the long task: each booking in the chain names the
+one it was rebooked from (`rebooked_from`), so tracing it back to the original
+takes eight `get_booking` calls, each on a reference the previous result gave,
+then one `convert_currency` of the total. A model cannot shorten it with
+parallel calls. Its bookings are a subclass of `Booking`, so the two bookings
+the other tasks read serialise exactly as they were recorded.
 
 The measured results (what broke on first contact, and the `model-live` flake
 on qwen2.5:7b) are in [RESULTS.md](../../RESULTS.md).

@@ -67,9 +67,21 @@ every older version.
   RSS, load with the collector paused and on, `full` replay with `gc.freeze()`, and
   load timings on the committed real recordings; `make bench-replay` gains the
   per-envelope cost of appending to a partial.
+- The pydantic-ai travel desk's `trace_rebooking_chain` task: an eight-booking
+  rebooking chain (`RebookedBooking.rebooked_from`) traced with eight sequential
+  `get_booking` calls and one conversion, with a fake-model cassette in both suites.
+  Its step limits are per scenario (12 tool and 14 model calls; the short tasks keep
+  8 and 6).
+- `make eval-pydantic-ai-long` (`eval/pydantic_ai.py --long`, an input of the manual
+  Ollama workflow): the chain in `model-live` under `strict` and `fallback`, with
+  per-run step statuses, a survival curve by served-call index, a clustering rate and
+  the identify keys' firings; `make record-pydantic-ai-chain` logs its live recording
+  attempts.
 
 ### Changed
 
+- `make record-pydantic-ai` re-records only M9's three tasks; the rebooking chain
+  records through `make record-pydantic-ai-chain` into its own attempts log.
 - A run whose model has no price is reported as `unpriced` (or `$x + N unpriced
   calls`), not `$0.0000`.
 - `count_tokens`, message batches and the beta `parse` / `tool_runner` raise a

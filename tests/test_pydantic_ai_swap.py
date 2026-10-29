@@ -206,7 +206,11 @@ def test_a_reply_with_several_tool_calls_is_counted(tmp_path: Path) -> None:
     row = s["outcomes"][0]
     assert row["parallel_tool_replies"] == 1
     assert (row["cause"], row["identity"]) == ("unrecorded", True)
-    assert [c["status"] for c in row["tool_calls"]] == ["exact", "unrecorded"]
+    # pydantic-ai runs one reply's tool calls concurrently, so their order (and whether
+    # the search starts before the conversion ends the run) depends on scheduling.
+    statuses = [c["status"] for c in row["tool_calls"]]
+    assert statuses.count("unrecorded") == 1
+    assert set(statuses) <= {"exact", "unrecorded"}
 
 
 def test_the_full_replay_ignores_an_exported_live_model(

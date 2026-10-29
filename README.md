@@ -137,6 +137,7 @@ the rows still to measure.
 | Live flakiness on a local model (free) | qwen2.5:7b via Ollama, 10 `model-live` runs per task: lookup 10/10, booking 2/10, cancellation 0/10 (23 of 25 attempts cancel without looking the booking up); 1026 s on 4 vCPU | `make eval-pydantic-ai` (RESULTS.md, M9) |
 | Frozen world vs the model, `model-live` on qwen2.5:7b | 20 runs per arm: `strict` 18 / 20 and 9 / 20, `fallback` 19 / 20 and 8 / 20; 3 of 20 `strict` booking runs end on a call the recording never made, 0 on another entity, 0 approximate steps in 80; lookup pooled with M9 47 / 50 | `make eval-pydantic-ai-arms` (RESULTS.md, M12) |
 | Model and prompt swaps against the qwen2.5:7b cassettes | qwen2.5:3b 0 / 20 and 0 / 20 under `strict` and `fallback` alike (32 `strict` runs stopped by identity keys, every one on the model's wrong argument); the prompt without its guard line 2 / 20 and 2 / 20 (amounts guessed in parallel tool calls) against a same-day control's 18 / 20 and 10 / 20; `temperature=0` 10 identical passes of a booking that passes 17 / 40 sampled; 0 approximate steps in 170 runs | `make eval-pydantic-ai-swap` (RESULTS.md, M15) |
+| Frozen-world divergence on a long chain | qwen2.5:7b on an 8-link rebooking chain, 20 runs under `strict` and `fallback`: 320 of 320 chain lookups served exact, 1 world step in 321 served calls (0.31%, against 2.1% on the short runs), so 40 of 40 runs survived the 8 lookups where independence predicts 0.844 each; 0 / 20 passed in both arms, 39 of 40 answering a euro total without calling the conversion tool | `make eval-pydantic-ai-long` (RESULTS.md, M16) |
 | Runs a fixed-threshold verdict needs | 5 runs agree with the all-runs verdict in ≥ 95% of draws on all 15 committed scenarios, but not on 3 of the 4 new ones (90–94%), which sit 0.15–0.35 from the 0.75 threshold | `make eval-verdict-curve` |
 | Cassette bytes at scale | quadratic in turns: 3.65 MB at 100 turns, 13.1 MB at 200 (seeded text, retail-sized prompt); live Opus retail traces grow 2.4 to 4.4× faster per turn; `full` replay 1.7 s at 200 turns | `make bench-scale` |
 | What compression recovers at 100 turns | xz 105×; gzip 3.8× (19× at 20 turns, until envelopes outgrow its 32 KB window); a shared-prefix encoding adds only 1.07× under xz, so cassettes compress as `.jsonl.xz` and the schema is unchanged | `make bench-scale` |
@@ -916,7 +917,7 @@ credentials).
 | `REPLAY_LABELLER` | — | Who is labelling, for `replay label` when `--labeller` is not given (one of the two is required) |
 | `REPLAY_JUDGE_CACHE` | `.replay/judge-cache` | Verdict cache directory when a judge check sets no `cache_dir` |
 | `REPLAY_JUDGE_OFFLINE` | off | `1` / `true`: judge from the cache only; a miss breaks the scenario (exit 2) |
-| `REPLAY_OLLAMA_MODEL` | `qwen2.5:7b` | The model the pydantic-ai example's agent asks for on a live run (the committed cassettes were recorded on qwen2.5:7b; `make eval-pydantic-ai-swap` sets it per arm). Set it for a live run only: the model name is in every model request, so `replay ci` of the committed cassettes with it exported serves each model step approximately |
+| `REPLAY_OLLAMA_MODEL` | `qwen2.5:7b` | The model the pydantic-ai example's agent asks for on a live run (the committed cassettes were recorded on qwen2.5:7b; `make eval-pydantic-ai-swap` sets it per arm; `make eval-pydantic-ai-long` runs the recorder). Set it for a live run only: the model name is in every model request, so `replay ci` of the committed cassettes with it exported serves each model step approximately |
 | `REPLAY_OLLAMA_URL` | `http://localhost:11434` | The Ollama server the pydantic-ai example's live client (`examples.pydantic_ai_agent.agent:make_client`) talks to |
 | `REPLAY_PRICES_FILE` | — | JSON `{"model": {"input", "output", "cache_read", "cache_write"}}` in USD per MTok, extending or overriding the built-in price table |
 | `REPLAY_STATS_IMPL` | `baseline` | Statistics implementation: `baseline` (naive reference) or `core` (`agent_replay/stats.py`) |
@@ -1279,10 +1280,14 @@ Next (evolution round 3, 2026-10-28; evidence and hypotheses in
     showed those endings were the model's wrong arguments, not the world's;
     temperature 0 passed 10 / 10 on a 17 / 40 task; see
     [RESULTS.md](RESULTS.md))
-16. Does frozen-world divergence compound on a long chain? A 9-call task whose
-    every argument comes from the previous result, recorded on qwen2.5:7b (the
-    first real recording past 6 turns), with a survival curve against the
-    2% per-call rate the short runs measured
+16. ~~Does frozen-world divergence compound on a long chain? A 9-call task
+    whose every argument comes from the previous result, with a survival
+    curve against the 2% per-call rate the short runs measured~~ (done: 320 of
+    320 chain lookups on qwen2.5:7b stayed on the recorded path, 1 world step
+    in 321 served calls, so divergence did not compound; every run still
+    failed, 39 of 40 on a euro total computed without the conversion tool. No
+    qwen recording passed, so the longest real trace is still 6 turns; see
+    [RESULTS.md](RESULTS.md))
 
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and running a flake suite's scenarios in parallel as well

@@ -39,9 +39,17 @@ class Booking(BaseModel):
     flight_id: str
     passenger: str
     status: str
-    """``confirmed`` or ``cancelled``."""
+    """``confirmed``, ``cancelled`` or ``rebooked`` (replaced by a later booking)."""
     refundable: bool
     paid_usd: float
+
+
+class RebookedBooking(Booking):
+    """A booking in a rebooking chain: ``rebooked_from`` names the booking it replaced,
+    ``None`` on the chain's original. A subclass rather than a new field on
+    :class:`Booking`, so the bookings that predate chains read exactly as recorded."""
+
+    rebooked_from: str | None
 
 
 FLIGHTS: tuple[Flight, ...] = (
@@ -122,6 +130,42 @@ _INITIAL_BOOKINGS: dict[str, Booking] = {
         paid_usd=189.0,
     ),
 }
+CHAIN_PASSENGER = "Lee Park"
+CHAIN: tuple[str, ...] = (
+    "K7W2QD",
+    "R4N8XC",
+    "T2M6PB",
+    "H9F3VL",
+    "Z5Q1JD",
+    "C8X4RN",
+    "M3V7TE",
+    "P6B2LH",
+)
+"""A rebooking chain, newest first: each booking was rebooked from the next, and the
+last is the original. Reading it back takes one ``get_booking`` per link, each on a
+reference the previous result gave, so a model cannot fetch the links in parallel."""
+CHAIN_FARE_USD = 200.0
+CHAIN_FEE_USD = 25.0
+"""The original fare and the change fee paid on each rebooking: 375.00 USD in all."""
+
+
+def _chain() -> dict[str, Booking]:
+    links = zip(CHAIN, (*CHAIN[1:], None), strict=True)
+    return {
+        ref: RebookedBooking(
+            booking_ref=ref,
+            flight_id=FLIGHTS[i % len(FLIGHTS)].flight_id,
+            passenger=CHAIN_PASSENGER,
+            status="confirmed" if i == 0 else "rebooked",
+            refundable=False,
+            paid_usd=CHAIN_FEE_USD if previous is not None else CHAIN_FARE_USD,
+            rebooked_from=previous,
+        )
+        for i, (ref, previous) in enumerate(links)
+    }
+
+
+_INITIAL_BOOKINGS.update(_chain())
 BOOKINGS: dict[str, Booking] = {}
 _LOCK = threading.Lock()
 _next_ref = 0
@@ -153,7 +197,7 @@ def convert_currency(amount: float, from_currency: str, to_currency: str) -> flo
 
 
 @tool
-def get_booking(booking_ref: str) -> Booking:
+def get_booking(booking_ref: str) -> RebookedBooking | Booking:
     """A booking by its six-character reference."""
     with _LOCK:
         booking = BOOKINGS.get(booking_ref.strip().upper())
