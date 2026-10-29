@@ -915,6 +915,7 @@ credentials).
 | `REPLAY_LABELLER` | — | Who is labelling, for `replay label` when `--labeller` is not given (one of the two is required) |
 | `REPLAY_JUDGE_CACHE` | `.replay/judge-cache` | Verdict cache directory when a judge check sets no `cache_dir` |
 | `REPLAY_JUDGE_OFFLINE` | off | `1` / `true`: judge from the cache only; a miss breaks the scenario (exit 2) |
+| `REPLAY_OLLAMA_MODEL` | `qwen2.5:7b` | The model the pydantic-ai example's agent asks for on a live run (the committed cassettes were recorded on qwen2.5:7b; `make eval-pydantic-ai-swap` sets it per arm) |
 | `REPLAY_OLLAMA_URL` | `http://localhost:11434` | The Ollama server the pydantic-ai example's live client (`examples.pydantic_ai_agent.agent:make_client`) talks to |
 | `REPLAY_PRICES_FILE` | — | JSON `{"model": {"input", "output", "cache_read", "cache_write"}}` in USD per MTok, extending or overriding the built-in price table |
 | `REPLAY_STATS_IMPL` | `baseline` | Statistics implementation: `baseline` (naive reference) or `core` (`agent_replay/stats.py`) |
