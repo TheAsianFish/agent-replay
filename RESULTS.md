@@ -2731,7 +2731,8 @@ milestone builds a task long enough to tell and runs it on qwen2.5:7b.
 - **Recording:** up to 5 qwen2.5:7b attempts (`make record-pydantic-ai-chain`,
   log `eval/results/m16_qwen_recording.json`). None passed: every attempt
   walked all 8 links to P6B2LH, then four answered with a total of their own
-  (25, 500, 260 and 300 USD) without converting, and one converted 25 USD.
+  without converting (25, 500 and 260 USD, and "200 plus 100"), and one
+  converted 25 USD.
   As M9 did for the cancellation, the qwen suite serves the chain from the
   fake-model recording. In `model-live` only tool steps are served, and the
   chain's tool results do not depend on who recorded them, so the world is
@@ -2824,10 +2825,12 @@ The 0.0 at n = 9 rests on one run, the only one that reached a ninth call.
 **Whose failure, then.** Every run failed, and it was the model in 39 of
 40: with all served steps exact, 39 runs (19 `strict`, 20 `fallback`) never
 called `convert_currency` and answered with a euro figure of their own
-making. 39 named the right original, P6B2LH. 31 stated a USD total: 500
-(8 runs), 250 (8), 260 (4), 275 (3), 150 (2), 255 (2), and 25, 125, 175
-and 325 once each, never 375. The euro figure beside each implies a rate of
-0.71 to 0.90 EUR per USD, never the world's 0.92: the conversion was
+making. 39 named the right original, P6B2LH. 38 of the 39 stated a USD
+total: 500 (10 runs), 250 (9), 260 (4), 275 (3), 251 (2), 25 (2), 150 (2),
+255 (2), and 625, 325, 125 and 175 once each, never 375. Where a run showed
+its working, it summed fewer links than it had read ("25 * 6 = 150", five
+$25 fees plus $200 = 275). The euro figure beside each total implies a rate
+of 0.71 to 0.90 EUR per USD, never the world's 0.92: the conversion was
 invented along with the sum. The `fallback` arm confirms it: with the real tool
 behind any call the recording lacked, there was no such call, and the pass
 count was the same 0 / 20. The `in_order` sequence check failed 39 runs and
