@@ -130,7 +130,7 @@ def test_parse_arms() -> None:
 def test_arms_without_ollama_are_skipped_not_failed(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(pydantic_ai, "ollama_model", lambda: None)
+    monkeypatch.setattr(pydantic_ai, "ollama_model", lambda *_: None)
     out = tmp_path / "arms.json"
     assert pydantic_ai.main(["--arms", "strict,fallback", "--arms-out", str(out)]) == 0
     assert "skipped the model-live runs" in capsys.readouterr().out

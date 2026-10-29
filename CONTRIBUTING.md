@@ -75,6 +75,9 @@ make pydantic-ai-cassettes  re-record the pydantic-ai example's fake-model casse
 make record-pydantic-ai  re-record its qwen2.5:7b cassettes through Ollama (local, CPU, minutes)
 make eval-pydantic-ai  replay ci in full on both of its suites; with Ollama, replay flake in
                   model-live on qwen2.5:7b (10 runs per scenario) into eval/results/m9_flake_qwen*
+make eval-pydantic-ai-arms  M12: its qwen-recorded scenarios under strict and fallback, 20 runs each
+make eval-pydantic-ai-swap  M15: the same with the live side changed (qwen2.5:3b, the prompt without
+                  its guard line, temperature 0, a 7b control) into eval/results/m15_swap_qwen*
 make demo-data    real replay ci / replay flake runs of the retail example into .replay/demo.db
 make openapi      regenerate dashboard/openapi.json (then `npm run gen:types` in dashboard/)
 make ui           npm ci + build the dashboard into agent_replay/server/static
@@ -116,7 +119,7 @@ that change the retail agent (`make regression-pr` opens one built to fail), and
 -P ubuntu-latest=catthehacker/ubuntu:act-latest --artifact-server-path /tmp/act-artifacts`
 (`-j replay -W .github/workflows/replay.yml` runs the real, failing job on a seeded suite).
 The local-model runs (`make record-pydantic-ai`, `make eval-pydantic-ai`) need `ollama serve`
-and `ollama pull qwen2.5:7b`; on GitHub they run only from the manual `ollama.yml` workflow.
+and `ollama pull qwen2.5:7b` (`make eval-pydantic-ai-swap` also `qwen2.5:3b`); on GitHub they run only from the manual `ollama.yml` workflow.
 Release steps are in RELEASE.md; never publish by hand.
 
 Until a target exists, say so in the PR rather than inventing it.

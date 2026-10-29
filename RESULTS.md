@@ -39,6 +39,7 @@ byte-stable ones and fails on any change.
 | A pydantic-ai agent records and replays with no framework change | both suites (fake model; qwen2.5:7b via Ollama for 2 of 3 scenarios, the cancellation on the fake-model cassette) pass in `full` with 0 approximate steps, also against `run_stream`; 13 first-contact breaks listed (7 in Replay, all fixed) | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai-offline` (in `make eval`) | measured, offline |
 | Live flake on a local model | qwen2.5:7b, `model-live`, 10 runs each: 10/10, 2/10, 0/10; 1 approximate step in 30 runs; 1026 s on 4 vCPU (AMD EPYC 7763); $0 | pydantic-ai through Ollama (M9) | `make eval-pydantic-ai` (Ollama) | measured, local model |
 | Frozen world vs the model (`model-live`, real model) | qwen2.5:7b, 20 runs per arm: `strict` 18/20 and 9/20, `fallback` 19/20 and 8/20; world-caused endings 0 and 3 of 20 under `strict` (an invented `get_booking` the recording never made), 0 by identity, 0 approximate steps in 80 runs; `cheapest_fare_in_euros` pooled with M9 47/50; 3090 s on 4 vCPU (AMD EPYC 7763); $0 | Frozen-world bias (M12) | `make eval-pydantic-ai-arms` (Ollama) | measured, local model |
+| Model and prompt swaps in `model-live` (real model) | qwen2.5:7b cassettes, 20 runs each: qwen2.5:3b 0 / 20 and 0 / 20 under both `strict` and `fallback` (32 of 40 `strict` runs end by identity, all on the model's wrong argument); 7b without the prompt's guard line 2 / 20 and 2 / 20 (23 identity endings, guessed amounts from parallel tool calls) against the same-day control's 18 / 20 and 10 / 20; `temperature=0` 10 / 10 identical passing runs of a booking that passes 17 / 40 sampled; 0 approximate steps in 170 runs; 4778 s on 4 vCPU (AMD EPYC 7763); $0 | `model-live` survives the change (M15) | `make eval-pydantic-ai-swap` (Ollama) | measured, local model |
 | Verdict-stability curve | 5 runs agree with the all-runs fixed-threshold verdict in ≥ 95% of draws on all 15 committed scenarios, but on only 1 of the 4 new M12 rows (90.3% to 94.3%; 0.15 to 0.35 from the 0.75 threshold); 13 of 19 rows pass 0% or 100% | Frozen-world bias (M12) | `make eval-verdict-curve` | measured, offline |
 | Cassette bytes at scale | quadratic (c2 291 bytes/turn², fitted exponent 1.54 over 5 to 200 turns, 1.85 from 100 to 200); 3.65 MB at 100 turns; gzip 19.5× at 20 turns → 3.8× at 100 (envelopes outgrow its 32 KB window), xz 105×; prefix encoding under xz only 1.07× more, so `.jsonl.xz` and no schema change; `full` replay 1.7 s at 200 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline (sizes byte-stable) |
 | Real recordings vs the fit | live Opus retail requests grow 1.4 to 2.6 KB a turn (synthetic 0.58), projecting to 8.0 to 13.9 MB of requests at 100 turns; xz 8.9× to 13.6× at 3 to 6 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline |
@@ -50,7 +51,8 @@ byte-stable ones and fails on any change.
 | D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
 
 API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
-M13 $0; the live runs of M9 and M12 used qwen2.5:7b on a local CPU).
+M15 $0; the live runs of M9, M12 and M15 used qwen2.5:7b and qwen2.5:3b on a
+local CPU).
 
 ## Live recording smoke test (M1)
 
@@ -2439,6 +2441,264 @@ process can use it. `full` replay itself grows faster than the bytes:
 4.6 s at 400 turns is 17× the time at 100 turns, for 13.6× the bytes. Every
 served request is fingerprinted, and the requests grow with the turns; that
 is outside this milestone.
+
+## Does `model-live` survive the change it exists to test? (M15)
+
+`model-live` exists to answer one question before a merge: the model, prompt
+or sampling changed, so does the agent still work? This milestone replays the
+qwen2.5:7b recordings with that change applied to the live side and asks two
+things. When the world was frozen by another model or prompt, how often does
+the frozen world end the run rather than the model's own failure? And does
+the gate still report the changed model's pass rate?
+
+- **Dataset:** the two pydantic-ai scenarios qwen2.5:7b recorded
+  (`cheapest_fare_in_euros`, `book_earliest_flight`,
+  `examples/pydantic_ai_agent/replay-qwen.toml`, M11 `identify` keys on),
+  the same cassettes as M12.
+- **Arms** (`eval/pydantic_ai.py`, `SWAP_ARMS`), each `model-live`, one run at
+  a time:
+  - qwen2.5:3b (digest `357c53fb…`), recording prompt, under `strict`, then
+    under `fallback`, 20 runs per scenario each.
+  - qwen2.5:7b (digest `845dbda0…`, the recorder, as in M12) with the
+    recording prompt minus its guard line ("Give a tool only values from the
+    traveller's message or from earlier tool results: when a call needs
+    another call's result, wait for that result."), `strict`, 20 runs each.
+  - The control: qwen2.5:7b, recording prompt, `strict`, 20 runs each, the
+    same day and machine as the other arms.
+  - `book_earliest_flight` at `temperature=0`, qwen2.5:7b, `strict`, 10 runs,
+    after four probe calls (below).
+  Every other arm leaves sampling at the model's default, as the cassettes
+  were recorded. The live model comes from `REPLAY_OLLAMA_MODEL` and the
+  prompt from `run_no_guard` / `run_temperature_0` in
+  `examples/pydantic_ai_agent/agent.py`. Each run row records the model,
+  temperature and guard line its requests actually carried; all 170 runs
+  carried what their arm asked for.
+- **Causes** as in M12 (`cause`): passed; unrecorded (a call no unused
+  recording matched, by tool or by `identify` key, ended a `strict` run);
+  approximate; model (a check failed, or the agent raised, with every served
+  step exact). Identity endings are counted separately. The gate is the
+  committed reports' rule, a pass rate of at least 0.75.
+- **Machine:** 4 vCPU, AMD EPYC 7763, CPU only, Ollama 0.40.11. $0.
+- **Raw output:** `eval/results/m15_swap_qwen.json` (every run's cause, tool
+  calls with their status, answer, step counts, error and seconds; the
+  probe; the diff below as `m15_swap_qwen.diff.md`).
+
+```
+$ make eval-pydantic-ai-swap
+uv run python -m eval.pydantic_ai --swap
+  ... (the six full-mode replays, all PASS, 0 approximate)
+arm 3b_strict: 20 model-live runs of cheapest_fare_in_euros, book_earliest_flight (qwen2.5:3b, recording, temperature None, strict)
+  cheapest_fare_in_euros: 0/20 passed (12 unrecorded, 8 model); 12 by identity, 3 tool paths
+  book_earliest_flight: 0/20 passed (20 unrecorded); 20 by identity, 1 tool paths
+  wall time 585.0 s
+arm 3b_fallback: 20 model-live runs of cheapest_fare_in_euros, book_earliest_flight (qwen2.5:3b, recording, temperature None, fallback)
+  cheapest_fare_in_euros: 0/20 passed (20 model); 0 by identity, 3 tool paths
+  book_earliest_flight: 0/20 passed (20 model); 0 by identity, 2 tool paths
+  wall time 737.9 s
+arm 7b_no_guard_strict: 20 model-live runs of cheapest_fare_in_euros, book_earliest_flight (qwen2.5:7b, no_guard, temperature None, strict)
+  cheapest_fare_in_euros: 2/20 passed (2 passed, 18 unrecorded); 18 by identity, 6 tool paths
+  book_earliest_flight: 2/20 passed (2 passed, 5 unrecorded, 13 model); 5 by identity, 4 tool paths
+  wall time 1169.9 s
+arm 7b_control_strict: 20 model-live runs of cheapest_fare_in_euros, book_earliest_flight (qwen2.5:7b, recording, temperature None, strict)
+  cheapest_fare_in_euros: 18/20 passed (18 passed, 2 model); 0 by identity, 1 tool paths
+  book_earliest_flight: 10/20 passed (10 passed, 3 unrecorded, 7 model); 2 by identity, 4 tool paths
+  wall time 1802.4 s
+arm 7b_temperature_0_strict: 10 model-live runs of book_earliest_flight (qwen2.5:7b, recording, temperature 0.0, strict)
+  book_earliest_flight: 10/10 passed (10 passed); 0 by identity, 1 tool paths
+  wall time 482.6 s
+wrote eval/results/m15_swap_qwen.json
+```
+
+| `model-live` on the qwen2.5:7b cassettes | Passed | passed / unrecorded / approximate / model | By identity | Gate | Seconds per run (min / median / max) | Wall |
+|---|---|---|---|---|---|---|
+| M9: `cheapest_fare_in_euros` (7b, no keys, 10 runs) | 10 / 10 | (not classified in M9) | — | pass | 41.3 / 47.3 / 66.5 | 1026 s for M9's 30 runs |
+| M9: `book_earliest_flight` (7b, no keys, 10 runs) | 2 / 10 | (1 `UnrecordedCallError`, 1 approximate) | — | fail | 31.9 / 33.6 / 55.6 | |
+| M12 `strict`: `cheapest_fare_in_euros` (7b) | 18 / 20 | 18 / 0 / 0 / 2 | 0 | pass | 40.1 / 40.4 / 54.7 | 1562 s |
+| M12 `strict`: `book_earliest_flight` (7b) | 9 / 20 | 9 / 3 / 0 / 8 | 0 | fail | 30.3 / 36.9 / 45.8 | |
+| M12 `fallback`: `cheapest_fare_in_euros` (7b) | 19 / 20 | 19 / 0 / 0 / 1 | 0 | pass | 40.0 / 40.3 / 43.0 | 1528 s |
+| M12 `fallback`: `book_earliest_flight` (7b) | 8 / 20 | 8 / 0 / 0 / 12 | 0 | fail | 29.8 / 33.6 / 47.6 | |
+| M15 3b `strict`: `cheapest_fare_in_euros` | 0 / 20 | 0 / 12 / 0 / 8 | 12 | fail | 11.4 / 14.3 / 31.1 | 585 s |
+| M15 3b `strict`: `book_earliest_flight` | 0 / 20 | 0 / 20 / 0 / 0 | 20 | fail | 13.3 / 13.6 / 15.8 | |
+| M15 3b `fallback`: `cheapest_fare_in_euros` | 0 / 20 | 0 / 0 / 0 / 20 | 0 | fail | 11.1 / 19.3 / 20.0 | 738 s |
+| M15 3b `fallback`: `book_earliest_flight` | 0 / 20 | 0 / 0 / 0 / 20 | 0 | fail | 12.2 / 19.9 / 22.7 | |
+| M15 7b no guard, `strict`: `cheapest_fare_in_euros` | 2 / 20 | 2 / 18 / 0 / 0 | 18 | fail | 14.9 / 15.5 / 86.6 | 1170 s |
+| M15 7b no guard, `strict`: `book_earliest_flight` | 2 / 20 | 2 / 5 / 0 / 13 | 5 | fail | 32.2 / 35.8 / 55.4 | |
+| M15 7b control, `strict`: `cheapest_fare_in_euros` | 18 / 20 | 18 / 0 / 0 / 2 | 0 | pass | 44.8 / 45.8 / 82.2 | 1802 s |
+| M15 7b control, `strict`: `book_earliest_flight` | 10 / 20 | 10 / 3 / 0 / 7 | 2 | fail | 33.7 / 43.7 / 49.9 | |
+| M15 7b `temperature=0`, `strict`: `book_earliest_flight` (10 runs) | 10 / 10 | 10 / 0 / 0 / 0 | 0 | pass | 47.9 / 48.3 / 48.6 | 483 s |
+
+The M9 and M12 rows are copied unchanged from their sections, and the v1
+rows (retail agent: `claude-haiku-5-5` 119 / 120, `claude-opus-5-5` 30 / 30)
+are unchanged too. 170 runs, 4778 s of arms on 4 vCPU, 0 approximate steps
+in any of them. Apart from a few seconds of unit tests during the no-guard
+arm, nothing else ran on the machine during the arms.
+
+**Temperature probe.** Before the arms, `probe_temperature` sent one
+open-ended prompt ("Invent a name for a new travel agency and give it a
+one-line slogan.") to Ollama's `/v1/messages` on qwen2.5:7b, twice at
+`temperature: 0` and twice at `temperature: 1`. Both temperature-0 answers
+were identical ("Travel Wonders Agency: Discover the Magic of Every
+Destination!"); the two at 1 differed from each other and from it
+(`identical_at_0: true`, `identical_at_1: false` in the raw report). So the
+endpoint takes the parameter. One plumbing detail mattered: pydantic-ai sends
+`temperature` inside `extra_body`, because `anthropic` 1.x has no named
+argument for it, and the SDK merges it into the JSON body. The harness reads
+it from there when it checks what reached the wire.
+
+What the 170 runs say, against the plan's hypotheses:
+
+- **(a) qwen2.5:3b fails the gate on both scenarios (0 / 20 and 0 / 20, at
+  most 14 was the bar), and `fallback` is within 2 of `strict` (0 against 0
+  on each). Holds. "Its world-caused endings under `strict` exceed 7b's 3 of
+  40" holds too: 32 of 40. But none of the 32 is the world's fault.** Every
+  one is an identity ending on a wrong argument:
+  - the booking: 20 of 20 runs book AS330 (09:30, the cheapest) instead of
+    DL2207 (06:10, the earliest), one identical tool path;
+  - the fare: 12 runs convert 212 (AA178, sold out) or 243 (UA512) instead of
+    189 (B6416).
+  The `fallback` arm is the counterfactual. With the real tool behind those
+  calls, the same mistakes run to the end and fail the ground-truth rules:
+  18 of 20 booking runs book AS330 and fail `writes_match`, and 13 of 20
+  fare runs convert 212 and state the wrong euros. So the `strict`
+  classification called 32 endings "unrecorded" that were the model's.
+  That is the right verdict for the wrong reason. An identity ending means
+  "the model asked for something the recording does not have", which is a
+  model error whenever the recording holds the right answer. The `fallback`
+  pass count, not the `strict` cause count, says whose failure it was.
+  In the other 8 `strict` fare runs no tool ran at all: pydantic-ai's
+  argument validation rejected the search call, and 7 runs then answered
+  that origin, destination or date were missing, while 1 exceeded the
+  tool's retry limit (`UnexpectedModelBehavior`). The diff below shows
+  why for run 0: its first reply wrapped the arguments in
+  `{"object": {...}}`. Two `fallback` fare runs converted the
+  right fare (173.88 EUR) and still failed `answer_states`, because the
+  answer never named the flight.
+- **(b) Without the guard line, at least one run ends `unrecorded` or by
+  identity. Holds, by a wide margin: 23 of 40 (18 fare, 5 booking), all by
+  identity.** The first was fare run 2, `convert_currency` with
+  `amount: 123.45`. These are the first identity endings ever on this prompt's
+  model: M12 had 0 in 80 runs, and the M11 keys had only fired on seeded
+  mutations before. The fare gate fails, 2 / 20 against the control's
+  18 / 20. Fisher's exact test (one-sided, hypergeometric, `math.comb`)
+  puts the chance of a split this lopsided between two equal arms at
+  2.6 × 10⁻⁷ for the fare and 0.0069 for the booking (2 / 20 against
+  10 / 20), so the prompt change caused both drops. (Treating the control's
+  18 / 20 as the true rate, as the build first did, gives 1.6 × 10⁻¹⁶, but
+  ignores that the control is itself a 20-run sample.)
+  The converted amounts (350, 150, 123.45, 125, 250) appear nowhere in the
+  search result (243, 189, 212). The mechanism is the one the guard was
+  written for. A 10-run re-run with the harness's `parallel_tool_replies`
+  count (added after the main run; below) shows all 8 of its fare identity
+  endings came from a single reply that asked for `search_flights` and
+  `convert_currency` together, the amount guessed before the search came
+  back; both passing runs made one call per reply. The booking's no-guard
+  failures are different: 13 runs search and stop (the M9/M12 mode), and 5
+  book WN1849 or AS330.
+- **(c) The control is inside both intervals: 18 / 20 (16 to 20) and
+  10 / 20 (4 to 13). Holds.** It matches M12's `strict` arm almost exactly
+  (18 and 9). It also produced the first identity endings on the shipped
+  prompt: 2 booking runs chose AS330, the same mistake 3b makes every time.
+  Its third unrecorded ending (run 6) was different: it searched, booked
+  DL2207 correctly, then called `convert_currency` (158 USD to EUR), a tool
+  the booking recording never called (by tool, not by identity), and
+  `strict` stopped it before it answered. The write was already right, so
+  this is the world's ending in M12's sense: a path the recording lacks, not
+  a wrong argument. Whether it would have passed is unknown (it never
+  answered). The swap arms' differences from the control are the change's
+  effect, not a different day.
+- **(d) At `temperature=0` the 10 trajectories are identical: one tool path
+  (search, then DL2207), one answer word for word, all 10 pass. Holds.** That
+  is the problem. One deterministic run says "pass" for a booking whose
+  sampled pass rate is 17 / 40 in M12 and 10 / 20 in the control, which the
+  fixed 0.75 rule fails. Greedy decoding picks one
+  trajectory from the distribution, and here it happens to be a passing one.
+  Ten repeats of that one trajectory measure nothing about the 23 of 40
+  M12 runs (and 10 of 20 control runs) that failed.
+  The agent ships at default sampling, so a temperature-0 CI run tests a
+  different agent from the one users get.
+
+**What this means for `model-live`.** It survived the change it exists to
+test. With the model or prompt swapped, the frozen world served every step
+the new model asked for that the recording had (0 approximate in 170 runs).
+It stopped every run that asked for something else, and in this sample
+those requests were wrong in every swap arm: each of the 55 identity endings
+named a flight or amount the ground truth rules out. The gate's verdict was the model's in
+every arm: 3b fails under both policies, the guardless prompt fails, and
+the control is unchanged. Under `strict`, the cause column overstates the
+world's share whenever the model guesses an argument. Read it beside a
+`fallback` arm, or the pass counts, before blaming the recording. The
+limit is still the one M12 found: a different *correct* path ends the same
+way. The control had one (run 6, a correct booking followed by an extra
+conversion), so the cause column can understate the world's share as well
+as overstate it; a single `strict` arm cannot tell the two apart.
+
+### A smaller re-run, in a later server session
+
+Two ad hoc arms and a fresh probe on the same machine, after the
+main run, to see whether the arms reproduce (raw output in `/tmp`, not
+committed: too few runs to report beside the main table):
+
+```
+$ uv run python -m eval.pydantic_ai --arms strict,fallback --model qwen2.5:3b --runs 3 --arms-out /tmp/rv/3b.json
+  cheapest_fare_in_euros: 0/3 passed (3 unrecorded); 3 by identity, 1 tool paths        (strict)
+  book_earliest_flight: 0/3 passed (2 unrecorded, 1 model); 2 by identity, 2 tool paths (strict)
+  cheapest_fare_in_euros: 0/3 passed (3 model); 0 by identity, 2 tool paths             (fallback)
+  book_earliest_flight: 0/3 passed (3 model); 0 by identity, 2 tool paths               (fallback)
+$ uv run python -m eval.pydantic_ai --arms strict --temperature 0 --runs 3 --arms-out /tmp/rv/t0.json
+  cheapest_fare_in_euros: 3/3 passed (3 passed); 0 by identity, 1 tool paths
+  book_earliest_flight: 3/3 passed (3 passed); 0 by identity, 1 tool paths
+probe_temperature(): identical_at_0 true, identical_at_1 false
+```
+
+3b fails the same way, and temperature 0 again gives one tool path per
+scenario. But the probe's temperature-0 answer this time was "Travel Wonders
+Agency: Discover the World, Dream B…", not the main run's "…Discover the
+Magic of Every Destination!". Greedy decoding was repeatable within one
+server session and not across sessions, so "temperature 0 makes CI
+deterministic" holds per session at best: the one trajectory it pins can
+change when the server restarts.
+
+### No guard, with replies that ask for several tools
+
+```
+$ uv run python -m eval.pydantic_ai --arms strict --prompt-variant no_guard --runs 10 --arms-out eval/results/m15_no_guard_parallel.json
+arm qwen2.5:7b_no_guard_tNone_strict: 10 model-live runs of cheapest_fare_in_euros, book_earliest_flight (qwen2.5:7b, no_guard, temperature None, strict)
+  cheapest_fare_in_euros: 2/10 passed (2 passed, 8 unrecorded); 8 by identity, 6 tool paths
+  book_earliest_flight: 0/10 passed (2 unrecorded, 8 model); 2 by identity, 2 tool paths
+  wall time 646.1 s
+```
+
+Raw output: `eval/results/m15_no_guard_parallel.json`. The 8 fare identity
+endings converted 350, 450, 150, 150, 1, 1, 350 and 100, each from a reply
+with two tool calls (`parallel_tool_replies: 1`); the 2 passes converted 189
+with one call per reply (`0`). No booking run made a parallel reply; its 2
+identity endings booked WN1849 after reading the search. This run replicates
+the arm (2 / 10 and 0 / 10 against 2 / 20 and 2 / 20). Its wall time is not
+comparable: the offline test suite ran beside it.
+
+### `replay diff` of a failed qwen2.5:3b run
+
+The harness diffs the first failed 3b `strict` run against the cassette it
+replayed, with the same alignment and table `replay diff --markdown` prints
+(`agent_replay/diff.py`), into `eval/results/m15_swap_qwen.diff.md`:
+
+## Trace diff: `examples/pydantic_ai_agent/cassettes/qwen/cheapest_fare_in_euros.jsonl` → `qwen2.5:3b run 0`
+
+distance 4.188 (0 same, 2 changed, 0 added, 3 removed); cost unpriced → unpriced; latency 55759 ms → 31117 ms.
+
+| Op | Base | Head | Cost | Changes |
+|---|---|---|---|---|
+| changed | `0 model anthropic.beta.messages.create` | `0 model anthropic.beta.messages.create` | 0.562 | `request.model: "qwen2.5:7b" → "qwen2.5:3b"`<br>`response: {"content":[{"id":"call_7hce5hca","input":{"date":"2026-11-… → {"content":[{"id":"call_93sy9455","input":{"object":{"date"…` |
+| removed | `1 tool search_flights` | — | 1 | — |
+| changed | `2 model anthropic.beta.messages.create` | `1 model anthropic.beta.messages.create` | 0.625 | `request.messages[-1]: {"content":[{"content":[{"text":"{\"flight_id\":\"UA512\",\… → {"content":[{"content":[{"text":"[{\"type\":\"missing\",\"l…`<br>`request.model: "qwen2.5:7b" → "qwen2.5:3b"`<br>`response: {"content":[{"id":"call_qv17br9g","input":{"amount":189,"fr… → {"content":[{"text":"The provided details for the flight se…` |
+| removed | `3 tool convert_currency` | — | 1 | — |
+| removed | `4 model anthropic.beta.messages.create` | — | 1 | — |
+
+Read top to bottom: 3b's first reply put the search arguments under an
+`object` key, so no `search_flights` ran. Its second request carried
+pydantic-ai's validation error (`"type":"missing"`) where 7b's carried the
+flight list, and 3b answered in text instead of retrying. The run made
+neither tool call the recording has.
 
 ## To measure
 
