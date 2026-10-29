@@ -2632,6 +2632,32 @@ way. The control had one (run 6, a correct booking followed by an extra
 conversion), so the cause column can understate the world's share as well
 as overstate it; a single `strict` arm cannot tell the two apart.
 
+### A smaller re-run, in a later server session
+
+Two ad hoc arms and a fresh probe on the same machine, after the
+main run, to see whether the arms reproduce (raw output in `/tmp`, not
+committed: too few runs to report beside the main table):
+
+```
+$ uv run python -m eval.pydantic_ai --arms strict,fallback --model qwen2.5:3b --runs 3 --arms-out /tmp/rv/3b.json
+  cheapest_fare_in_euros: 0/3 passed (3 unrecorded); 3 by identity, 1 tool paths        (strict)
+  book_earliest_flight: 0/3 passed (2 unrecorded, 1 model); 2 by identity, 2 tool paths (strict)
+  cheapest_fare_in_euros: 0/3 passed (3 model); 0 by identity, 2 tool paths             (fallback)
+  book_earliest_flight: 0/3 passed (3 model); 0 by identity, 2 tool paths               (fallback)
+$ uv run python -m eval.pydantic_ai --arms strict --temperature 0 --runs 3 --arms-out /tmp/rv/t0.json
+  cheapest_fare_in_euros: 3/3 passed (3 passed); 0 by identity, 1 tool paths
+  book_earliest_flight: 3/3 passed (3 passed); 0 by identity, 1 tool paths
+probe_temperature(): identical_at_0 true, identical_at_1 false
+```
+
+3b fails the same way, and temperature 0 again gives one tool path per
+scenario. But the probe's temperature-0 answer this time was "Travel Wonders
+Agency: Discover the World, Dream B…", not the main run's "…Discover the
+Magic of Every Destination!". Greedy decoding was repeatable within one
+server session and not across sessions, so "temperature 0 makes CI
+deterministic" holds per session at best: the one trajectory it pins can
+change when the server restarts.
+
 ### No guard, with replies that ask for several tools
 
 ```
