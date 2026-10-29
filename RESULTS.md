@@ -2827,9 +2827,11 @@ The 0.0 at n = 9 rests on one run, the only one that reached a ninth call.
 called `convert_currency` and answered with a euro figure of their own
 making. 39 named the right original, P6B2LH. 38 of the 39 stated a USD
 total: 500 (10 runs), 250 (9), 260 (4), 275 (3), 251 (2), 25 (2), 150 (2),
-255 (2), and 625, 325, 125 and 175 once each, never 375. Where a run showed
-its working, it summed fewer links than it had read ("25 * 6 = 150", five
-$25 fees plus $200 = 275). The euro figure beside each total implies a rate
+255 (2), and 625, 325, 125 and 175 once each, never 375. Of the 9 runs that
+showed their working, 7 summed fewer payments than they had read ("25 * 6 =
+150", five $25 fees plus $200 = 275, seven fees without the fare = 175), one
+counted ten fees ("25 * 10 = 250"), and one wrote the right expression and
+added it wrong ("25 * 7 + 200 = 325"). The euro figure beside each total implies a rate
 of 0.71 to 0.90 EUR per USD, never the world's 0.92: the conversion was
 invented along with the sum. The `fallback` arm confirms it: with the real tool
 behind any call the recording lacked, there was no such call, and the pass
