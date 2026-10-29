@@ -1424,4 +1424,30 @@ it from the 3.5 predicted), and no longer assumes a passing qwen recording.
     shows all 32 were the model's wrong arguments. An identity ending is a
     model error whenever the recording holds the right answer, so the cause
     column is read beside a `fallback` arm, not alone.
-- [ ] M16: Does frozen-world divergence compound on a long chain? — new bookings in the pydantic-ai example's fixed world carry a `rebooked_from` reference (existing bookings' tool results byte-identical) and a `trace_rebooking_chain` task asks for the origin of an 8-link chain and the total paid in EUR (8 sequential `get_booking` whose arguments each come from the previous result, then `convert_currency`), with raised limits in both suites, its `in_order` sequence and answer rules, a fake-model cassette, and a qwen2.5:7b recording (up to 5 attempts, logged; the fake-model world if none passes); `eval/pydantic_ai.py --arms strict,fallback` records per-step status sequences and a survival curve by served-call index against `(1 − 3/143)^n`, as `make eval-pydantic-ai-long` (an `ollama.yml` input; 20 runs per arm, 15 if a run exceeds 150 s). Done when the new scenario replays in `full` with 0 approximate steps in `make eval`, every committed cassette still replays with 0 approximate steps and the pydantic-ai `tools-live --fail-on-tool-drift` run shows 0 drift, `make bench-scale` reports the qwen recording as a real row if one passed (bytes per turn and codec ratios, no collapse claim; otherwise the attempts log says why not), RESULTS.md holds the per-arm pass and cause counts, the survival curve, the conditional rate of a world step after an earlier one under `fallback` against the base rate, and the identity firings with each hypothesis answered (clustering at least 3× the base rate, or "not measurable" below 5 world steps; keys fire at least 5 times in 40 runs) and the `strict` world-ending count reported with its interval beside the independence prediction, the raw report `eval/results/m16_long_qwen.json` is committed, and every earlier number is unchanged.
+- [x] M16: Does frozen-world divergence compound on a long chain? — new bookings in the pydantic-ai example's fixed world carry a `rebooked_from` reference (existing bookings' tool results byte-identical) and a `trace_rebooking_chain` task asks for the origin of an 8-link chain and the total paid in EUR (8 sequential `get_booking` whose arguments each come from the previous result, then `convert_currency`), with raised limits in both suites, its `in_order` sequence and answer rules, a fake-model cassette, and a qwen2.5:7b recording (up to 5 attempts, logged; the fake-model world if none passes); `eval/pydantic_ai.py --arms strict,fallback` records per-step status sequences and a survival curve by served-call index against `(1 − 3/143)^n`, as `make eval-pydantic-ai-long` (an `ollama.yml` input; 20 runs per arm, 15 if a run exceeds 150 s). Done when the new scenario replays in `full` with 0 approximate steps in `make eval`, every committed cassette still replays with 0 approximate steps and the pydantic-ai `tools-live --fail-on-tool-drift` run shows 0 drift, `make bench-scale` reports the qwen recording as a real row if one passed (bytes per turn and codec ratios, no collapse claim; otherwise the attempts log says why not), RESULTS.md holds the per-arm pass and cause counts, the survival curve, the conditional rate of a world step after an earlier one under `fallback` against the base rate, and the identity firings with each hypothesis answered (clustering at least 3× the base rate, or "not measurable" below 5 world steps; keys fire at least 5 times in 40 runs) and the `strict` world-ending count reported with its interval beside the independence prediction, the raw report `eval/results/m16_long_qwen.json` is committed, and every earlier number is unchanged.
+  - *M16 notes (2026-10-29).* Built as planned, with three changes. The
+    chain bookings are a `RebookedBooking` subclass and `get_booking` returns
+    `RebookedBooking | Booking`: a new field on `Booking` would have added
+    `"rebooked_from": null` to every recorded booking, and a plain `Booking`
+    annotation would have dropped the reference when replay decodes a served
+    result. "Raised limits in both suites" became per-scenario limits: the
+    short scenarios keep 8 tool and 6 model calls, the chain gets 12 and 14,
+    so no earlier gate was loosened. And `make record-pydantic-ai` now names
+    M9's three tasks, with the chain under `make record-pydantic-ai-chain`
+    and its own log, so a re-record cannot overwrite M9's attempts. No
+    qwen2.5:7b recording passed in 5 attempts (each traced the chain
+    correctly and got the total wrong), so the qwen suite serves the chain
+    from the fake-model recording and `make bench-scale` has no new real row.
+    Results in RESULTS.md, M16, on 40 runs (1703 s, 4 vCPU, $0): 320 of 320
+    chain lookups exact and 1 world step in 321 served calls (0.31%, against
+    M12's 2.1%), so clustering is not measurable (0 world steps under
+    `fallback`), the `strict` world endings are 1 / 20 (0.1% to 24.9%) beside
+    3.47 predicted, and the identify keys fired once, refuting "at least 5".
+    All 40 runs survived their 8 lookups, which independence at the
+    short-run rate puts at 0.0011. Every run failed anyway: 39 of 40 answered
+    a euro total without calling `convert_currency`. On this chain the
+    frozen world did not diverge; the short-run rate came from decisions,
+    not from copying references. Not done: a chain whose links need a
+    computed or chosen argument, and a real trace past 6 turns. Also fixed
+    on the way: an M15 test that assumed the order of two concurrent tool
+    calls failed about once in sixteen runs under load.
