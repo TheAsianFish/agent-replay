@@ -1289,6 +1289,18 @@ Next (evolution round 3, 2026-10-28; evidence and hypotheses in
     qwen recording passed, so the longest real trace is still 6 turns; see
     [RESULTS.md](RESULTS.md))
 
+Next (evolution round 4, 2026-10-29; evidence and hypotheses in
+[PLAN.md](PLAN.md), "Evolution round 4"):
+
+17. `synth`, the third unrecorded-call policy, measured for the first time: a
+    seventh mutation-study configuration, and the M15 no-guard arm re-run
+    under `fallback` and `synth` on qwen2.5:7b, to see whether a stub keeps a
+    diverged run alive to a true verdict or manufactures one
+18. A retail task where a tool legitimately fails (a wrong zip code), so the
+    one mutation that has survived every configuration since v1,
+    `drops_error_flag`, has a recorded error to act on; which replay modes
+    can see a lost error flag at all
+
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and running a flake suite's scenarios in parallel as well
 as their runs. The run store keeps every step's request in full, so a stored

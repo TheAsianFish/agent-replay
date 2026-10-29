@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-28 (evolution round 3).
+definition of done is met and CI is green. Last updated: 2026-10-29 (evolution round 4).
 
 ## Goal
 
@@ -822,6 +822,198 @@ test with a minimum of 5 world steps, reports the `strict` count against
 independence instead of testing "at least 4 of 20" (20 runs cannot separate
 it from the 3.5 predicted), and no longer assumes a passing qwen recording.
 
+## Evolution round 4 (2026-10-29)
+
+M14 to M16 are merged and the sixteen planned milestones are done. This is
+the last planning round, so the question is narrower than before: is there
+anything left that the product claims and has not measured, or that the last
+rounds' results left open, that one more milestone can settle with free tools?
+Adding nothing was an acceptable answer; two things cleared the bar.
+
+### Where the project stands (measured in this round)
+
+- `make check` after `make setup`: ruff and mypy clean; 1429 passed, 22
+  skipped, 58 xfailed in 135 s (the xfails are still `agent_replay/stats.py`).
+  `make eval` (2 min 3 s) and `make bench` (4 min 47 s) leave the tree
+  unchanged; `make ui-check` is green in 21 s after `npm ci`. On this runner
+  (4 CPUs, Xeon Platinum 8370C) `make bench-replay` gives the six live
+  recordings a 300× `full` replay (170 ms against 51 s of live calls, 258×
+  with checks) and an append cost of at most 75 µs per envelope (0.0042% of
+  the 1775 ms median model call); both are inside the ranges RESULTS.md
+  already reports for other machines.
+- **One of the three unrecorded-call policies has never been measured.**
+  `synth` (a schema-valid stub for a call the recording lacks, `Policy` in
+  `agent_replay/session.py`, built by `Tool._synth` in
+  `agent_replay/record/tools.py`) has shipped since M2 and appears in no
+  mutation-study configuration (`CONFIGS` in `eval/mutation_study.py` holds
+  six, none with `synth`) and in no Ollama arm. Its hazard is the inverse of
+  the one M15 found for `strict`: `strict` ends a run on the model's wrong
+  argument and the cause column calls it the world's; `synth` answers the
+  wrong argument with a plausible value (`0.0` for `convert_currency`, `{}`
+  for a retail `Record`, an empty `Booking` for the pydantic-ai tools), the
+  run continues, and whatever the model does with the stub is blamed on the
+  model. Whether a stub ever reaches an answer, and whether it can produce a
+  pass, is unmeasured.
+- **The one swap arm whose conclusion rests on inference has no twin.**
+  M15's rule, written after the 3b arms, is that a `strict` cause column is
+  read beside a `fallback` arm. The no-guard arm (qwen2.5:7b, the recording
+  prompt minus its guard line) was run under `strict` only: 2 / 20 and 2 / 20,
+  with 23 identity endings. RESULTS.md M15 says each guessed amount is one
+  the ground truth rules out, so the endings are the model's; but the
+  counterfactual (what the fare gate reports when the guessed amount is
+  converted for real) was never run.
+- **One mutation has survived every configuration for five rounds because
+  no recording can show it.** `drops_error_flag` (`DropsErrorFlag` in
+  `eval/mutations/agents.py` strips `is_error` from the agent's tool results)
+  is `—` in all six columns of every mutation table since M4. Scanning every
+  committed cassette, no tool envelope records an error and no agent tool
+  result carries `is_error: true`: the six retail tasks all succeed on the
+  recorded path, so the mutation has nothing to act on. Its 0 / 6 is a
+  dataset artefact, and the retail fake policy already handles a failed
+  lookup (`found.is_error` in `examples/retail_agent/fake_model.py` answers
+  "I couldn't find your account"), so a task that exercises it needs no new
+  policy code.
+- **The local judge has never produced a number, and would not fit the
+  cap.** `OllamaJudge` (`agent_replay/judge/providers.py`) and `replay
+  calibrate --provider ollama` exist, and the 21 retail golden items carry
+  objective labels. But a judge prompt here is the rubric (4,836 characters)
+  plus a transcript (4,238 on average, 10,099 at most) plus about 300 output
+  tokens, and the committed qwen2.5:7b envelopes put a 214-token prompt with
+  38 output tokens at 28 s on 4 CPU cores. Twenty-one verdicts are one to two
+  hours; the position and verbosity probes (63 calls) do not fit the
+  180-minute `ollama.yml` cap, and 21 items give an interval about 20 points
+  wide either way. `OllamaJudge` also sets no `num_ctx`, so a pilot has to
+  confirm Ollama's default window holds the whole prompt before any such
+  number is trusted.
+- **The frozen world has been measured flat twice** (M12: 3 world steps in
+  143 served calls, all decisions; M16: 1 in 321, with 320 of 320 chained
+  references copied exactly). A chain whose links carry a labelled decoy
+  would be copied the same way, and a chain whose decoys must be read makes
+  every decoy read `unrecorded` by construction, so the "world rate" would
+  measure recording coverage. No design without arithmetic (which qwen2.5:7b
+  failed 39 of 40 times) forces a choice the model cannot read off the
+  result.
+- No Ollama, API key or GitHub credentials in this environment; the
+  local-model arms run locally or from `ollama.yml`, as M9 to M16 did.
+
+### What comes next, and why
+
+**M17: `synth`, measured for the first time, and the no-guard arm's twins**
+(steer: the failure modes real teams hit; M15's open arm). *Question:* does
+a schema-minimal stub keep a diverged run alive to a true verdict, or
+manufacture a world that the cause column then blames on the model? And
+does the no-guard arm's `strict` verdict survive its `fallback` twin?
+*Offline:* a seventh configuration `model-live+synth` in
+`eval/mutation_study.py`, in every table the six existing ones appear in
+(the 32 mutations, the 5 benign refactors, the 2 identity mutations, the 5
+correct-but-different paths). *Hypotheses, offline:* the 12 model mutations
+are caught as in `model-live+fallback` within one (they rarely make a call
+the recording lacks); the two identity mutations are caught 2 / 2, but as a
+run error or a wrong answer from the stub rather than by ground truth; the
+path variants show at least one false alarm under `synth`
+(`repeats_order_lookup` reads a field from a `{}` stub), where `fallback`
+had 0 / 5; the refactors stay 0 / 5. *Live:* `eval/pydantic_ai.py` with
+`--prompt-variant no_guard --arms fallback,synth`, 20 `model-live` runs per
+arm of `cheapest_fare_in_euros` and `book_earliest_flight` on the qwen2.5:7b
+cassettes (M11 `identify` keys on), as `make eval-pydantic-ai-no-guard`, an
+`ollama.yml` input, about 80 runs and 55 minutes, never on pull requests.
+*Hypotheses, live:* under `fallback` the fare passes at most 6 / 20 (the
+guessed amounts, converted for real, still fail `answer_states`), so the
+M15 attribution stands; 15 / 20 or more would mean the `strict` arm's
+verdict was the world's and M15's conclusion is withdrawn in RESULTS.md.
+Under `synth`, the fare pass count is at most `fallback`'s, at least 10 of
+the 20 fare runs state a figure that comes from the stub (0.00 EUR or a
+total that only `0.0` explains), and no run with a stubbed step passes; a
+pass with a stubbed step is the manufactured world and is reported as such
+with its transcript. Every run is classified by cause as in M15, a stubbed
+step counted as a world step as in M16, and the harness is tested offline
+against the fake model. *Measured as:* `make eval-mutations` (CI python job,
+about 25 s more, byte-stable) and `make eval-pydantic-ai-no-guard`, raw
+report `eval/results/m17_no_guard_qwen.json`; RESULTS.md holds the seventh
+column beside the six, the two live arms beside M15's no-guard row, and the
+README's unrecorded-call section says what `synth` is for from the numbers;
+every earlier number unchanged.
+
+**M18: a task where a tool legitimately fails** (the mutation study's one
+blind spot). *Question:* is `drops_error_flag`'s 0 / 6 the checks' failure or
+the dataset's, and which replay modes can see a lost error flag at all?
+*Built:* a seventh retail task beside the six vendored ones (hand-written,
+marked as not from τ-bench: `tasks.json` holds exactly the six and `_load`
+keys on `tau_bench_index`), in which the user gives a wrong zip code so
+`find_user_id_by_name_zip` returns an error and the correct reply is that
+the account was not found with no write made; ground truth for it; a
+fake-model cassette carrying the first committed `is_error: true` tool
+result; the task in its own `eval/mutation_study.py` section, as
+`IDENTITY_MUTATIONS` is, so the 32-mutation, 5-refactor, identity and path
+tables stay byte-identical (`tests/test_mutations.py` checks
+`mutations.json` byte for byte). *Hypotheses:* `drops_error_flag` is caught
+in at least 2 of the 7 configurations on the new task; the prediction is
+`model-live`, `model-live+fallback` and `tools-live+strict` (the fake model,
+given the error text as an ordinary result, uses it as a user id, which is
+a call the recording lacks or an approximate model step), and it survives
+`full` and `tools-live+drift`, because the flag lives in the agent's message
+to the model, which `full` replays and the drift check never reads; the
+configurations where it survives are named with that reason. Every other
+agent mutation on the new task is reported in the same table, and the task
+passes every configuration unmutated. *Measured as:* `make eval-mutations`
+(CI python job, about 15 s more, byte-stable); RESULTS.md gets the table and
+the README results row for the mutation study gains the new task's line;
+"To measure" gains `replay record` of the task with `claude-opus-5-5` (one
+run, about $0.10) so a real model's handling of the error can be compared.
+
+Order: M17 first (its offline half and live half are independent, so the
+Ollama run can be scheduled while M18 is built), then M18.
+
+### Considered and not chosen this round
+
+- **An offline audit of the 62 committed `strict` endings** (M12 3, M15 58,
+  M16 1) relabelled from task ground truth. Already answered in prose:
+  RESULTS.md M15 states that every identity ending named a flight or amount
+  the ground truth rules out, M12's three are invented `get_booking`
+  references, and M15 control run 6 is the one genuine world path, so the
+  table would be 61 model and 1 world before a line is written. The open
+  half, the no-guard `fallback` twin, is in M17.
+- **The local judge through the calibration pipeline.** Cut on time, not on
+  worth (above): 21 verdicts alone fit the cap with no probes and no margin,
+  and the result would be an interval 20 points wide on 21 items. The path
+  that would make it a milestone: set `num_ctx` on `OllamaJudge`, run a
+  timed 3-call pilot, then 21 verdicts with a Clopper-Pearson interval,
+  probes deferred. It stays under "To measure" as an informative row that
+  never gates.
+- **A chain with a chosen argument at every link** (M16's "not done"). Cut:
+  a labelled decoy is one more field qwen copies, decoys that must be read
+  are `unrecorded` by construction, and the likely result is a third "not
+  measurable" after M12 and M16. M15 already measured where the model
+  computes: the identify keys stop the guessed amount.
+- **Tool-interface changes as mutations, with a `tool_schema_drift` check.**
+  Cut: `tools`, `system` and `max_tokens` are in the model fingerprint (only
+  `metadata` and `stream` are not), so a schema edit makes every model step
+  `approximate` in `full` and `fail_on_approximate` already fails all six
+  at its known 1 / 5 false-alarm cost; a served tool call never runs the
+  function, so "`full` detects at most 1 of 6" is construction, not
+  measurement; and the check is the per-step `context` reason round 2 cut
+  from M11. Three of the six (an optional argument, an added result field, a
+  required argument the model fills) are not regressions, and "re-record"
+  is already what `no_approximate_steps` says.
+- **Stale-but-`exact` reads** (a re-read after a write served the pre-write
+  recording). `Session._take` does serve the oldest exact match, but no
+  committed cassette has two tool envelopes with one fingerprint, so the
+  count on the 290 committed qwen runs is 0 by construction; it is M10's
+  stateful-read limit seen from `model-live`, and a `stale` note needs a
+  `Step` field, store JSON and dashboard types. A unit test on `_take` and a
+  sentence in the README are the right size.
+- **Five more benign refactors that change request bytes** (reworded tool
+  descriptions, reordered tools, prompt whitespace, `max_tokens`, a
+  `metadata` field). Cut for the reason round 2 cut the six kinds of tool
+  noise: the outcomes are readable off `_UNIDENTIFYING_FIELDS` in
+  `agent_replay/record/anthropic.py` (`metadata` gives 0 approximate steps,
+  the other four give approximate model steps), so the column would be 4 / 5
+  by construction.
+- **A second framework, an `openai` adapter, parallel replay throughput,
+  the run store by reference, dashboard authentication and live updates.**
+  Unchanged from rounds 1 to 3: nothing measured this round makes any of
+  them the question.
+
 ## Milestones
 
 - [x] M1: Scaffolding, CI and a thin vertical slice — `uv` project with ruff, mypy `--strict`, pytest, Hypothesis; GitHub Actions running lint, type-check and tests; `Makefile` targets; cassette schema v1; Anthropic SDK wrapper and `@replay.tool`; `replay record` and `replay run --mode full` on a toy agent driven by a deterministic fake model; the `tool_sequence` check; MIT LICENSE; README quickstart that works. Done when a committed cassette replays offline, the check passes, a mutated toy agent fails it, and CI is green.
@@ -1451,3 +1643,5 @@ it from the 3.5 predicted), and no longer assumes a passing qwen recording.
     computed or chosen argument, and a real trace past 6 turns. Also fixed
     on the way: an M15 test that assumed the order of two concurrent tool
     calls failed about once in sixteen runs under load.
+- [ ] M17: `synth`, measured for the first time, and the no-guard arm's twins — a seventh configuration `model-live+synth` in `eval/mutation_study.py`, present in every table the six existing configurations appear in (the 32 mutations, the 5 benign refactors, the 2 identity mutations, the 5 correct-but-different paths); `eval/pydantic_ai.py` gains `synth` as an arm policy and runs `--prompt-variant no_guard --arms fallback,synth`, 20 `model-live` runs per arm of `cheapest_fare_in_euros` and `book_earliest_flight` on the qwen2.5:7b cassettes with the suite's `identify` keys, as `make eval-pydantic-ai-no-guard` (an `ollama.yml` input; never on pull requests), every run classified by cause as in M15 with a stubbed step counted as a world step as in M16 and the figure in each answer recorded, the harness tested offline against the fake model. Done when `make eval-mutations` shows the seventh column (hypotheses: the 12 model mutations within one of `model-live+fallback`, the identity mutations 2 / 2 by run error or wrong answer, at least one false alarm on the path variants, the refactors 0 / 5) with every earlier cell byte-identical, RESULTS.md holds the two live arms beside M15's no-guard row with each hypothesis answered (the `fallback` fare at most 6 / 20, or M15's attribution withdrawn at 15 / 20 or more; `synth` at most `fallback`; at least 10 of 20 `synth` fare answers carrying the stub's figure; 0 passes with a stubbed step, any such pass shown with its transcript), the raw report `eval/results/m17_no_guard_qwen.json` is committed, the README's unrecorded-call section states what the numbers say `synth` is for, and every earlier number is unchanged.
+- [ ] M18: A task where a tool legitimately fails — a seventh retail task beside the six vendored ones (hand-written, marked as not from τ-bench) in which a wrong zip code makes `find_user_id_by_name_zip` return an error and the correct reply is that the account was not found with no write made; its ground truth; a fake-model cassette carrying the first committed `is_error: true` tool result; the task in its own `eval/mutation_study.py` section, as `IDENTITY_MUTATIONS` is, run under every agent mutation and all seven configurations, so the existing tables stay byte-identical. Done when `make eval-mutations` shows `drops_error_flag` caught in at least 2 of the 7 configurations on the new task (prediction: `model-live`, `model-live+fallback`, `tools-live+strict`; survives `full` and `tools-live+drift`), the configurations where it survives are named with the reason, the unmutated task passes every configuration, RESULTS.md holds the table and the README results row carries the line beside the v1 numbers unchanged, and "To measure" lists `replay record` of the task with `claude-opus-5-5` (one run, about $0.10).
