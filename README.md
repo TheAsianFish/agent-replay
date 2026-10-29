@@ -1299,7 +1299,8 @@ Next (evolution round 4, 2026-10-29; evidence and hypotheses in
 18. A retail task where a tool legitimately fails (a wrong zip code), so the
     one mutation that has survived every configuration since v1,
     `drops_error_flag`, has a recorded error to act on; which replay modes
-    can see a lost error flag at all
+    can see a lost error flag at all, and whether qwen2.5:7b, which can read
+    the error text, notices the flag is gone
 
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and running a flake suite's scenarios in parallel as well

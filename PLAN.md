@@ -866,8 +866,10 @@ Adding nothing was an acceptable answer; two things cleared the bar.
   no recording can show it.** `drops_error_flag` (`DropsErrorFlag` in
   `eval/mutations/agents.py` strips `is_error` from the agent's tool results)
   is `—` in all six columns of every mutation table since M4. Scanning every
-  committed cassette, no tool envelope records an error and no agent tool
-  result carries `is_error: true`: the six retail tasks all succeed on the
+  committed retail cassette, no tool envelope records an error and no agent
+  tool result carries `is_error: true` (the only committed `is_error: true`
+  is a pydantic-ai validation retry in `eval/results/m9_first_contact/`,
+  outside the study): the six retail tasks all succeed on the
   recorded path, so the mutation has nothing to act on. Its 0 / 6 is a
   dataset artefact, and the retail fake policy already handles a failed
   lookup (`found.is_error` in `examples/retail_agent/fake_model.py` answers
@@ -910,9 +912,10 @@ correct-but-different paths). *Hypotheses, offline:* the 12 model mutations
 are caught as in `model-live+fallback` within one (they rarely make a call
 the recording lacks); the two identity mutations are caught 2 / 2, but as a
 run error or a wrong answer from the stub rather than by ground truth; the
-path variants show at least one false alarm under `synth`
-(`repeats_order_lookup` reads a field from a `{}` stub), where `fallback`
-had 0 / 5; the refactors stay 0 / 5. *Live:* `eval/pydantic_ai.py` with
+path variants fail a ground-truth rule or end in a run error under `synth`
+at least once (`repeats_order_lookup` reads a field from a `{}` stub), where
+`fallback` failed only `tool_sequence` (4 / 5) and no ground-truth rule
+(0 / 5); the refactors stay 0 / 5. *Live:* `eval/pydantic_ai.py` with
 `--prompt-variant no_guard --arms fallback,synth`, 20 `model-live` runs per
 arm of `cheapest_fare_in_euros` and `book_earliest_flight` on the qwen2.5:7b
 cassettes (M11 `identify` keys on), as `make eval-pydantic-ai-no-guard`, an
@@ -920,8 +923,9 @@ cassettes (M11 `identify` keys on), as `make eval-pydantic-ai-no-guard`, an
 *Hypotheses, live:* under `fallback` the fare passes at most 6 / 20 (the
 guessed amounts, converted for real, still fail `answer_states`), so the
 M15 attribution stands; 15 / 20 or more would mean the `strict` arm's
-verdict was the world's and M15's conclusion is withdrawn in RESULTS.md.
-Under `synth`, the fare pass count is at most `fallback`'s, at least 10 of
+verdict was the world's and M15's conclusion is withdrawn in RESULTS.md;
+7 to 14 is reported as a partial attribution, with the passing runs'
+answers beside the `strict` endings they replace. Under `synth`, the fare pass count is at most `fallback`'s, at least 10 of
 the 20 fare runs state a figure that comes from the stub (0.00 EUR or a
 total that only `0.0` explains), and no run with a stubbed step passes; a
 pass with a stubbed step is the manufactured world and is reported as such
@@ -942,7 +946,7 @@ marked as not from τ-bench: `tasks.json` holds exactly the six and `_load`
 keys on `tau_bench_index`), in which the user gives a wrong zip code so
 `find_user_id_by_name_zip` returns an error and the correct reply is that
 the account was not found with no write made; ground truth for it; a
-fake-model cassette carrying the first committed `is_error: true` tool
+fake-model cassette carrying the first retail `is_error: true` tool
 result; the task in its own `eval/mutation_study.py` section, as
 `IDENTITY_MUTATIONS` is, so the 32-mutation, 5-refactor, identity and path
 tables stay byte-identical (`tests/test_mutations.py` checks
@@ -955,14 +959,51 @@ a call the recording lacks or an approximate model step), and it survives
 to the model, which `full` replays and the drift check never reads; the
 configurations where it survives are named with that reason. Every other
 agent mutation on the new task is reported in the same table, and the task
-passes every configuration unmutated. *Measured as:* `make eval-mutations`
-(CI python job, about 15 s more, byte-stable); RESULTS.md gets the table and
-the README results row for the mutation study gains the new task's line;
-"To measure" gains `replay record` of the task with `claude-opus-5-5` (one
-run, about $0.10) so a real model's handling of the error can be compared.
+passes every configuration unmutated. *Live (review addition, so the
+milestone ends on a real model as the v2 steer requires):* the fake model
+branches on `is_error`, but the error text the agent sends is
+`Error: user not found` (`error_result` in `examples/retail_agent/agent.py`),
+which a real model can read without the flag. So the real question is
+whether a lost flag is a regression at all for a model that reads text. The
+task is recorded on qwen2.5:7b through Ollama (the retail agent's
+`Anthropic` client with `base_url`, as the pydantic-ai example does; up to 3
+attempts, logged, the attempt's `usage.input_tokens` recorded so a prompt cut
+by Ollama's context window is caught rather than trusted), then 10
+`model-live` runs unmutated and 10 with `drops_error_flag` under `fallback`,
+as `make eval-retail-error-qwen` (an `ollama.yml` input, never on pull
+requests). *Hypothesis, live:* the mutant's runs reply "not found" with no
+write in at least 8 of 10, within 2 of the unmutated arm: for a model that
+reads the text the mutation is near-equivalent, and the fake-model catch is
+the fake policy's dependence on the flag. Fewer than 6 of 10 means the flag
+matters to a real model and is reported as such. If no recording passes in 3
+attempts the live arms run against the fake-model cassette and say so.
+*Measured as:* `make eval-mutations` (CI python job, about 15 s more,
+byte-stable) and `make eval-retail-error-qwen`, raw report
+`eval/results/m18_error_qwen.json`; RESULTS.md gets the table and the two
+live arms with wall time and CPU, and the README results row for the
+mutation study gains the new task's line; "To measure" gains `replay record`
+of the task with `claude-opus-5-5` (one run, about $0.10).
 
 Order: M17 first (its offline half and live half are independent, so the
 Ollama run can be scheduled while M18 is built), then M18.
+
+### Review of this round (2026-10-29)
+
+Re-ran `make check` and the evidence above: `CONFIGS` holds six
+configurations and none uses `synth`; the `synth` stubs are as stated
+(`convert_currency` 0.0, retail `Record` `{}`, `find_user_id_by_name_zip`
+`""`, `get_booking` a blank booking); M15's no-guard arm is 2 / 20 and
+2 / 20 with 18 + 5 = 23 identity endings; `drops_error_flag` is `—`
+everywhere. Three corrections. M17's path-variant hypothesis said
+`fallback` had 0 / 5 false alarms; it had 4 / 5 (`tool_sequence`) and 0 / 5
+on the ground-truth rules, so the hypothesis now targets the ground-truth
+rules and run errors. M17's live rule left 7 to 14 of 20 unread; it is now a
+partial attribution. M18 was offline only, against the v2 steer that every
+new milestone end on real runs; it gains a qwen2.5:7b recording and two
+10-run `model-live` arms that ask whether a dropped flag matters to a model
+that reads the error text, and its "first committed `is_error: true`" is now
+the first retail one (a pydantic-ai first-contact recording already has
+one).
 
 ### Considered and not chosen this round
 
@@ -1643,5 +1684,5 @@ Ollama run can be scheduled while M18 is built), then M18.
     computed or chosen argument, and a real trace past 6 turns. Also fixed
     on the way: an M15 test that assumed the order of two concurrent tool
     calls failed about once in sixteen runs under load.
-- [ ] M17: `synth`, measured for the first time, and the no-guard arm's twins — a seventh configuration `model-live+synth` in `eval/mutation_study.py`, present in every table the six existing configurations appear in (the 32 mutations, the 5 benign refactors, the 2 identity mutations, the 5 correct-but-different paths); `eval/pydantic_ai.py` gains `synth` as an arm policy and runs `--prompt-variant no_guard --arms fallback,synth`, 20 `model-live` runs per arm of `cheapest_fare_in_euros` and `book_earliest_flight` on the qwen2.5:7b cassettes with the suite's `identify` keys, as `make eval-pydantic-ai-no-guard` (an `ollama.yml` input; never on pull requests), every run classified by cause as in M15 with a stubbed step counted as a world step as in M16 and the figure in each answer recorded, the harness tested offline against the fake model. Done when `make eval-mutations` shows the seventh column (hypotheses: the 12 model mutations within one of `model-live+fallback`, the identity mutations 2 / 2 by run error or wrong answer, at least one false alarm on the path variants, the refactors 0 / 5) with every earlier cell byte-identical, RESULTS.md holds the two live arms beside M15's no-guard row with each hypothesis answered (the `fallback` fare at most 6 / 20, or M15's attribution withdrawn at 15 / 20 or more; `synth` at most `fallback`; at least 10 of 20 `synth` fare answers carrying the stub's figure; 0 passes with a stubbed step, any such pass shown with its transcript), the raw report `eval/results/m17_no_guard_qwen.json` is committed, the README's unrecorded-call section states what the numbers say `synth` is for, and every earlier number is unchanged.
-- [ ] M18: A task where a tool legitimately fails — a seventh retail task beside the six vendored ones (hand-written, marked as not from τ-bench) in which a wrong zip code makes `find_user_id_by_name_zip` return an error and the correct reply is that the account was not found with no write made; its ground truth; a fake-model cassette carrying the first committed `is_error: true` tool result; the task in its own `eval/mutation_study.py` section, as `IDENTITY_MUTATIONS` is, run under every agent mutation and all seven configurations, so the existing tables stay byte-identical. Done when `make eval-mutations` shows `drops_error_flag` caught in at least 2 of the 7 configurations on the new task (prediction: `model-live`, `model-live+fallback`, `tools-live+strict`; survives `full` and `tools-live+drift`), the configurations where it survives are named with the reason, the unmutated task passes every configuration, RESULTS.md holds the table and the README results row carries the line beside the v1 numbers unchanged, and "To measure" lists `replay record` of the task with `claude-opus-5-5` (one run, about $0.10).
+- [ ] M17: `synth`, measured for the first time, and the no-guard arm's twins — a seventh configuration `model-live+synth` in `eval/mutation_study.py`, present in every table the six existing configurations appear in (the 32 mutations, the 5 benign refactors, the 2 identity mutations, the 5 correct-but-different paths); `eval/pydantic_ai.py` gains `synth` as an arm policy and runs `--prompt-variant no_guard --arms fallback,synth`, 20 `model-live` runs per arm of `cheapest_fare_in_euros` and `book_earliest_flight` on the qwen2.5:7b cassettes with the suite's `identify` keys, as `make eval-pydantic-ai-no-guard` (an `ollama.yml` input; never on pull requests), every run classified by cause as in M15 with a stubbed step counted as a world step as in M16 and the figure in each answer recorded, the harness tested offline against the fake model. Done when `make eval-mutations` shows the seventh column (hypotheses: the 12 model mutations within one of `model-live+fallback`, the identity mutations 2 / 2 by run error or wrong answer, at least one path variant failing a ground-truth rule or ending in a run error, where `fallback` failed none, the refactors 0 / 5) with every earlier cell byte-identical, RESULTS.md holds the two live arms beside M15's no-guard row with each hypothesis answered (the `fallback` fare at most 6 / 20, M15's attribution withdrawn at 15 / 20 or more, 7 to 14 reported as partial; `synth` at most `fallback`; at least 10 of 20 `synth` fare answers carrying the stub's figure; 0 passes with a stubbed step, any such pass shown with its transcript), the raw report `eval/results/m17_no_guard_qwen.json` is committed, the README's unrecorded-call section states what the numbers say `synth` is for, and every earlier number is unchanged.
+- [ ] M18: A task where a tool legitimately fails — a seventh retail task beside the six vendored ones (hand-written, marked as not from τ-bench) in which a wrong zip code makes `find_user_id_by_name_zip` return an error and the correct reply is that the account was not found with no write made; its ground truth; a fake-model cassette carrying the first retail `is_error: true` tool result; the task in its own `eval/mutation_study.py` section, as `IDENTITY_MUTATIONS` is, run under every agent mutation and all seven configurations, so the existing tables stay byte-identical; the task recorded on qwen2.5:7b through Ollama (up to 3 attempts, logged with each attempt's `usage.input_tokens`) and run in `model-live` under `fallback`, 10 runs unmutated and 10 with `drops_error_flag`, as `make eval-retail-error-qwen` (an `ollama.yml` input; never on pull requests), the harness tested offline against the fake model. Done when `make eval-mutations` shows `drops_error_flag` caught in at least 2 of the 7 configurations on the new task (prediction: `model-live`, `model-live+fallback`, `tools-live+strict`; survives `full` and `tools-live+drift`), the configurations where it survives are named with the reason, the unmutated task passes every configuration, RESULTS.md holds the table and the two live arms with wall time and CPU and the hypothesis answered (the mutant replies "not found" with no write in at least 8 of 10 and within 2 of the unmutated arm, so the flag is near-equivalent for a model that reads the error text; fewer than 6 of 10 reported as the flag mattering; the fake-model cassette named if no qwen recording passed), the raw report `eval/results/m18_error_qwen.json` is committed, the README results row carries the line beside the v1 numbers unchanged, and "To measure" lists `replay record` of the task with `claude-opus-5-5` (one run, about $0.10).
