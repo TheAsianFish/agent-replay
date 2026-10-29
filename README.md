@@ -136,6 +136,7 @@ the rows still to measure.
 | A real framework: pydantic-ai, unchanged | records through `client.beta.messages`; fake-model and qwen2.5:7b cassettes replay in `full` with 0 approximate steps | `make eval-pydantic-ai-offline` |
 | Live flakiness on a local model (free) | qwen2.5:7b via Ollama, 10 `model-live` runs per task: lookup 10/10, booking 2/10, cancellation 0/10 (23 of 25 attempts cancel without looking the booking up); 1026 s on 4 vCPU | `make eval-pydantic-ai` (RESULTS.md, M9) |
 | Frozen world vs the model, `model-live` on qwen2.5:7b | 20 runs per arm: `strict` 18 / 20 and 9 / 20, `fallback` 19 / 20 and 8 / 20; 3 of 20 `strict` booking runs end on a call the recording never made, 0 on another entity, 0 approximate steps in 80; lookup pooled with M9 47 / 50 | `make eval-pydantic-ai-arms` (RESULTS.md, M12) |
+| Model and prompt swaps against the qwen2.5:7b cassettes | qwen2.5:3b 0 / 20 and 0 / 20 under `strict` and `fallback` alike (32 `strict` runs stopped by identity keys, every one on the model's wrong argument); the prompt without its guard line 2 / 20 and 2 / 20 (amounts guessed in parallel tool calls) against a same-day control's 18 / 20 and 10 / 20; `temperature=0` 10 identical passes of a booking that passes 17 / 40 sampled; 0 approximate steps in 170 runs | `make eval-pydantic-ai-swap` (RESULTS.md, M15) |
 | Runs a fixed-threshold verdict needs | 5 runs agree with the all-runs verdict in ≥ 95% of draws on all 15 committed scenarios, but not on 3 of the 4 new ones (90–94%), which sit 0.15–0.35 from the 0.75 threshold | `make eval-verdict-curve` |
 | Cassette bytes at scale | quadratic in turns: 3.65 MB at 100 turns, 13.1 MB at 200 (seeded text, retail-sized prompt); live Opus retail traces grow 2.4 to 4.4× faster per turn; `full` replay 1.7 s at 200 turns | `make bench-scale` |
 | What compression recovers at 100 turns | xz 105×; gzip 3.8× (19× at 20 turns, until envelopes outgrow its 32 KB window); a shared-prefix encoding adds only 1.07× under xz, so cassettes compress as `.jsonl.xz` and the schema is unchanged | `make bench-scale` |
@@ -1270,10 +1271,14 @@ Next (evolution round 2, 2026-10-27; evidence and hypotheses in
 Next (evolution round 3, 2026-10-28; evidence and hypotheses in
 [PLAN.md](PLAN.md), "Evolution round 3"):
 
-15. Does `model-live` survive the change it exists to test? qwen2.5:3b and an
+15. ~~Does `model-live` survive the change it exists to test? qwen2.5:3b and an
     edited prompt against the qwen2.5:7b cassettes, under `strict` and
     `fallback`, every run classified by cause, with a same-day control and a
-    `temperature=0` arm
+    `temperature=0` arm~~ (done: the verdict was the model's in every arm, the
+    identify keys fired for the first time on real runs, and a `fallback` arm
+    showed those endings were the model's wrong arguments, not the world's;
+    temperature 0 passed 10 / 10 on a 17 / 40 task; see
+    [RESULTS.md](RESULTS.md))
 16. Does frozen-world divergence compound on a long chain? A 9-call task whose
     every argument comes from the previous result, recorded on qwen2.5:7b (the
     first real recording past 6 turns), with a survival curve against the

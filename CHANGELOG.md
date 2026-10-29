@@ -37,6 +37,14 @@ every older version.
   qwen2.5:7b-recorded travel-desk scenarios in `model-live` under each unrecorded-call
   policy, every run classified by how it ended (passed, unrecorded, approximate,
   model); an `arms` input on the manual Ollama workflow.
+- `make eval-pydantic-ai-swap` (`eval.pydantic_ai --swap`): the qwen2.5:7b-recorded
+  travel-desk scenarios in `model-live` with the live side changed (qwen2.5:3b under
+  `strict` and `fallback`, the prompt without its guard line, a control, and
+  `temperature=0` after probe calls), each run's tool calls and wire settings recorded,
+  and the first failed 3b run diffed against its cassette; ad hoc `--model`,
+  `--prompt-variant` and `--temperature` for `--arms`; a `swap` input on the manual
+  Ollama workflow. The pydantic-ai example reads its live model from
+  `REPLAY_OLLAMA_MODEL`.
 - `make eval-verdict-curve` (in `make eval`): how often a subset of n runs gives the
   all-runs fixed-threshold verdict, for every committed flake report.
 
