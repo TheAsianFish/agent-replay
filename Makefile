@@ -7,7 +7,7 @@
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
 	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough \
 	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline \
-	eval-pydantic-ai-arms eval-verdict-curve bench-scale bench-scale-record bench-upstream
+	eval-pydantic-ai-arms eval-pydantic-ai-swap eval-verdict-curve bench-scale bench-scale-record bench-upstream
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -195,6 +195,15 @@ eval-pydantic-ai-offline:
 # CPU only, about an hour on 4 CPUs. Locally or from the manual Ollama workflow, never on a PR.
 eval-pydantic-ai-arms:
 	uv run python -m eval.pydantic_ai --arms strict,fallback --runs 20
+
+# M15: the same two scenarios with the live side changed: qwen2.5:3b under strict and
+# fallback, qwen2.5:7b without the prompt's guard line, the qwen2.5:7b control (20 runs
+# each), and 10 runs of the booking at temperature 0 after probe calls of Ollama's
+# /v1/messages, into eval/results/m15_swap_qwen.json (and the diff of the first failed 3b
+# run beside it). Needs Ollama serving qwen2.5:7b and qwen2.5:3b (skipped without them);
+# CPU only. Locally or from the manual Ollama workflow, never on a PR.
+eval-pydantic-ai-swap:
+	uv run python -m eval.pydantic_ai --swap
 
 # M12: how often a subset of n runs gives the all-runs fixed-threshold verdict, for every
 # committed flake report (seeded draws without replacement; offline, byte-stable).
