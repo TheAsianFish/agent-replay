@@ -34,12 +34,27 @@ already at schema 2, so it would be v3) only if it beats that codec by more than
 3x (the prefix encoding under the same codec against the codec alone, and the
 raw prefix encoding against the codec).
 
+**Streaming xz** (M14, byte-stable like the codec sizes): the 100-turn run's
+lines fed one at a time to a single :class:`lzma.LZMACompressor`, and after each
+line the number of envelopes the bytes emitted so far decode to. It is what a
+recorder that compressed as it went would leave on disk if it were killed, and
+why partial cassettes stay plain JSONL.
+
 **Timings** (machine-dependent, like ``bench-replay``): recording, ``Cassette``
 load from JSONL and from each compressed form (decompress, then parse), and
 ``full`` replay per size; and the run store (SQLite) on 100 replays of the
 20-turn run and 10 of the 100-turn run: ``save_run`` time, database bytes, the
 share of them that is step request and response JSON, and the ``get_run``
-payload (the ``/api/runs/{id}`` body) and time.
+payload (the ``/api/runs/{id}`` body) and time. Above 200 turns, loads are timed
+once rather than as a median, compression is not timed, the in-process replay
+is skipped; the fresh process (below) keeps every repeat. Since M14, per size in a fresh process
+(:func:`child`): peak RSS after loading the cassette and replaying it once in
+``full``; ``Cassette.loads`` with its collector pause (as shipped) against the
+same parse with the collector on (:meth:`Cassette._loads`), interleaved, with the
+collections the collector ran during one load; and ``full`` replay with the
+collector as it is against ``gc.freeze()`` after load, interleaved. Load
+linearity is the 100-to-400-turn time ratio over the byte ratio. The committed
+real recordings get the same two load timings.
 
 Two outputs. ``--sizes`` (committed, ``eval/results/bench_scale_sizes.json``)
 holds every size and the decision; raw and prefix-encoded sizes are byte-stable
@@ -59,13 +74,16 @@ from __future__ import annotations
 
 import argparse
 import bz2
+import gc
 import gzip
 import itertools
 import json
 import lzma
 import math
 import random
+import resource
 import statistics
+import subprocess
 import sys
 import tempfile
 import time
@@ -96,8 +114,14 @@ ROOT = Path(__file__).resolve().parents[1]
 SIZES = ROOT / "eval" / "results" / "bench_scale_sizes.json"
 OUT = ROOT / ".replay" / "bench_scale.json"
 COMMAND = "make bench-scale"
-TURNS = (5, 20, 50, 100, 200)
+TURNS = (5, 20, 50, 100, 200, 400)
 DECISION_TURNS = 100
+LINEARITY = (100, 400)
+"""Load is compared with linear-in-bytes between these two sizes (PLAN.md, M14)."""
+LINEAR_BOUND = 1.3
+STREAM_TURNS = 100
+SINGLE_RUN_ABOVE = 200
+"""Compression timings above this many turns are one run (bz2 on 50 MB takes seconds)."""
 MIN_RATIO = 10
 PREFIX_MARGIN = 3
 STORE_LOADS = ((20, 100), (100, 10))
@@ -474,6 +498,37 @@ def decide(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def xz_streaming(text: str) -> dict[str, Any]:
+    """What one ``LZMACompressor`` fed a line at a time has emitted, as decodable envelopes.
+
+    ``recoverable`` lists ``[lines fed, envelopes decodable]`` at every line where
+    the decodable count changes (and the last line); everything in between decodes
+    to the earlier count. A recorder that compressed as it went and was killed
+    after line ``n`` would leave exactly these bytes.
+    """
+    lines = [line + "\n" for line in text.split("\n") if line]
+    compressor = lzma.LZMACompressor(format=lzma.FORMAT_XZ, preset=6)
+    emitted = b""
+    steps: list[list[int]] = []
+    last = -1
+    for n, line in enumerate(lines, start=1):
+        emitted += compressor.compress(line.encode("utf-8"))
+        decoded = lzma.LZMADecompressor().decompress(emitted)
+        envelopes = max(0, decoded.count(b"\n") - 1)  # complete lines, less the header
+        if envelopes != last or n == len(lines):
+            steps.append([n, envelopes])
+            last = envelopes
+    emitted += compressor.flush()
+    whole = lzma.compress(text.encode("utf-8"), format=lzma.FORMAT_XZ, preset=6)
+    return {
+        "turns": STREAM_TURNS,
+        "lines": len(lines),
+        "recoverable": steps,
+        "unflushed_envelopes_lost_at_end": len(lines) - 2 - last,
+        "streamed_equals_whole": emitted == whole,
+    }
+
+
 def size_report(cassettes: dict[int, Cassette], *, compress: bool = True) -> dict[str, Any]:
     synthetic = [sizes(cassettes[n].dumps(), compress=compress) for n in TURNS]
     real = []
@@ -496,16 +551,17 @@ def size_report(cassettes: dict[int, Cassette], *, compress: bool = True) -> dic
         "fit": fit,
         "real": real,
         "decision": decide(synthetic) if compress else None,
+        "xz_streaming": xz_streaming(cassettes[STREAM_TURNS].dumps()) if compress else None,
     }
 
 
-def _median_s(fn: Callable[[], object], repeats: int) -> float:
+def _median_s(fn: Callable[[], object], repeats: int, digits: int = 4) -> float:
     times = []
     for _ in range(repeats):
         start = time.perf_counter()
         fn()
         times.append(time.perf_counter() - start)
-    return round(statistics.median(times), 4)
+    return round(statistics.median(times), digits)
 
 
 def _load_packed(blob: bytes, unpack: Callable[[bytes], bytes]) -> Cassette:
@@ -517,19 +573,30 @@ def timings(cassettes: dict[int, Cassette], repeats: int) -> list[dict[str, Any]
     for n in TURNS:
         text = cassettes[n].dumps()
         raw = text.encode()
-        load: dict[str, Any] = {"jsonl": _median_s(partial(Cassette.loads, text), repeats)}
+        reps = 1 if n > SINGLE_RUN_ABOVE else repeats
+        load: dict[str, Any] = {
+            "jsonl": _median_s(partial(Cassette.loads, text), reps),
+            # This process holds every size's cassette and the store runs: a busy heap,
+            # where each full collection walks far more than the cassette being parsed.
+            "jsonl_collector_on": _median_s(partial(_load_with_collector, text), reps),
+        }
         compress_s: dict[str, Any] = {}
         for name, compress in CODECS.items():
-            compress_s[name] = _median_s(partial(compress, raw), repeats)
             blob = compress(raw)
-            load[name] = _median_s(partial(_load_packed, blob, DECOMPRESS[name]), repeats)
+            compress_s[name] = _median_s(partial(compress, raw), reps) if reps > 1 else None
+            load[name] = _median_s(partial(_load_packed, blob, DECOMPRESS[name]), reps)
         rows.append(
             {
                 "turns": n,
                 "record_s": _median_s(partial(record_run, n), 1),
                 "load_s": load,
                 "compress_s": compress_s,
-                "replay_full_s": _median_s(partial(_replay_ok, cassettes[n]), repeats),
+                # Above 200 turns only the fresh-process replay (:func:`child`) is timed.
+                "replay_full_s": (
+                    _median_s(partial(_replay_ok, cassettes[n]), repeats)
+                    if n <= SINGLE_RUN_ABOVE
+                    else None
+                ),
             }
         )
         print(f"timed {n} turns: replay {rows[-1]['replay_full_s']} s")
@@ -540,6 +607,183 @@ def _replay_ok(cassette: Cassette) -> None:
     result = replay(cassette, run)
     if result.error is not None or result.trajectory.count(StepStatus.APPROXIMATE):
         raise RuntimeError(f"replay of {cassette.header.cassette_id} failed: {result.error}")
+
+
+def _maxrss_mb() -> float:
+    """This process's peak resident set, in MiB.
+
+    ``VmHWM`` from ``/proc/self/status`` on Linux: ``ru_maxrss`` survives ``exec``,
+    so a child started by a large parent would report the parent's peak.
+    """
+    try:
+        for line in Path("/proc/self/status").read_text(encoding="utf-8").splitlines():
+            if line.startswith("VmHWM:"):
+                return round(int(line.split()[1]) / 1024, 1)
+    except OSError:
+        pass
+    return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
+
+
+def _load_with_collector(text: str) -> Cassette:
+    """The parse without :meth:`Cassette.loads`'s collector pause (load as before M14)."""
+    return Cassette._loads(text, source="<string>", partial=False)
+
+
+def _timed(fn: Callable[[], object]) -> float:
+    start = time.perf_counter()
+    fn()
+    return time.perf_counter() - start
+
+
+def _collections_during(fn: Callable[[], object]) -> dict[str, int]:
+    counts = [0, 0, 0]
+
+    def callback(phase: str, info: dict[str, int]) -> None:
+        if phase == "start":
+            counts[info["generation"]] += 1
+
+    gc.callbacks.append(callback)
+    try:
+        fn()
+    finally:
+        gc.callbacks.remove(callback)
+    return {f"gen{g}": c for g, c in enumerate(counts)}
+
+
+def child(path: Path, repeats: int) -> dict[str, Any]:
+    """Memory and collector measurements for one cassette, in this (fresh) process.
+
+    Peak RSS is read first, after one load and one ``full`` replay, so the timing
+    loops (which hold two cassettes at once while one replaces the other) do not
+    set it. Loads alternate paused and unpaused, replays alternate frozen and not,
+    each pair in alternating order.
+    """
+    gc.collect()
+    baseline = _maxrss_mb()
+    text = path.read_text(encoding="utf-8")
+    cassette = Cassette.loads(text)
+    after_load = _maxrss_mb()
+    _replay_ok(cassette)
+    peak = _maxrss_mb()
+    del cassette
+    gc.collect()
+    paused: list[float] = []
+    collecting: list[float] = []
+    for i in range(repeats):
+        order = ((paused, Cassette.loads), (collecting, _load_with_collector))
+        for times, load in order if i % 2 == 0 else order[::-1]:
+            times.append(_timed(partial(load, text)))
+            gc.collect()
+    collections = _collections_during(partial(_load_with_collector, text))
+    gc.collect()
+    cassette = Cassette.loads(text)
+    plain: list[float] = []
+    frozen: list[float] = []
+    for i in range(repeats):
+        for freeze in (False, True) if i % 2 == 0 else (True, False):
+            if freeze:
+                gc.freeze()
+            (frozen if freeze else plain).append(_timed(partial(_replay_ok, cassette)))
+            if freeze:
+                gc.unfreeze()
+            gc.collect()
+    return {
+        "cassette_bytes": len(text.encode("utf-8")),
+        "baseline_rss_mb": baseline,
+        "rss_after_load_mb": after_load,
+        "peak_rss_mb": peak,
+        "load_paused_s": round(statistics.median(paused), 4),
+        "load_collector_on_s": round(statistics.median(collecting), 4),
+        "collections_during_load": collections,
+        "replay_full_s": round(statistics.median(plain), 4),
+        "replay_full_frozen_s": round(statistics.median(frozen), 4),
+    }
+
+
+def memory(cassettes: dict[int, Cassette], repeats: int, workdir: Path) -> list[dict[str, Any]]:
+    """:func:`child` for every synthetic size, each in its own interpreter."""
+    rows = []
+    for n in TURNS:
+        path = workdir / f"scale-{n:03d}.jsonl"
+        cassettes[n].dump(path)
+        proc = subprocess.run(  # noqa: S603 - this interpreter, this module
+            [
+                sys.executable,
+                "-m",
+                "eval.bench_scale",
+                "--child",
+                str(path),
+                "--repeats",
+                str(repeats),
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        row = json.loads(proc.stdout.strip().splitlines()[-1])
+        cassette_mb = row["cassette_bytes"] / 2**20
+        row = {
+            "turns": n,
+            **row,
+            "rss_over_bytes": _round(
+                (row["peak_rss_mb"] - row["baseline_rss_mb"]) / cassette_mb, 1
+            ),
+            "load_paused_ms_per_mb": _round(row["load_paused_s"] * 1000 / cassette_mb, 2),
+            "load_collector_on_ms_per_mb": _round(
+                row["load_collector_on_s"] * 1000 / cassette_mb, 2
+            ),
+            "freeze_replay_gain": _round(1 - row["replay_full_frozen_s"] / row["replay_full_s"], 3),
+        }
+        rows.append(row)
+        path.unlink()
+        print(
+            f"{n} turns: load {row['load_paused_s']} s paused, {row['load_collector_on_s']} s "
+            f"collector on; peak RSS {row['peak_rss_mb']} MB; replay {row['replay_full_s']} s, "
+            f"frozen {row['replay_full_frozen_s']} s"
+        )
+    return rows
+
+
+def linearity(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Load time from :data:`LINEARITY`'s first size to its second, over the byte ratio."""
+    a, b = (next(r for r in rows if r["turns"] == n) for n in LINEARITY)
+    byte_ratio = b["cassette_bytes"] / a["cassette_bytes"]
+    out: dict[str, Any] = {
+        "from": LINEARITY[0],
+        "to": LINEARITY[1],
+        "bytes_ratio": _round(byte_ratio),
+    }
+    for key in ("load_paused_s", "load_collector_on_s"):
+        time_ratio = b[key] / a[key]
+        out[key.removesuffix("_s")] = {
+            "time_ratio": _round(time_ratio),
+            "over_linear": _round(time_ratio / byte_ratio),
+            "within_bound": time_ratio / byte_ratio <= LINEAR_BOUND,
+        }
+    out["bound"] = LINEAR_BOUND
+    return out
+
+
+def real_loads(repeats: int) -> list[dict[str, Any]]:
+    """Load timings on the committed real recordings, with and without the pause."""
+    rows = []
+    for path in REAL:
+        text = path.read_text(encoding="utf-8")
+        mb = len(text.encode("utf-8")) / 2**20
+        paused = _median_s(partial(Cassette.loads, text), repeats, 6)
+        collecting = _median_s(partial(_load_with_collector, text), repeats, 6)
+        rows.append(
+            {
+                "cassette": path.relative_to(ROOT).as_posix(),
+                "bytes": len(text.encode("utf-8")),
+                "load_paused_s": paused,
+                "load_collector_on_s": collecting,
+                "load_paused_ms_per_mb": _round(paused * 1000 / mb, 2),
+                "load_collector_on_ms_per_mb": _round(collecting * 1000 / mb, 2),
+            }
+        )
+    return rows
 
 
 def store_load(cassette: Cassette, runs: int, workdir: Path) -> dict[str, Any]:
@@ -627,8 +871,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=OUT, help="timings report")
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--check", action="store_true", help="compare sizes with --sizes")
+    parser.add_argument("--child", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     configure_logging()
+    if args.child is not None:
+        print(json.dumps(child(args.child, args.repeats)))
+        return 0
     if args.check:
         problems = check(args.sizes)
         for p in problems:
@@ -643,12 +891,16 @@ def main(argv: list[str] | None = None) -> int:
         print(line)
     with tempfile.TemporaryDirectory() as tmp:
         stores = [store_load(cassettes[n], runs, Path(tmp)) for n, runs in STORE_LOADS]
+        memory_rows = memory(cassettes, args.repeats, Path(tmp))
     timed = {
         "command": COMMAND,
         "environment": environment(),
         "codec_versions": codec_versions(),
         "runs": timings(cassettes, args.repeats),
         "store": stores,
+        "memory": memory_rows,
+        "load_linearity": linearity(memory_rows),
+        "real_loads": real_loads(max(args.repeats, 21)),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(timed, indent=2) + "\n", encoding="utf-8")

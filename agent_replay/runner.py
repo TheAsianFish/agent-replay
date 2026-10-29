@@ -180,13 +180,23 @@ def record(
     client: object,
     agent_ref: str | None = None,
     metadata: dict[str, JsonValue] | None = None,
+    out: str | Path | None = None,
+    overwrite: bool = False,
 ) -> tuple[RunResult, Cassette]:
     """Run ``agent`` for real, recording every model and tool call into a cassette.
+
+    With ``out``, each envelope is appended to ``<out>.partial`` as it completes
+    and the finished cassette is moved to ``out`` at the end, so a run that is
+    killed keeps the envelopes it had (:class:`agent_replay.cassette.CassetteWriter`;
+    an existing partial is refused unless ``overwrite``). Without it, nothing is
+    written: dump the returned cassette.
 
     Raises :class:`TypeError` before anything runs if ``client`` cannot be wrapped.
     """
     model_client = wrap(client)
-    session = RecordingSession(agent=agent_ref, task=task, metadata=metadata)
+    session = RecordingSession(
+        agent=agent_ref, task=task, metadata=metadata, out=out, overwrite=overwrite
+    )
     log.info("record.start", agent=agent_ref, task=task)
     output, failure = _run(session, agent, model_client, task)
     cassette = session.finish(output=output, error=failure)

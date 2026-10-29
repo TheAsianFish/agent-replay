@@ -16,6 +16,8 @@ context into its workers, which keeps their spans nested too.
 from __future__ import annotations
 
 import functools
+import os
+import pathlib
 import platform
 import threading
 import time
@@ -35,14 +37,17 @@ from agent_replay._json import canonical_json, to_jsonable
 from agent_replay._paths import Path
 from agent_replay.cassette import (
     Cassette,
+    CassetteWriter,
     Envelope,
     ErrorInfo,
     Footer,
     Header,
     Kind,
     Usage,
+    partial_path,
 )
 from agent_replay.errors import (
+    CassetteError,
     ReplayError,
     UnattributedCallError,
     UnrecordedCallError,
@@ -192,6 +197,8 @@ class Session:
         metadata: dict[str, JsonValue] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         timer: Callable[[], float] = time.perf_counter,
+        out: str | os.PathLike[str] | None = None,
+        overwrite: bool = False,
     ) -> None:
         if mode != "record" and cassette is None:
             raise ReplayError(f"mode {mode!r} replays a cassette; pass one")
@@ -216,6 +223,11 @@ class Session:
         )
         self._timer = timer
         self._envelopes: list[Envelope] = []
+        self._writer = (
+            CassetteWriter(out, self._header, overwrite=overwrite) if out is not None else None
+        )
+        self._dump_to: pathlib.Path | None = None
+        """Where :meth:`finish` dumps the cassette after the partial failed to write."""
         self._spans = 0
         self._queues = _servable(cassette, self._served) if cassette is not None else {}
         self._identify = {tool: paths for tool, paths in parse_identify(identify).items() if paths}
@@ -224,6 +236,9 @@ class Session:
 
     def __enter__(self) -> Self:
         if _current.get() is not None:
+            if self._writer is not None:  # nothing was recorded: leave no partial behind
+                self._writer.discard()
+                self._writer = None
             raise ReplayError("a recording or replay session is already active in this context")
         self._token = _current.set(self)
         with _active_lock:
@@ -242,6 +257,12 @@ class Session:
         if self._token is not None:
             _current.reset(self._token)
             self._token = None
+        if self._writer is not None and exc is not None and not isinstance(exc, Exception):
+            # Ctrl-C or another BaseException: keep what was written as an interrupted
+            # recording (finish() is never reached on this path). An ordinary exception
+            # leaves the writer open: the caller may still finish(error=exc).
+            with self._lock:
+                self._writer.close()
 
     def fail[E: ReplayError](self, error: E) -> E:
         """Remember ``error`` as fatal and return it for raising.
@@ -514,6 +535,11 @@ class Session:
                     parent_span_id=plan.parent,
                 )
             )
+            if self._writer is not None:
+                try:
+                    self._writer.append(self._envelopes[-1])
+                except (OSError, CassetteError) as exc:
+                    self._partial_failed(exc)
         log.debug("envelope.recorded", seq=seq, kind=call.kind.value, name=call.name)
         return seq
 
@@ -543,6 +569,24 @@ class Session:
                 }
             )
 
+    def _partial_failed(self, exc: Exception) -> None:
+        """The partial cannot be written (a full disk): keep recording in memory only.
+
+        The call itself succeeded, so the agent must not see the error; the partial
+        stays as an interrupted prefix, and :meth:`finish` writes the whole cassette
+        with :meth:`Cassette.dump` instead.
+        """
+        assert self._writer is not None
+        log.warning(
+            "record.partial_write_failed",
+            path=str(self._writer.partial),
+            envelopes_written=self._writer.envelopes,
+            error=repr(exc),
+        )
+        self._writer.close()
+        self._dump_to = self._writer.path
+        self._writer = None
+
     # --- results ----------------------------------------------------------------
 
     def unconsumed(self) -> list[Envelope]:
@@ -552,10 +596,13 @@ class Session:
         return sorted(left, key=lambda e: e.seq)
 
     def finish(self, *, output: object = None, error: BaseException | None = None) -> Cassette:
-        """Close the session and return what it saw as a cassette (not written to disk here).
+        """Close the session and return what it saw as a cassette.
 
         For a recording that is the cassette; for a replay it is a recording of
         the replayed run, served calls included, which replays like any other.
+        A session made with ``out`` has been appending to ``<out>.partial``; this
+        writes the footer and moves the finished file to ``out``. Otherwise nothing
+        is written here (:meth:`Cassette.dump`).
         """
         if error is None and self.fatal is not None:
             error = self.fatal
@@ -573,7 +620,17 @@ class Session:
                 error=ErrorInfo.from_exception(error) if error is not None else None,
                 envelope_count=len(self._envelopes),
             )
-            return Cassette(header=self._header, envelopes=tuple(self._envelopes), footer=footer)
+            cassette = Cassette(
+                header=self._header, envelopes=tuple(self._envelopes), footer=footer
+            )
+            if self._writer is not None:
+                writer, self._writer = self._writer, None
+                writer.finish(footer)
+            elif self._dump_to is not None:
+                cassette.dump(self._dump_to)
+                partial_path(self._dump_to).unlink(missing_ok=True)  # a stale prefix now
+                self._dump_to = None
+            return cassette
 
 
 def _recorder_info() -> dict[str, str]:
@@ -633,9 +690,18 @@ class RecordingSession(Session):
         metadata: dict[str, JsonValue] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         timer: Callable[[], float] = time.perf_counter,
+        out: str | os.PathLike[str] | None = None,
+        overwrite: bool = False,
     ) -> None:
         super().__init__(
-            mode="record", agent=agent, task=task, metadata=metadata, clock=clock, timer=timer
+            mode="record",
+            agent=agent,
+            task=task,
+            metadata=metadata,
+            clock=clock,
+            timer=timer,
+            out=out,
+            overwrite=overwrite,
         )
 
 

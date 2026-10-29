@@ -1,0 +1,353 @@
+{
+  "command": "make bench-scale",
+  "environment": {
+    "python": "3.12.16",
+    "implementation": "CPython",
+    "system": "Linux",
+    "machine": "x86_64",
+    "cpu_model": "Intel(R) Xeon(R) 6973P-C",
+    "cpu_count": 4
+  },
+  "codec_versions": {
+    "zlib": "1.3.2",
+    "bz2": "libbz2 (Python 3.12.16)",
+    "liblzma": "5.8.3",
+    "gzip_level": 9,
+    "bz2_level": 9,
+    "xz_preset": 6
+  },
+  "runs": [
+    {
+      "turns": 5,
+      "record_s": 0.0049,
+      "load_s": {
+        "jsonl": 0.0001,
+        "jsonl_collector_on": 0.0001,
+        "gzip": 0.0002,
+        "bz2": 0.0008,
+        "xz": 0.0004
+      },
+      "compress_s": {
+        "gzip": 0.0002,
+        "bz2": 0.0036,
+        "xz": 0.0025
+      },
+      "replay_full_s": 0.0028
+    },
+    {
+      "turns": 20,
+      "record_s": 0.026,
+      "load_s": {
+        "jsonl": 0.0009,
+        "jsonl_collector_on": 0.0008,
+        "gzip": 0.0011,
+        "bz2": 0.0037,
+        "xz": 0.0014
+      },
+      "compress_s": {
+        "gzip": 0.0009,
+        "bz2": 0.0428,
+        "xz": 0.0099
+      },
+      "replay_full_s": 0.0161
+    },
+    {
+      "turns": 50,
+      "record_s": 0.1123,
+      "load_s": {
+        "jsonl": 0.0046,
+        "jsonl_collector_on": 0.0045,
+        "gzip": 0.0058,
+        "bz2": 0.026,
+        "xz": 0.0056
+      },
+      "compress_s": {
+        "gzip": 0.0065,
+        "bz2": 0.1934,
+        "xz": 0.0467
+      },
+      "replay_full_s": 0.0687
+    },
+    {
+      "turns": 100,
+      "record_s": 0.639,
+      "load_s": {
+        "jsonl": 0.022,
+        "jsonl_collector_on": 0.0207,
+        "gzip": 0.0315,
+        "bz2": 0.1182,
+        "xz": 0.0236
+      },
+      "compress_s": {
+        "gzip": 0.0518,
+        "bz2": 0.7363,
+        "xz": 0.1875
+      },
+      "replay_full_s": 0.2206
+    },
+    {
+      "turns": 200,
+      "record_s": 1.613,
+      "load_s": {
+        "jsonl": 0.1011,
+        "jsonl_collector_on": 0.1048,
+        "gzip": 0.1471,
+        "bz2": 0.4368,
+        "xz": 0.1155
+      },
+      "compress_s": {
+        "gzip": 0.2476,
+        "bz2": 2.7396,
+        "xz": 0.8171
+      },
+      "replay_full_s": 1.1113
+    },
+    {
+      "turns": 400,
+      "record_s": 7.0043,
+      "load_s": {
+        "jsonl": 0.4576,
+        "jsonl_collector_on": 1.1829,
+        "gzip": 0.6092,
+        "bz2": 1.5854,
+        "xz": 0.4847
+      },
+      "compress_s": {
+        "gzip": null,
+        "bz2": null,
+        "xz": null
+      },
+      "replay_full_s": null
+    }
+  ],
+  "store": [
+    {
+      "turns": 20,
+      "runs": 100,
+      "cassette_bytes": 265085,
+      "save_run_median_s": 0.0055,
+      "save_run_max_s": 0.0132,
+      "db_bytes": 28192768,
+      "db_bytes_per_run": 281928,
+      "step_json_share": 0.914,
+      "get_run_payload_bytes": 267622,
+      "get_run_median_s": 0.0029
+    },
+    {
+      "turns": 100,
+      "runs": 10,
+      "cassette_bytes": 3653031,
+      "save_run_median_s": 0.0428,
+      "save_run_max_s": 0.0473,
+      "db_bytes": 38428672,
+      "db_bytes_per_run": 3842867,
+      "step_json_share": 0.967,
+      "get_run_payload_bytes": 3665429,
+      "get_run_median_s": 0.0431
+    }
+  ],
+  "memory": [
+    {
+      "turns": 5,
+      "cassette_bytes": 44325,
+      "baseline_rss_mb": 115.0,
+      "rss_after_load_mb": 115.3,
+      "peak_rss_mb": 116.6,
+      "load_paused_s": 0.0003,
+      "load_collector_on_s": 0.0003,
+      "collections_during_load": {
+        "gen0": 0,
+        "gen1": 0,
+        "gen2": 0
+      },
+      "replay_full_s": 0.0036,
+      "replay_full_frozen_s": 0.0035,
+      "rss_over_bytes": 37.9,
+      "load_paused_ms_per_mb": 7.1,
+      "load_collector_on_ms_per_mb": 7.1,
+      "freeze_replay_gain": 0.028
+    },
+    {
+      "turns": 20,
+      "cassette_bytes": 265085,
+      "baseline_rss_mb": 115.0,
+      "rss_after_load_mb": 116.6,
+      "peak_rss_mb": 118.5,
+      "load_paused_s": 0.0013,
+      "load_collector_on_s": 0.0013,
+      "collections_during_load": {
+        "gen0": 2,
+        "gen1": 0,
+        "gen2": 0
+      },
+      "replay_full_s": 0.0171,
+      "replay_full_frozen_s": 0.0171,
+      "rss_over_bytes": 13.8,
+      "load_paused_ms_per_mb": 5.14,
+      "load_collector_on_ms_per_mb": 5.14,
+      "freeze_replay_gain": 0.0
+    },
+    {
+      "turns": 50,
+      "cassette_bytes": 1099202,
+      "baseline_rss_mb": 115.0,
+      "rss_after_load_mb": 121.7,
+      "peak_rss_mb": 127.0,
+      "load_paused_s": 0.0056,
+      "load_collector_on_s": 0.0057,
+      "collections_during_load": {
+        "gen0": 13,
+        "gen1": 1,
+        "gen2": 0
+      },
+      "replay_full_s": 0.0647,
+      "replay_full_frozen_s": 0.0652,
+      "rss_over_bytes": 11.4,
+      "load_paused_ms_per_mb": 5.34,
+      "load_collector_on_ms_per_mb": 5.44,
+      "freeze_replay_gain": -0.008
+    },
+    {
+      "turns": 100,
+      "cassette_bytes": 3653031,
+      "baseline_rss_mb": 115.0,
+      "rss_after_load_mb": 138.0,
+      "peak_rss_mb": 155.6,
+      "load_paused_s": 0.0201,
+      "load_collector_on_s": 0.02,
+      "collections_during_load": {
+        "gen0": 44,
+        "gen1": 3,
+        "gen2": 0
+      },
+      "replay_full_s": 0.2744,
+      "replay_full_frozen_s": 0.2101,
+      "rss_over_bytes": 11.7,
+      "load_paused_ms_per_mb": 5.77,
+      "load_collector_on_ms_per_mb": 5.74,
+      "freeze_replay_gain": 0.234
+    },
+    {
+      "turns": 200,
+      "cassette_bytes": 13133680,
+      "baseline_rss_mb": 115.0,
+      "rss_after_load_mb": 200.3,
+      "peak_rss_mb": 267.1,
+      "load_paused_s": 0.0763,
+      "load_collector_on_s": 0.1456,
+      "collections_during_load": {
+        "gen0": 134,
+        "gen1": 12,
+        "gen2": 1
+      },
+      "replay_full_s": 0.9543,
+      "replay_full_frozen_s": 0.788,
+      "rss_over_bytes": 12.1,
+      "load_paused_ms_per_mb": 6.09,
+      "load_collector_on_ms_per_mb": 11.62,
+      "freeze_replay_gain": 0.174
+    },
+    {
+      "turns": 400,
+      "cassette_bytes": 49605749,
+      "baseline_rss_mb": 115.1,
+      "rss_after_load_mb": 443.5,
+      "peak_rss_mb": 704.8,
+      "load_paused_s": 0.3328,
+      "load_collector_on_s": 0.4988,
+      "collections_during_load": {
+        "gen0": 318,
+        "gen1": 28,
+        "gen2": 2
+      },
+      "replay_full_s": 4.5994,
+      "replay_full_frozen_s": 3.7496,
+      "rss_over_bytes": 12.5,
+      "load_paused_ms_per_mb": 7.03,
+      "load_collector_on_ms_per_mb": 10.54,
+      "freeze_replay_gain": 0.185
+    }
+  ],
+  "load_linearity": {
+    "from": 100,
+    "to": 400,
+    "bytes_ratio": 13.58,
+    "load_paused": {
+      "time_ratio": 16.56,
+      "over_linear": 1.22,
+      "within_bound": true
+    },
+    "load_collector_on": {
+      "time_ratio": 24.94,
+      "over_linear": 1.84,
+      "within_bound": false
+    },
+    "bound": 1.3
+  },
+  "real_loads": [
+    {
+      "cassette": "examples/retail_agent/cassettes/live/cancel_pending_laptop.jsonl",
+      "bytes": 84880,
+      "load_paused_s": 0.000323,
+      "load_collector_on_s": 0.000283,
+      "load_paused_ms_per_mb": 3.99,
+      "load_collector_on_ms_per_mb": 3.5
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/exchange_waterproof_boots.jsonl",
+      "bytes": 126419,
+      "load_paused_s": 0.00046,
+      "load_collector_on_s": 0.000448,
+      "load_paused_ms_per_mb": 3.82,
+      "load_collector_on_ms_per_mb": 3.72
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/lookup_latest_order_total.jsonl",
+      "bytes": 66814,
+      "load_paused_s": 0.000217,
+      "load_collector_on_s": 0.000204,
+      "load_paused_ms_per_mb": 3.41,
+      "load_collector_on_ms_per_mb": 3.2
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/modify_address_suite.jsonl",
+      "bytes": 50489,
+      "load_paused_s": 0.000163,
+      "load_collector_on_s": 0.00015,
+      "load_paused_ms_per_mb": 3.39,
+      "load_collector_on_ms_per_mb": 3.12
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/return_damaged_bicycle.jsonl",
+      "bytes": 92071,
+      "load_paused_s": 0.000307,
+      "load_collector_on_s": 0.000298,
+      "load_paused_ms_per_mb": 3.5,
+      "load_collector_on_ms_per_mb": 3.39
+    },
+    {
+      "cassette": "examples/retail_agent/cassettes/live/transfer_swapped_refunds.jsonl",
+      "bytes": 86020,
+      "load_paused_s": 0.000259,
+      "load_collector_on_s": 0.00025,
+      "load_paused_ms_per_mb": 3.16,
+      "load_collector_on_ms_per_mb": 3.05
+    },
+    {
+      "cassette": "examples/pydantic_ai_agent/cassettes/qwen/book_earliest_flight.jsonl",
+      "bytes": 13156,
+      "load_paused_s": 8e-05,
+      "load_collector_on_s": 7.3e-05,
+      "load_paused_ms_per_mb": 6.38,
+      "load_collector_on_ms_per_mb": 5.82
+    },
+    {
+      "cassette": "examples/pydantic_ai_agent/cassettes/qwen/cheapest_fare_in_euros.jsonl",
+      "bytes": 12897,
+      "load_paused_s": 7.6e-05,
+      "load_collector_on_s": 7.1e-05,
+      "load_paused_ms_per_mb": 6.18,
+      "load_collector_on_ms_per_mb": 5.77
+    }
+  ]
+}

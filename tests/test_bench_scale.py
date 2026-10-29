@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import json
 from pathlib import Path
 from typing import Any
@@ -139,3 +140,57 @@ def test_committed_report_answers_the_window_hypothesis() -> None:
     assert rows[100]["codecs"]["gzip"]["ratio"] < 5
     assert rows[100]["codecs"]["xz"]["ratio"] >= bs.MIN_RATIO
     assert report["decision"]["choice"] == "transparent .jsonl.xz cassettes"
+
+
+def test_streaming_xz_counts_what_a_killed_compressor_leaves() -> None:
+    text = bs.record_run(20).dumps()
+    stream = bs.xz_streaming(text)
+    lines = len([x for x in text.split("\n") if x])
+    assert stream["lines"] == lines
+    assert stream["streamed_equals_whole"] is True
+    steps = stream["recoverable"]
+    assert steps[0][0] == 1
+    assert steps[-1][0] == lines
+    assert [s[0] for s in steps] == sorted(s[0] for s in steps)
+    assert all(0 <= envelopes <= lines - 2 for _, envelopes in steps)
+    # A 20-turn run is 265 KB: liblzma emits nothing decodable before flush().
+    assert steps == [[1, 0], [lines, 0]]
+    assert stream["unflushed_envelopes_lost_at_end"] == lines - 2
+
+
+def test_committed_streaming_row_shows_the_held_back_envelopes() -> None:
+    stream = json.loads(bs.SIZES.read_text(encoding="utf-8"))["xz_streaming"]
+    assert stream["turns"] == bs.STREAM_TURNS
+    assert stream["streamed_equals_whole"] is True
+    assert stream["unflushed_envelopes_lost_at_end"] > 0
+
+
+def test_linearity_compares_time_with_bytes() -> None:
+    rows = [
+        {"turns": 100, "cassette_bytes": 100, "load_paused_s": 1.0, "load_collector_on_s": 1.0},
+        {"turns": 400, "cassette_bytes": 1000, "load_paused_s": 12.0, "load_collector_on_s": 40.0},
+    ]
+    out = bs.linearity(rows)
+    assert out["bytes_ratio"] == 10
+    assert out["load_paused"] == {"time_ratio": 12.0, "over_linear": 1.2, "within_bound": True}
+    assert out["load_collector_on"]["within_bound"] is False
+
+
+def test_child_measures_one_cassette_in_its_own_process(tmp_path: Path) -> None:
+    path = tmp_path / "c.jsonl"
+    bs.record_run(5).dump(path)
+    frozen_before = gc.get_freeze_count()
+    row = bs.child(path, repeats=2)
+    assert row["cassette_bytes"] == path.stat().st_size
+    assert row["baseline_rss_mb"] <= row["rss_after_load_mb"] <= row["peak_rss_mb"]
+    assert set(row["collections_during_load"]) == {"gen0", "gen1", "gen2"}
+    for key in ("load_paused_s", "load_collector_on_s", "replay_full_s", "replay_full_frozen_s"):
+        assert row[key] > 0
+    assert gc.isenabled()
+    assert gc.get_freeze_count() <= frozen_before
+
+
+def test_real_loads_cover_every_committed_recording() -> None:
+    rows = bs.real_loads(repeats=1)
+    assert [r["cassette"] for r in rows] == [p.relative_to(ROOT).as_posix() for p in bs.REAL]
+    assert all(r["load_paused_s"] > 0 and r["load_collector_on_s"] > 0 for r in rows)

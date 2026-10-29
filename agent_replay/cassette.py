@@ -14,18 +14,36 @@ so far, so bytes grow with the square of the turns; xz's 8 MB dictionary sees
 those copies (``make bench-scale``: 105x at 100 turns), where gzip's 32 KB
 window stops seeing them once one envelope outgrows it (3.8x), so ``.gz`` and
 other suffixes are refused rather than silently stored uncompressed.
+
+**Partial cassettes.** A recording that writes to a path (:class:`CassetteWriter`)
+appends each line to ``<path>.partial`` as it completes, flushed but not fsynced,
+so the file survives the process dying (SIGKILL, Ctrl-C, an OOM kill), not the
+machine losing power. The partial is always plain JSONL, even for an ``.xz``
+path: Python's ``lzma`` has no sync flush, and a stream compressor holds back
+what it has not emitted yet (``make bench-scale``: until line 148 of a 100-turn
+run's 201, the emitted xz bytes decode to no envelope at all). Finishing appends
+the footer and moves the partial into place (compressing it first for ``.xz``),
+which gives the same bytes :meth:`Cassette.dump` writes. A ``.partial`` without a
+footer loads as *interrupted*: a load-time state, not a footer status, so the
+schema is unchanged. It replays (the run fails where the recording stopped) and
+diffs like any cassette; ``replay ci`` refuses it.
 """
 
 from __future__ import annotations
 
+import gc
 import json
 import lzma
 import os
+import shutil
 import tempfile
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal
+from typing import IO, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
@@ -38,6 +56,10 @@ COMPRESSED_SUFFIX = ".xz"
 XZ_PRESET = 6
 _XZ_MAGIC = b"\xfd7zXZ\x00"
 _REFUSED_SUFFIXES = (".gz", ".gzip", ".bz2", ".zst", ".zstd", ".lz4", ".zip", ".br")
+PARTIAL_SUFFIX = ".partial"
+INTERRUPTED_ERROR = "RecordingInterrupted"
+"""``Footer.error.type`` of the footer an interrupted cassette is given in memory."""
+_COPY_CHUNK = 1 << 20
 
 
 class Kind(StrEnum):
@@ -120,6 +142,13 @@ class Cassette(_Strict):
     header: Header
     envelopes: tuple[Envelope, ...]
     footer: Footer
+    interrupted: bool = False
+    """Loaded from a ``.partial`` with no footer: the recording stopped after these
+    envelopes. ``footer`` is then made up in memory (``status="error"``,
+    :data:`INTERRUPTED_ERROR`) and never written; ``replay ci`` refuses such a cassette.
+    """
+    torn_bytes: int = 0
+    """Bytes of an incomplete last line dropped from an interrupted cassette."""
 
     def top_level(self, *, order: Literal["finished", "started"] = "finished") -> list[Envelope]:
         """Envelopes for calls the agent made directly (not nested inside another call).
@@ -142,17 +171,25 @@ class Cassette(_Strict):
         return [e.name for e in self.top_level(order="started") if e.kind is Kind.TOOL]
 
     def dumps(self) -> str:
+        """The JSONL; an interrupted cassette is written as it was found, without a footer."""
         lines = [self.header.model_dump_json()]
         lines += [e.model_dump_json() for e in self.envelopes]
-        lines.append(self.footer.model_dump_json())
+        if not self.interrupted:
+            lines.append(self.footer.model_dump_json())
         return "\n".join(lines) + "\n"
 
     def dump(self, path: str | Path) -> None:
         """Write atomically, so an interrupted recording never leaves half a cassette.
 
-        A path ending in ``.xz`` is written xz-compressed.
+        A path ending in ``.xz`` is written xz-compressed. An interrupted cassette
+        can only be written to a ``.partial`` path, so it never passes for a finished one.
         """
         path = Path(path)
+        if self.interrupted and not is_partial_path(path):
+            raise CassetteError(
+                f"cannot write an interrupted recording to {path}: it has no footer; "
+                f"write it to {path.name}{PARTIAL_SUFFIX}, or re-record it with `replay record`"
+            )
         compressed = _is_compressed(path)
         data = self.dumps().encode("utf-8")
         if compressed:
@@ -171,11 +208,32 @@ class Cassette(_Strict):
             raise
 
     @classmethod
-    def loads(cls, text: str, *, source: str = "<string>") -> Cassette:
+    def loads(cls, text: str, *, source: str = "<string>", partial: bool = False) -> Cassette:
+        """Parse a cassette's JSONL; ``partial`` reads a footer-less file as interrupted.
+
+        The garbage collector is paused while the envelopes are parsed (and only
+        then): building a large cassette allocates millions of containers and none
+        of them is garbage, so every collection the allocations trigger is wasted
+        work. ``make bench-scale`` measures load with the collector on and off.
+        """
+        with _collector_paused():
+            return cls._loads(text, source=source, partial=partial)
+
+    @classmethod
+    def _loads(cls, text: str, *, source: str, partial: bool) -> Cassette:
         # Split on "\n" only: str.splitlines() also breaks on U+2028 and friends, which
         # JSON leaves unescaped inside strings.
+        torn = 0
+        if partial:
+            # A line is complete once its newline is written; a kill mid-write leaves
+            # a torn last line, which is dropped (and counted) rather than misread.
+            cut = text.rfind("\n") + 1
+            torn = len(text[cut:].encode("utf-8"))
+            text = text[:cut]
         numbered = enumerate(text.split("\n"), start=1)
         lines = [(n, line) for n, line in numbered if line.strip()]
+        if partial and lines and not _is_footer(lines[-1][1]):
+            return cls._interrupted(source, lines, torn)
         if len(lines) < 2:
             raise CassetteError(
                 f"{source}: a cassette needs a header and a footer line; "
@@ -196,9 +254,43 @@ class Cassette(_Strict):
         return cls(header=header, envelopes=tuple(envelopes), footer=footer)
 
     @classmethod
+    def _interrupted(cls, source: str, lines: _Lines, torn: int) -> Cassette:
+        version = _schema_version(source, lines[0][1])
+        if version != SCHEMA_VERSION:
+            raise CassetteError(f"{source}: a partial cassette is always v{SCHEMA_VERSION}")
+        try:
+            header = Header.model_validate_json(lines[0][1])
+        except ValidationError as exc:
+            raise CassetteError(f"{source}:1: invalid header: {exc}") from exc
+        envelopes = _envelopes(source, lines[1:])
+        if [e.seq for e in envelopes] != list(range(len(envelopes))):
+            raise CassetteError(f"{source}: envelope seq numbers are not 0..n-1 in order")
+        footer = Footer(
+            status="error",
+            error=ErrorInfo(
+                type=INTERRUPTED_ERROR,
+                message=f"the recording stopped after {len(envelopes)} envelope(s)",
+            ),
+            envelope_count=len(envelopes),
+        )
+        return cls(
+            header=header,
+            envelopes=tuple(envelopes),
+            footer=footer,
+            interrupted=True,
+            torn_bytes=torn,
+        )
+
+    @classmethod
     def load(cls, path: str | Path) -> Cassette:
-        """Read a cassette; a path ending in ``.xz`` is decompressed first."""
+        """Read a cassette; a path ending in ``.xz`` is decompressed first.
+
+        A ``.partial`` path is read as plain JSONL; without a footer it is an
+        interrupted recording (:attr:`interrupted`).
+        """
         path = Path(path)
+        if is_partial_path(path):
+            return cls._load_partial(path)
         compressed = _is_compressed(path)
         try:
             data = path.read_bytes()
@@ -227,6 +319,179 @@ class Cassette(_Strict):
             raise CassetteError(f"cannot read cassette {path}: {exc}") from exc
         return cls.loads(text, source=str(path))
 
+    @classmethod
+    def _load_partial(cls, path: Path) -> Cassette:
+        try:
+            data = path.read_bytes()
+        except FileNotFoundError as exc:
+            raise CassetteError(f"partial cassette {path} does not exist") from exc
+        except OSError as exc:
+            raise CassetteError(f"cannot read cassette {path}: {exc}") from exc
+        if data.startswith(_XZ_MAGIC):
+            raise CassetteError(
+                f"{path} is xz-compressed, but a partial cassette is plain JSONL; "
+                f"decompress it with `xz -dc {path.name}`"
+            )
+        # Cut at the last newline before decoding: a torn line may end inside a character.
+        cut = data.rfind(b"\n") + 1
+        try:
+            text = data[:cut].decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise CassetteError(f"cannot read cassette {path}: {exc}") from exc
+        if not text.strip():
+            raise CassetteError(
+                f"{path}: the recording stopped before its header was written; nothing to "
+                "replay. Re-record it with `replay record`."
+            )
+        cassette = cls.loads(text, source=str(path), partial=True)
+        if cassette.interrupted and cut < len(data):
+            cassette = cassette.model_copy(update={"torn_bytes": len(data) - cut})
+        return cassette
+
+    def describe_interrupted(self, source: str | Path) -> str:
+        """What an interrupted cassette holds, for an error message or a warning."""
+        torn = (
+            f", plus a torn last line of {self.torn_bytes} bytes (dropped)"
+            if self.torn_bytes
+            else ""
+        )
+        return (
+            f"{source} is an interrupted recording: {len(self.envelopes)} envelope(s) and no "
+            f"footer{torn}"
+        )
+
+
+class CassetteWriter:
+    """Writes a recording line by line to ``<path>.partial``; :meth:`finish` moves it to ``path``.
+
+    Every line is flushed as it is written, so a killed process leaves a partial
+    that :meth:`Cassette.load` reads as interrupted. The finished file has the
+    bytes :meth:`Cassette.dump` would write for the same cassette: the header, the
+    envelopes in ``seq`` order and the footer, one compact JSON object a line; for
+    an ``.xz`` path, those bytes through one :class:`lzma.LZMACompressor` at
+    :data:`XZ_PRESET`, whose output does not depend on how the input is chunked.
+
+    An existing partial is an earlier interrupted attempt, kept for diffing, so it
+    is refused unless ``overwrite``. Not thread-safe by itself: the session calls
+    it under its lock.
+    """
+
+    def __init__(
+        self, path: str | os.PathLike[str], header: Header, *, overwrite: bool = False
+    ) -> None:
+        self.path = Path(path)
+        _is_compressed(self.path)  # refuse .gz and friends before anything runs
+        self.partial = partial_path(self.path)
+        if self.partial.exists() and not overwrite:
+            raise CassetteError(
+                f"{self.partial} is an interrupted earlier recording; replay or diff it "
+                f"(`replay run {self.partial} --mode full`), move it away, or pass --force"
+            )
+        self.partial.parent.mkdir(parents=True, exist_ok=True)
+        self._fh: IO[bytes] | None = self.partial.open("wb")
+        self.envelopes = 0
+        self._line(header.model_dump_json())
+
+    def _line(self, json_line: str) -> None:
+        if self._fh is None:
+            raise CassetteError(f"the recording to {self.path} is already closed")
+        self._fh.write(json_line.encode("utf-8") + b"\n")
+        self._fh.flush()
+
+    def append(self, envelope: Envelope) -> None:
+        if envelope.seq != self.envelopes:
+            raise CassetteError(f"envelope {envelope.seq} written out of order")
+        self._line(envelope.model_dump_json())
+        self.envelopes += 1
+
+    def finish(self, footer: Footer) -> None:
+        """Append the footer and move the finished cassette to :attr:`path`."""
+        if footer.envelope_count != self.envelopes:
+            raise CassetteError(
+                f"footer counts {footer.envelope_count} envelopes, {self.envelopes} were written"
+            )
+        self._line(footer.model_dump_json())
+        self.close()
+        if not _is_compressed(self.path):
+            self.partial.replace(self.path)
+            return
+        fd, tmp = tempfile.mkstemp(
+            dir=self.path.parent, prefix=f".{self.path.name}.", suffix=".tmp"
+        )
+        try:
+            compressor = lzma.LZMACompressor(format=lzma.FORMAT_XZ, preset=XZ_PRESET)
+            with os.fdopen(fd, "wb") as out, self.partial.open("rb") as src:
+                while chunk := src.read(_COPY_CHUNK):
+                    out.write(compressor.compress(chunk))
+                out.write(compressor.flush())
+            shutil.copymode(self.partial, tmp)
+            Path(tmp).replace(self.path)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
+        self.partial.unlink()
+
+    def discard(self) -> None:
+        """Close the file and remove the partial (nothing was recorded into it)."""
+        self.close()
+        self.partial.unlink(missing_ok=True)
+
+    def close(self) -> None:
+        """Close the file and leave the partial where it is (an interrupted recording)."""
+        if self._fh is not None:
+            self._fh.close()
+            self._fh = None
+
+
+def partial_path(path: str | Path) -> Path:
+    """Where a recording to ``path`` keeps its lines until it finishes: ``<path>.partial``."""
+    path = Path(path)
+    return path.with_name(path.name + PARTIAL_SUFFIX)
+
+
+def is_partial_path(path: str | Path) -> bool:
+    return Path(path).name.lower().endswith(PARTIAL_SUFFIX)
+
+
+_pause_lock = threading.Lock()
+_pause_depth = 0
+_paused_by_us = False
+
+
+@contextmanager
+def _collector_paused() -> Iterator[None]:
+    """Disable the cyclic garbage collector for the block, unless something else already has.
+
+    Process-wide, so nested and concurrent loads share one pause: the collector is
+    re-enabled when the last of them ends, and left alone if it was off before.
+    Agent code on other threads runs with the collector paused for as long as a
+    load takes; that delays collections, it never skips freeing (reference
+    counting still frees everything acyclic). A ``gc.disable()`` made by another
+    thread during a load is undone when the load ends: ``gc`` offers no way to
+    tell it apart from the pause.
+    """
+    global _pause_depth, _paused_by_us  # noqa: PLW0603 - one process-wide pause
+    with _pause_lock:
+        if _pause_depth == 0:
+            _paused_by_us = gc.isenabled()
+            gc.disable()
+        _pause_depth += 1
+    try:
+        yield
+    finally:
+        with _pause_lock:
+            _pause_depth -= 1
+            if _pause_depth == 0 and _paused_by_us:
+                gc.enable()
+
+
+def _is_footer(line: str) -> bool:
+    try:
+        obj = json.loads(line)
+    except ValueError:
+        return False
+    return isinstance(obj, dict) and obj.get("type") == "footer"
+
 
 def _is_compressed(path: Path) -> bool:
     """Whether ``path`` names an xz cassette; other compression suffixes are an error."""
@@ -252,8 +517,8 @@ def check_cassette_name(path: str | Path) -> None:
 
 
 def is_cassette_path(path: str | Path) -> bool:
-    """Whether ``path`` is named like a cassette: ``*.jsonl`` or ``*.jsonl.xz``."""
-    name = Path(path).name.lower()
+    """Whether ``path`` is named like a cassette: ``*.jsonl`` or ``*.jsonl.xz``, or its partial."""
+    name = Path(path).name.lower().removesuffix(PARTIAL_SUFFIX)
     return name.endswith((".jsonl", ".jsonl" + COMPRESSED_SUFFIX))
 
 
@@ -278,13 +543,17 @@ def _load_v2(source: str, lines: _Lines) -> tuple[Header, list[Envelope], Footer
         header = Header.model_validate_json(lines[0][1])
     except ValidationError as exc:
         raise CassetteError(f"{source}:1: invalid header: {exc}") from exc
+    return header, _envelopes(source, lines[1:-1]), _footer(source, lines, Footer)
+
+
+def _envelopes(source: str, lines: _Lines) -> list[Envelope]:
     envelopes: list[Envelope] = []
-    for n, line in lines[1:-1]:
+    for n, line in lines:
         try:
             envelopes.append(Envelope.model_validate_json(line))
         except ValidationError as exc:
             raise CassetteError(f"{source}:{n}: invalid envelope: {exc}") from exc
-    return header, envelopes, _footer(source, lines, Footer)
+    return envelopes
 
 
 def _load_v1(source: str, lines: _Lines) -> tuple[Header, list[Envelope], Footer]:
