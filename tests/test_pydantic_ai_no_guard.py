@@ -20,17 +20,19 @@ FARE = pydantic_ai.FARE_SCENARIO
 
 
 def _guess_the_fare(request: FakeRequest) -> Reply:
-    """The fake model, except that its first fare reply also converts an amount it has not
-    read yet (350 USD), as M15's guardless qwen2.5:7b did; it then answers with whatever
-    that conversion returned."""
+    """The fake model, except that it converts an amount the search did not return (350
+    USD) in place of the cheapest fare, as M15's guardless qwen2.5:7b did; it then
+    answers with whatever that conversion returned.
+
+    The guess follows the search in its own turn. Sent in the same reply, the two calls
+    would run concurrently in pydantic-ai and land in the trajectory in whichever order
+    they finished, so the suite's ``in_order`` check would pass or fail on the race."""
     reply = fake_model.policy(request)
     if task_for(request.first_user_text()).name != FARE:
         return reply
-    if request.latest_result("search_flights") is None:
-        guess = ToolCall(
-            "convert_currency", {"amount": 350.0, "from_currency": "USD", "to_currency": "EUR"}
-        )
-        return Reply(text=reply.text, tool_calls=[*reply.tool_calls, guess])
+    if any(c.name == "convert_currency" for c in reply.tool_calls):
+        guess = {"amount": 350.0, "from_currency": "USD", "to_currency": "EUR"}
+        return Reply(tool_calls=[ToolCall("convert_currency", guess)])
     return reply
 
 
@@ -110,7 +112,11 @@ def test_a_guessed_amount_runs_for_real_under_fallback_and_is_stubbed_under_synt
 def test_a_pass_with_a_stubbed_step_is_reported_with_its_answer(tmp_path: Path) -> None:
     result = _no_guard(tmp_path, f"{HERE}:lucky_guess_client", runs=1)
     synth = _scenario(result, "synth")["no_guard"]
-    assert synth["passes_with_a_stubbed_step"] == 1
+    runs = [
+        {k: row.get(k) for k in ("passed", "error", "failed_checks", "tool_calls", "output")}
+        for row in _scenario(result, "synth")["outcomes"]
+    ]
+    assert synth["passes_with_a_stubbed_step"] == 1, json.dumps(runs, indent=1, default=str)
     (shown,) = synth["stubbed_passes"]
     assert shown["output"] == "The cheapest is B6416 at 173.88 EUR."
     assert "synth" in [c["status"] for c in shown["tool_calls"]]
