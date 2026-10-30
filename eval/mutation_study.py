@@ -2,7 +2,7 @@
 
 Replays the retail suite (``examples/retail_agent/replay.toml``, six τ-bench
 tasks with their committed fake-model cassettes) against every mutation and
-benign refactor in ``eval/mutations/``, in six configurations:
+benign refactor in ``eval/mutations/``, in seven configurations:
 
 - ``full``: every model and tool call served from the cassette (strict). This
   is the stub-everything baseline: it tests the agent's own code only.
@@ -23,6 +23,11 @@ benign refactor in ``eval/mutations/``, in six configurations:
   tool whose result differs from the one recorded for the same arguments fails
   the scenario (``no_tool_drift``, :mod:`agent_replay.drift`). It looks at tool
   results only, so a refactor that changes request bytes does not trip it.
+- ``model-live+synth`` (M17): ``model-live``, but a tool call with no recording left
+  for it is answered with a schema-minimal stub of the tool's return type
+  (:mod:`agent_replay.synth`: an empty record, an empty string, ``0.0``) instead of
+  ending the run or running the tool. Listed last so the six earlier columns keep
+  their place.
 
 Definitions:
 
@@ -45,7 +50,8 @@ entity the recording never saw, served the right recording without the keys), an
 lists every v1 cell the keys changed. The ``path_variants`` section (M11) replays five
 correct-but-different paths of the fake model (``eval/mutations/paths.py``) in
 ``model-live`` under ``strict`` and ``fallback``, with and without the keys, and
-records per scenario which checks failed and how the run ended.
+records per scenario which checks failed and how the run ended; M17 appends the same
+rows under ``synth``.
 
 Everything is offline and deterministic; the output has no timestamps or
 absolute paths, so re-running it reproduces the JSON byte for byte.
@@ -131,6 +137,13 @@ CONFIGS: tuple[Config, ...] = (
         "tools run, model replies served; a live tool result that differs from the one "
         "recorded for the same arguments fails (fail_on_tool_drift)",
         drift=True,
+    ),
+    Config(
+        "model-live+synth",
+        "model-live",
+        "synth",
+        "model runs, tools served; unrecorded tool calls are answered with a "
+        "schema-minimal stub of the tool's return type",
     ),
 )
 
@@ -338,7 +351,10 @@ def identify_study(
 
 # --- correct-but-different paths (M11) ----------------------------------------------
 
-PATH_POLICIES: tuple[Policy, ...] = ("strict", "fallback")
+PATH_POLICIES: tuple[Policy, ...] = ("strict", "fallback", "synth")
+PATH_POLICY_GROUPS: tuple[tuple[Policy, ...], ...] = (("strict", "fallback"), ("synth",))
+"""Rows are listed group by group, so M11's ``strict`` and ``fallback`` rows keep their
+place and M17's ``synth`` rows follow them."""
 
 
 def termination(scenario: ScenarioReport) -> str:
@@ -416,8 +432,9 @@ def path_row(variant: PathVariant, policy: Policy, *, identify: bool) -> dict[st
 def path_study(variants: Sequence[PathVariant]) -> dict[str, JsonValue]:
     rows: list[JsonValue] = [
         path_row(v, policy, identify=identify)
+        for group in PATH_POLICY_GROUPS
         for v in variants
-        for policy in PATH_POLICIES
+        for policy in group
         for identify in (True, False)
     ]
     summary: list[JsonValue] = []
@@ -513,6 +530,8 @@ def _definitions() -> dict[str, JsonValue]:
         "so does a live call whose identity no recording has (identity_unrecorded)",
         "identify": "the suite's identifying arguments per tool: a served call is only given "
         "a recording of the same entity, else it is unrecorded and the policy decides",
+        "synth": "model-live+synth answers an unrecorded tool call with a schema-minimal "
+        "stub of the tool's return type (agent_replay.synth) instead of ending the run",
         "termination": "how a path-variant scenario ended: passed, unrecorded (an unrecorded "
         "call ended the run), run_error:<Type>, or checks (it finished and a check failed)",
         "affected": "a path-variant scenario whose tool calls (names and arguments, in "
@@ -796,12 +815,12 @@ def paths_markdown(section: JsonValue) -> list[str]:
         "## Correct-but-different paths (M11)",
         "",
         "Five variants of the fake model reach the same database and answer by another path, "
-        "each replayed in `model-live` against the six recordings under `strict` and "
-        "`fallback`, with and without the identify keys. Affected: scenarios whose tool calls "
-        "differ from the recording. Termination: how each scenario ended (`unrecorded`: an "
-        "unrecorded call ended the run; `checks`: it finished and a check failed). A check "
-        "type's cell counts the scenarios it failed (· for none); every failure here is a "
-        "false alarm.",
+        "each replayed in `model-live` against the six recordings under `strict`, "
+        "`fallback` and `synth`, with and without the identify keys. Affected: scenarios "
+        "whose tool calls differ from the recording. Termination: how each scenario ended "
+        "(`unrecorded`: an unrecorded call ended the run; `checks`: it finished and a check "
+        "failed). A check type's cell counts the scenarios it failed (· for none); every "
+        "failure here is a false alarm.",
         "",
         "| variant | policy | identify | affected | termination | approx | fallback | "
         + " | ".join(f"`{t}`" for t in types)

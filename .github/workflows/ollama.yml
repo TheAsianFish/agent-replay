@@ -4,7 +4,8 @@ name: Local model (Ollama)
 # cassettes and/or run `make eval-pydantic-ai` (replay flake in model-live, 10 runs per
 # scenario), or with `arms` the M12 strict and fallback arms (make eval-pydantic-ai-arms),
 # or with `swap` the M15 model, prompt and temperature arms (make eval-pydantic-ai-swap),
-# or with `long` the M16 rebooking chain under strict and fallback (make eval-pydantic-ai-long).
+# or with `long` the M16 rebooking chain under strict and fallback (make eval-pydantic-ai-long),
+# or with `no_guard` the M15 no-guard prompt under fallback and synth (make eval-pydantic-ai-no-guard).
 # Free (an open model, no key) but slow: started by hand only, never on a
 # push or pull request. Results come back as an artifact to review and commit.
 on:
@@ -28,6 +29,10 @@ on:
         default: false
       long:
         description: "Instead of the flake: the M16 rebooking chain, strict and fallback (make eval-pydantic-ai-long)"
+        type: boolean
+        default: false
+      no_guard:
+        description: "Instead of the flake: M17, the no-guard prompt under fallback and synth (make eval-pydantic-ai-no-guard)"
         type: boolean
         default: false
 
@@ -67,17 +72,20 @@ jobs:
         if: ${{ inputs.record }}
         run: make record-pydantic-ai
       - name: replay ci in full, then replay flake in model-live
-        if: ${{ !inputs.arms && !inputs.swap && !inputs.long }}
+        if: ${{ !inputs.arms && !inputs.swap && !inputs.long && !inputs.no_guard }}
         run: uv run python -m eval.pydantic_ai --runs ${{ inputs.runs }}
       - name: replay ci in full, then the strict and fallback arms in model-live
-        if: ${{ inputs.arms && !inputs.long }}
+        if: ${{ inputs.arms && !inputs.long && !inputs.no_guard }}
         run: make eval-pydantic-ai-arms
       - name: replay ci in full, then the M15 swap arms in model-live
-        if: ${{ inputs.swap && !inputs.arms && !inputs.long }}
+        if: ${{ inputs.swap && !inputs.arms && !inputs.long && !inputs.no_guard }}
         run: make eval-pydantic-ai-swap
       - name: replay ci in full, then the M16 rebooking chain in model-live
-        if: ${{ inputs.long }}
+        if: ${{ inputs.long && !inputs.no_guard }}
         run: make eval-pydantic-ai-long
+      - name: replay ci in full, then the M17 no-guard arms under fallback and synth
+        if: ${{ inputs.no_guard }}
+        run: make eval-pydantic-ai-no-guard
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -87,5 +95,6 @@ jobs:
             eval/results/m12_*
             eval/results/m15_*
             eval/results/m16_*
+            eval/results/m17_*
             examples/pydantic_ai_agent/cassettes/qwen/
             /tmp/ollama.log

@@ -138,6 +138,7 @@ the rows still to measure.
 | Frozen world vs the model, `model-live` on qwen2.5:7b | 20 runs per arm: `strict` 18 / 20 and 9 / 20, `fallback` 19 / 20 and 8 / 20; 3 of 20 `strict` booking runs end on a call the recording never made, 0 on another entity, 0 approximate steps in 80; lookup pooled with M9 47 / 50 | `make eval-pydantic-ai-arms` (RESULTS.md, M12) |
 | Model and prompt swaps against the qwen2.5:7b cassettes | qwen2.5:3b 0 / 20 and 0 / 20 under `strict` and `fallback` alike (32 `strict` runs stopped by identity keys, every one on the model's wrong argument); the prompt without its guard line 2 / 20 and 2 / 20 (amounts guessed in parallel tool calls) against a same-day control's 18 / 20 and 10 / 20; `temperature=0` 10 identical passes of a booking that passes 17 / 40 sampled; 0 approximate steps in 170 runs | `make eval-pydantic-ai-swap` (RESULTS.md, M15) |
 | Frozen-world divergence on a long chain | qwen2.5:7b on an 8-link rebooking chain, 20 runs under `strict` and `fallback`: 320 of 320 chain lookups served exact, 1 world step in 321 served calls (0.31%, against 2.1% on the short runs), so 40 of 40 runs survived the 8 lookups where independence predicts 0.844 each; 0 / 20 passed in both arms, 39 of 40 answering a euro total without calling the conversion tool | `make eval-pydantic-ai-long` (RESULTS.md, M16) |
+| `synth`, the third unrecorded-call policy | offline (7th mutation-study configuration): 12 / 12 model mutations as `fallback`, 0 / 5 false alarms, but a correct agent that re-reads an order fails the ground truth in 4 of 6 scenarios, as under `strict` (`fallback` 0); live (qwen2.5:7b without the guard line, 20 runs per arm): `synth` 0 / 20 and 2 / 20, `fallback` 2 / 20 and 3 / 20, M15's `strict` 2 / 20 and 2 / 20, so the guessed amounts, not the recording, failed the runs; 11 of 20 `synth` answers stated the stub's 0.00 EUR; 0 passes with a stubbed step | `make eval-mutations`; `make eval-pydantic-ai-no-guard` (RESULTS.md, M17) |
 | Runs a fixed-threshold verdict needs | 5 runs agree with the all-runs verdict in ≥ 95% of draws on all 15 committed scenarios, but not on 3 of the 4 new ones (90–94%), which sit 0.15–0.35 from the 0.75 threshold | `make eval-verdict-curve` |
 | Cassette bytes at scale | quadratic in turns: 3.65 MB at 100 turns, 13.1 MB at 200 (seeded text, retail-sized prompt); live Opus retail traces grow 2.4 to 4.4× faster per turn; `full` replay 1.7 s at 200 turns | `make bench-scale` |
 | What compression recovers at 100 turns | xz 105×; gzip 3.8× (19× at 20 turns, until envelopes outgrow its 32 KB window); a shared-prefix encoding adds only 1.07× under xz, so cassettes compress as `.jsonl.xz` and the schema is unchanged | `make bench-scale` |
@@ -354,6 +355,18 @@ for check in result.check(tool_sequence(cassette.tool_names()), budget(max_cost_
     multi-item sets), and the run fails with a message naming `fallback`.
     A model reply cannot be invented, so under `synth` an unrecorded model
     call fails as under `strict`.
+  - What the policies are for, measured (RESULTS.md, M17): on qwen2.5:7b
+    with a prompt that makes it guess, `synth` gave the same gate verdict as
+    `fallback` (fail on both tasks) without running any tool past the
+    recording; its one wrong booking was answered with a blank record and
+    never made. So use `synth` when the tools cannot run from CI (payments,
+    bookings, a production database) and `strict` would stop every diverged
+    run. It does not tell a correct new path from a wrong one: a correct
+    agent that reads an order twice failed the ground truth under `synth`
+    as under `strict`, and passed only under `fallback`. And a failure after
+    a stubbed step is labelled `synth` even when the model caused it (20 of
+    20 such runs here were the model's guessed amounts). To say whose fault
+    a failure was, run a `fallback` twin.
 - **Failures survive `except Exception`.** These all fail the run even if the
   agent swallows the exception:
   - an unrecorded call under `strict`;
@@ -1289,13 +1302,17 @@ Next (evolution round 3, 2026-10-28; evidence and hypotheses in
     qwen recording passed, so the longest real trace is still 6 turns; see
     [RESULTS.md](RESULTS.md))
 
+17. ~~`synth`, the third unrecorded-call policy, measured for the first
+    time~~ (done: a seventh mutation-study configuration and the M15 no-guard
+    arm under `fallback` and `synth` on qwen2.5:7b. `synth` matched
+    `fallback`'s verdict with no tool run past the recording, but failed a
+    correct re-read as `strict` does, and its cause column blamed the stub
+    for the model's guesses; `fallback` 2 / 20 confirmed M15's attribution;
+    see [RESULTS.md](RESULTS.md))
+
 Next (evolution round 4, 2026-10-29; evidence and hypotheses in
 [PLAN.md](PLAN.md), "Evolution round 4"):
 
-17. `synth`, the third unrecorded-call policy, measured for the first time: a
-    seventh mutation-study configuration, and the M15 no-guard arm re-run
-    under `fallback` and `synth` on qwen2.5:7b, to see whether a stub keeps a
-    diverged run alive to a true verdict or manufactures one
 18. A retail task where a tool legitimately fails (a wrong zip code), so the
     one mutation that has survived every configuration since v1,
     `drops_error_flag`, has a recorded error to act on; which replay modes

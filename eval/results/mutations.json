@@ -47,6 +47,14 @@
       "mode": "tools-live",
       "note": "tools run, model replies served; a live tool result that differs from the one recorded for the same arguments fails (fail_on_tool_drift)",
       "policy": "strict"
+    },
+    {
+      "fail_on_approximate": false,
+      "fail_on_tool_drift": false,
+      "id": "model-live+synth",
+      "mode": "model-live",
+      "note": "model runs, tools served; unrecorded tool calls are answered with a schema-minimal stub of the tool's return type",
+      "policy": "synth"
     }
   ],
   "definitions": {
@@ -60,6 +68,7 @@
     "identify": "the suite's identifying arguments per tool: a served call is only given a recording of the same entity, else it is unrecorded and the policy decides",
     "no_approximate_steps": "with fail_on_approximate, a served step whose request differed from the recording (the drift signal) fails the scenario",
     "no_tool_drift": "with fail_on_tool_drift, a live tool whose result differs from the one recorded for the same arguments fails the scenario; with identifying arguments, so does a live call whose identity no recording has (identity_unrecorded)",
+    "synth": "model-live+synth answers an unrecorded tool call with a schema-minimal stub of the tool's return type (agent_replay.synth) instead of ending the run",
     "termination": "how a path-variant scenario ended: passed, unrecorded (an unrecorded call ended the run), run_error:<Type>, or checks (it finished and a check failed)"
   },
   "identify": {
@@ -88,6 +97,12 @@
             "passed": true
           },
           "model-live+fallback": {
+            "approximate_steps": 6,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
             "approximate_steps": 6,
             "caught_by": [],
             "failed_scenarios": [],
@@ -142,6 +157,12 @@
             "passed": true
           },
           "model-live+fallback": {
+            "approximate_steps": 4,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
             "approximate_steps": 4,
             "caught_by": [],
             "failed_scenarios": [],
@@ -273,6 +294,27 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "arg_schema",
+              "budget",
+              "output_schema",
+              "required_tools",
+              "rule:matches_ground_truth",
+              "run_error:RuntimeError",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots",
+              "lookup_latest_order_total",
+              "transfer_swapped_refunds"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 12,
             "caught_by": [
@@ -373,6 +415,19 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 4,
+            "caught_by": [
+              "rule:matches_ground_truth"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 4,
             "caught_by": [
@@ -461,6 +516,16 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "budget"
+            ],
+            "failed_scenarios": [
+              "exchange_waterproof_boots"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 11,
             "caught_by": [
@@ -537,6 +602,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -591,6 +662,26 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "arg_schema",
+              "output_schema",
+              "required_tools",
+              "rule:matches_ground_truth",
+              "run_error:JSONDecodeError",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots",
+              "lookup_latest_order_total",
+              "transfer_swapped_refunds"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [
               "arg_schema",
@@ -687,6 +778,26 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "arg_schema",
+              "output_schema",
+              "required_tools",
+              "rule:matches_ground_truth",
+              "run_error:RuntimeError",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots",
+              "lookup_latest_order_total",
+              "transfer_swapped_refunds"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [
               "arg_schema",
@@ -811,6 +922,17 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "output_schema",
+              "rule:matches_ground_truth"
+            ],
+            "failed_scenarios": [
+              "lookup_latest_order_total"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [
@@ -884,6 +1006,20 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [
               "rule:matches_ground_truth",
@@ -980,6 +1116,19 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "required_tools",
+              "rule:matches_ground_truth",
+              "run_error:KeyError",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "modify_address_suite"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 11,
             "caught_by": [],
@@ -1040,6 +1189,19 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "required_tools",
+              "rule:matches_ground_truth",
+              "run_error:JSONDecodeError",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "exchange_waterproof_boots"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [
               "required_tools",
@@ -1118,6 +1280,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 29,
             "caught_by": [],
@@ -1180,6 +1348,25 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "arg_schema",
+              "output_schema",
+              "required_tools",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots",
+              "lookup_latest_order_total",
+              "transfer_swapped_refunds"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [
               "arg_schema",
@@ -1272,6 +1459,22 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:checked_before_writing",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots",
+              "lookup_latest_order_total",
+              "transfer_swapped_refunds"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -1323,6 +1526,23 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "required_tools",
+              "rule:checked_before_writing",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots",
+              "lookup_latest_order_total",
+              "transfer_swapped_refunds"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [
               "required_tools",
@@ -1392,6 +1612,16 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 1,
+            "caught_by": [
+              "rule:matches_ground_truth"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -1437,6 +1667,17 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 2,
+            "caught_by": [
+              "rule:matches_ground_truth"
+            ],
+            "failed_scenarios": [
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 2,
             "caught_by": [
               "rule:matches_ground_truth"
@@ -1500,6 +1741,16 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 1,
+            "caught_by": [
+              "rule:matches_ground_truth"
+            ],
+            "failed_scenarios": [
+              "return_damaged_bicycle"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -1544,6 +1795,16 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 1,
+            "caught_by": [
+              "rule:matches_ground_truth"
+            ],
+            "failed_scenarios": [
+              "modify_address_suite"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 1,
             "caught_by": [
               "rule:matches_ground_truth"
@@ -1606,6 +1867,16 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 1,
+            "caught_by": [
+              "rule:matches_ground_truth"
+            ],
+            "failed_scenarios": [
+              "exchange_waterproof_boots"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -1657,6 +1928,22 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "arg_schema",
+              "required_tools",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [
               "arg_schema",
@@ -1734,6 +2021,20 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -1784,6 +2085,22 @@
             "passed": false
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "arg_schema",
+              "required_tools",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [
               "arg_schema",
@@ -1872,6 +2189,27 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "budget",
+              "max_tool_calls",
+              "output_schema",
+              "rule:matches_ground_truth",
+              "run_error:KeyError",
+              "run_error:RuntimeError",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "modify_address_suite",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots",
+              "lookup_latest_order_total",
+              "transfer_swapped_refunds"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -1927,6 +2265,17 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "output_schema",
+              "rule:matches_ground_truth"
+            ],
+            "failed_scenarios": [
+              "lookup_latest_order_total"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -1967,6 +2316,12 @@
             "passed": true
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [],
             "failed_scenarios": [],
@@ -2029,6 +2384,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [
@@ -2081,6 +2442,12 @@
             "passed": true
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [],
             "failed_scenarios": [],
@@ -2145,6 +2512,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 1,
             "caught_by": [
@@ -2204,6 +2577,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 1,
             "caught_by": [
@@ -2258,6 +2637,12 @@
             "passed": true
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [],
             "failed_scenarios": [],
@@ -2324,6 +2709,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 2,
             "caught_by": [],
@@ -2372,6 +2763,12 @@
             "passed": true
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [],
             "failed_scenarios": [],
@@ -2474,6 +2871,25 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "arg_schema",
+              "output_schema",
+              "required_tools",
+              "rule:matches_ground_truth",
+              "run_error:KeyError",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots",
+              "lookup_latest_order_total",
+              "transfer_swapped_refunds"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 17,
             "caught_by": [],
@@ -2559,6 +2975,23 @@
             ],
             "passed": false
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "arg_schema",
+              "required_tools",
+              "rule:matches_ground_truth",
+              "run_error:KeyError",
+              "tool_sequence"
+            ],
+            "failed_scenarios": [
+              "cancel_pending_laptop",
+              "return_damaged_bicycle",
+              "exchange_waterproof_boots",
+              "transfer_swapped_refunds"
+            ],
+            "passed": false
+          },
           "tools-live": {
             "approximate_steps": 9,
             "caught_by": [],
@@ -2620,6 +3053,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -2664,6 +3103,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -2703,6 +3148,12 @@
             "passed": true
           },
           "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
             "approximate_steps": 0,
             "caught_by": [],
             "failed_scenarios": [],
@@ -2761,6 +3212,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -2805,6 +3262,12 @@
             "failed_scenarios": [],
             "passed": true
           },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
           "tools-live": {
             "approximate_steps": 0,
             "caught_by": [],
@@ -2841,6 +3304,10 @@
             "alone": 0,
             "caught": 7
           },
+          "model-live+synth": {
+            "alone": 0,
+            "caught": 8
+          },
           "tools-live": {
             "alone": 0,
             "caught": 1
@@ -2864,6 +3331,10 @@
             "caught": 3
           },
           "model-live+fallback": {
+            "alone": 1,
+            "caught": 3
+          },
+          "model-live+synth": {
             "alone": 1,
             "caught": 3
           },
@@ -2893,6 +3364,10 @@
             "alone": 0,
             "caught": 0
           },
+          "model-live+synth": {
+            "alone": 0,
+            "caught": 0
+          },
           "tools-live": {
             "alone": 0,
             "caught": 0
@@ -2916,6 +3391,10 @@
             "caught": 1
           },
           "model-live+fallback": {
+            "alone": 0,
+            "caught": 1
+          },
+          "model-live+synth": {
             "alone": 0,
             "caught": 1
           },
@@ -2945,6 +3424,10 @@
             "alone": 0,
             "caught": 0
           },
+          "model-live+synth": {
+            "alone": 0,
+            "caught": 0
+          },
           "tools-live": {
             "alone": 0,
             "caught": 0
@@ -2968,6 +3451,10 @@
             "caught": 0
           },
           "model-live+fallback": {
+            "alone": 0,
+            "caught": 0
+          },
+          "model-live+synth": {
             "alone": 0,
             "caught": 0
           },
@@ -2997,6 +3484,10 @@
             "alone": 0,
             "caught": 8
           },
+          "model-live+synth": {
+            "alone": 0,
+            "caught": 8
+          },
           "tools-live": {
             "alone": 0,
             "caught": 2
@@ -3023,6 +3514,10 @@
             "alone": 0,
             "caught": 10
           },
+          "model-live+synth": {
+            "alone": 0,
+            "caught": 11
+          },
           "tools-live": {
             "alone": 0,
             "caught": 4
@@ -3046,6 +3541,10 @@
             "caught": 2
           },
           "model-live+fallback": {
+            "alone": 0,
+            "caught": 2
+          },
+          "model-live+synth": {
             "alone": 0,
             "caught": 2
           },
@@ -3075,6 +3574,10 @@
             "alone": 0,
             "caught": 0
           },
+          "model-live+synth": {
+            "alone": 0,
+            "caught": 0
+          },
           "tools-live": {
             "alone": 5,
             "caught": 7
@@ -3100,6 +3603,10 @@
           "model-live+fallback": {
             "alone": 6,
             "caught": 20
+          },
+          "model-live+synth": {
+            "alone": 6,
+            "caught": 21
           },
           "tools-live": {
             "alone": 0,
@@ -3127,6 +3634,10 @@
             "alone": 0,
             "caught": 3
           },
+          "model-live+synth": {
+            "alone": 0,
+            "caught": 2
+          },
           "tools-live": {
             "alone": 0,
             "caught": 0
@@ -3153,6 +3664,10 @@
             "alone": 0,
             "caught": 1
           },
+          "model-live+synth": {
+            "alone": 0,
+            "caught": 4
+          },
           "tools-live": {
             "alone": 0,
             "caught": 0
@@ -3176,6 +3691,10 @@
             "caught": 2
           },
           "model-live+fallback": {
+            "alone": 0,
+            "caught": 3
+          },
+          "model-live+synth": {
             "alone": 0,
             "caught": 3
           },
@@ -3205,6 +3724,10 @@
             "alone": 0,
             "caught": 0
           },
+          "model-live+synth": {
+            "alone": 0,
+            "caught": 0
+          },
           "tools-live": {
             "alone": 0,
             "caught": 0
@@ -3229,6 +3752,10 @@
           },
           "model-live+fallback": {
             "alone": 1,
+            "caught": 15
+          },
+          "model-live+synth": {
+            "alone": 0,
             "caught": 15
           },
           "tools-live": {
@@ -3283,6 +3810,24 @@
           }
         },
         "model-live+fallback": {
+          "agent": {
+            "detected": 12,
+            "total": 14
+          },
+          "model": {
+            "detected": 12,
+            "total": 12
+          },
+          "overall": {
+            "detected": 24,
+            "total": 34
+          },
+          "tool": {
+            "detected": 0,
+            "total": 8
+          }
+        },
+        "model-live+synth": {
           "agent": {
             "detected": 12,
             "total": 14
@@ -3359,6 +3904,7 @@
         "full": [],
         "model-live": [],
         "model-live+fallback": [],
+        "model-live+synth": [],
         "tools-live": [],
         "tools-live+drift": [],
         "tools-live+strict": [
@@ -3418,6 +3964,27 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "budget",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [
             "arg_schema",
@@ -3538,6 +4105,19 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 4,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 4,
           "caught_by": [
@@ -3626,6 +4206,16 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "budget"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 11,
           "caught_by": [
@@ -3702,6 +4292,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -3756,6 +4352,26 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:JSONDecodeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [
             "arg_schema",
@@ -3852,6 +4468,26 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [
             "arg_schema",
@@ -3976,6 +4612,17 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [
@@ -4049,6 +4696,20 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [
             "rule:matches_ground_truth",
@@ -4145,6 +4806,19 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:KeyError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "modify_address_suite"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 11,
           "caught_by": [],
@@ -4205,6 +4879,19 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "required_tools",
+            "rule:matches_ground_truth",
+            "run_error:JSONDecodeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [
             "required_tools",
@@ -4283,6 +4970,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 29,
           "caught_by": [],
@@ -4345,6 +5038,25 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "output_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [
             "arg_schema",
@@ -4437,6 +5149,22 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -4488,6 +5216,23 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "required_tools",
+            "rule:checked_before_writing",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [
             "required_tools",
@@ -4557,6 +5302,16 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -4602,6 +5357,17 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 2,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 2,
           "caught_by": [
             "rule:matches_ground_truth"
@@ -4665,6 +5431,16 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "return_damaged_bicycle"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -4709,6 +5485,16 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "modify_address_suite"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 1,
           "caught_by": [
             "rule:matches_ground_truth"
@@ -4771,6 +5557,16 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 1,
+          "caught_by": [
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -4822,6 +5618,22 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [
             "arg_schema",
@@ -4899,6 +5711,20 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -4949,6 +5775,22 @@
           "passed": false
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "arg_schema",
+            "required_tools",
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots"
+          ],
+          "passed": false
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [
             "arg_schema",
@@ -5037,6 +5879,27 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "budget",
+            "max_tool_calls",
+            "output_schema",
+            "rule:matches_ground_truth",
+            "run_error:KeyError",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "failed_scenarios": [
+            "cancel_pending_laptop",
+            "modify_address_suite",
+            "return_damaged_bicycle",
+            "exchange_waterproof_boots",
+            "lookup_latest_order_total",
+            "transfer_swapped_refunds"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -5092,6 +5955,17 @@
           ],
           "passed": false
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "failed_scenarios": [
+            "lookup_latest_order_total"
+          ],
+          "passed": false
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -5132,6 +6006,12 @@
           "passed": true
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -5194,6 +6074,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [
@@ -5246,6 +6132,12 @@
           "passed": true
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -5310,6 +6202,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 1,
           "caught_by": [
@@ -5369,6 +6267,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 1,
           "caught_by": [
@@ -5423,6 +6327,12 @@
           "passed": true
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -5489,6 +6399,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 2,
           "caught_by": [],
@@ -5537,6 +6453,12 @@
           "passed": true
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -7461,6 +8383,946 @@
           }
         ],
         "variant": "rewords_transfer_summary"
+      },
+      {
+        "affected": 3,
+        "approximate_steps": 0,
+        "causes": {
+          "checks": 3,
+          "passed": 3
+        },
+        "check_types": {
+          "arg_schema": 0,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 0,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 0,
+          "tool_sequence": 3
+        },
+        "fallback_steps": 0,
+        "identify": true,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 4,
+              "live": 5
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 4,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 6,
+              "live": 7
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 6,
+              "live": 7
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "exact": 5,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "reads_only_needed_orders"
+      },
+      {
+        "affected": 3,
+        "approximate_steps": 0,
+        "causes": {
+          "checks": 3,
+          "passed": 3
+        },
+        "check_types": {
+          "arg_schema": 0,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 0,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 0,
+          "tool_sequence": 3
+        },
+        "fallback_steps": 0,
+        "identify": false,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 4,
+              "live": 5
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 4,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 6,
+              "live": 7
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 6,
+              "live": 7
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "exact": 5,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "reads_only_needed_orders"
+      },
+      {
+        "affected": 5,
+        "approximate_steps": 0,
+        "causes": {
+          "checks": 1,
+          "passed": 5
+        },
+        "check_types": {
+          "arg_schema": 0,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 0,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 0,
+          "tool_sequence": 1
+        },
+        "fallback_steps": 0,
+        "identify": true,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 6,
+              "live": 5
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 4,
+              "live": 4
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 7,
+              "live": 5
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 8,
+              "live": 6
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "exact": 5,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "swaps_parallel_lookups"
+      },
+      {
+        "affected": 5,
+        "approximate_steps": 0,
+        "causes": {
+          "checks": 1,
+          "passed": 5
+        },
+        "check_types": {
+          "arg_schema": 0,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 0,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 0,
+          "tool_sequence": 1
+        },
+        "fallback_steps": 0,
+        "identify": false,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 6,
+              "live": 5
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 4,
+              "live": 4
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 7,
+              "live": 5
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 8,
+              "live": 6
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "exact": 5,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "swaps_parallel_lookups"
+      },
+      {
+        "affected": 4,
+        "approximate_steps": 0,
+        "causes": {
+          "passed": 2,
+          "run_error:KeyError": 4
+        },
+        "check_types": {
+          "arg_schema": 2,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 2,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 4,
+          "tool_sequence": 4
+        },
+        "fallback_steps": 0,
+        "identify": true,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": true,
+            "failed_checks": [
+              "arg_schema",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 5,
+              "live": 5,
+              "synth": 1
+            },
+            "termination": "run_error:KeyError"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "required_tools",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 3,
+              "live": 4,
+              "synth": 1
+            },
+            "termination": "run_error:KeyError"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "arg_schema",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 6,
+              "live": 5,
+              "synth": 1
+            },
+            "termination": "run_error:KeyError"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "required_tools",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 7,
+              "live": 6,
+              "synth": 1
+            },
+            "termination": "run_error:KeyError"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "exact": 5,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "repeats_order_lookup"
+      },
+      {
+        "affected": 4,
+        "approximate_steps": 0,
+        "causes": {
+          "passed": 2,
+          "run_error:KeyError": 4
+        },
+        "check_types": {
+          "arg_schema": 2,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 2,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 4,
+          "tool_sequence": 4
+        },
+        "fallback_steps": 0,
+        "identify": false,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": true,
+            "failed_checks": [
+              "arg_schema",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 5,
+              "live": 5,
+              "synth": 1
+            },
+            "termination": "run_error:KeyError"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "required_tools",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 3,
+              "live": 4,
+              "synth": 1
+            },
+            "termination": "run_error:KeyError"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "arg_schema",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 6,
+              "live": 5,
+              "synth": 1
+            },
+            "termination": "run_error:KeyError"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "required_tools",
+              "rule:matches_ground_truth",
+              "tool_sequence"
+            ],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 7,
+              "live": 6,
+              "synth": 1
+            },
+            "termination": "run_error:KeyError"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "exact": 5,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "repeats_order_lookup"
+      },
+      {
+        "affected": 4,
+        "approximate_steps": 0,
+        "causes": {
+          "checks": 4,
+          "passed": 2
+        },
+        "check_types": {
+          "arg_schema": 0,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 0,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 0,
+          "tool_sequence": 4
+        },
+        "fallback_steps": 0,
+        "identify": true,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 6,
+              "live": 6,
+              "synth": 1
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 4,
+              "live": 5,
+              "synth": 1
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 7,
+              "live": 6,
+              "synth": 1
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 8,
+              "live": 7,
+              "synth": 1
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "exact": 5,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "verifies_after_write"
+      },
+      {
+        "affected": 4,
+        "approximate_steps": 0,
+        "causes": {
+          "checks": 4,
+          "passed": 2
+        },
+        "check_types": {
+          "arg_schema": 0,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 0,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 0,
+          "tool_sequence": 4
+        },
+        "fallback_steps": 0,
+        "identify": false,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 6,
+              "live": 6,
+              "synth": 1
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 4,
+              "live": 5,
+              "synth": 1
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 7,
+              "live": 6,
+              "synth": 1
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": true,
+            "failed_checks": [
+              "tool_sequence"
+            ],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 8,
+              "live": 7,
+              "synth": 1
+            },
+            "termination": "checks"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "exact": 5,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "verifies_after_write"
+      },
+      {
+        "affected": 1,
+        "approximate_steps": 1,
+        "causes": {
+          "passed": 6
+        },
+        "check_types": {
+          "arg_schema": 0,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 0,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 0,
+          "tool_sequence": 0
+        },
+        "fallback_steps": 0,
+        "identify": true,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 6,
+              "live": 5
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 4,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 7,
+              "live": 5
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 8,
+              "live": 6
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "approximate": 1,
+              "exact": 4,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "rewords_transfer_summary"
+      },
+      {
+        "affected": 1,
+        "approximate_steps": 1,
+        "causes": {
+          "passed": 6
+        },
+        "check_types": {
+          "arg_schema": 0,
+          "budget": 0,
+          "forbidden_tools": 0,
+          "max_tool_calls": 0,
+          "output_schema": 0,
+          "required_tools": 0,
+          "rule:checked_before_writing": 0,
+          "rule:db_matches_ground_truth": 0,
+          "rule:matches_ground_truth": 0,
+          "tool_sequence": 0
+        },
+        "fallback_steps": 0,
+        "identify": false,
+        "policy": "synth",
+        "scenarios": [
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "cancel_pending_laptop",
+            "steps": {
+              "exact": 6,
+              "live": 5
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "modify_address_suite",
+            "steps": {
+              "exact": 4,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "return_damaged_bicycle",
+            "steps": {
+              "exact": 7,
+              "live": 5
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "exchange_waterproof_boots",
+            "steps": {
+              "exact": 8,
+              "live": 6
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": false,
+            "failed_checks": [],
+            "name": "lookup_latest_order_total",
+            "steps": {
+              "exact": 3,
+              "live": 4
+            },
+            "termination": "passed"
+          },
+          {
+            "affected": true,
+            "failed_checks": [],
+            "name": "transfer_swapped_refunds",
+            "steps": {
+              "approximate": 1,
+              "exact": 4,
+              "live": 5
+            },
+            "termination": "passed"
+          }
+        ],
+        "variant": "rewords_transfer_summary"
       }
     ],
     "summary": [
@@ -7617,6 +9479,82 @@
         "policy": "fallback",
         "unrecorded": [],
         "variants": 5
+      },
+      {
+        "approximate": [
+          "rewords_transfer_summary"
+        ],
+        "failed": [
+          "reads_only_needed_orders",
+          "swaps_parallel_lookups",
+          "repeats_order_lookup",
+          "verifies_after_write"
+        ],
+        "failed_by_check_type": {
+          "arg_schema": [
+            "repeats_order_lookup"
+          ],
+          "budget": [],
+          "forbidden_tools": [],
+          "max_tool_calls": [],
+          "output_schema": [],
+          "required_tools": [
+            "repeats_order_lookup"
+          ],
+          "rule:checked_before_writing": [],
+          "rule:db_matches_ground_truth": [],
+          "rule:matches_ground_truth": [
+            "repeats_order_lookup"
+          ],
+          "tool_sequence": [
+            "reads_only_needed_orders",
+            "swaps_parallel_lookups",
+            "repeats_order_lookup",
+            "verifies_after_write"
+          ]
+        },
+        "identify": true,
+        "policy": "synth",
+        "unrecorded": [],
+        "variants": 5
+      },
+      {
+        "approximate": [
+          "rewords_transfer_summary"
+        ],
+        "failed": [
+          "reads_only_needed_orders",
+          "swaps_parallel_lookups",
+          "repeats_order_lookup",
+          "verifies_after_write"
+        ],
+        "failed_by_check_type": {
+          "arg_schema": [
+            "repeats_order_lookup"
+          ],
+          "budget": [],
+          "forbidden_tools": [],
+          "max_tool_calls": [],
+          "output_schema": [],
+          "required_tools": [
+            "repeats_order_lookup"
+          ],
+          "rule:checked_before_writing": [],
+          "rule:db_matches_ground_truth": [],
+          "rule:matches_ground_truth": [
+            "repeats_order_lookup"
+          ],
+          "tool_sequence": [
+            "reads_only_needed_orders",
+            "swaps_parallel_lookups",
+            "repeats_order_lookup",
+            "verifies_after_write"
+          ]
+        },
+        "identify": false,
+        "policy": "synth",
+        "unrecorded": [],
+        "variants": 5
       }
     ],
     "variants": [
@@ -7672,6 +9610,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -7716,6 +9660,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -7755,6 +9705,12 @@
           "passed": true
         },
         "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+synth": {
           "approximate_steps": 0,
           "caught_by": [],
           "failed_scenarios": [],
@@ -7813,6 +9769,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -7857,6 +9819,12 @@
           "failed_scenarios": [],
           "passed": true
         },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
         "tools-live": {
           "approximate_steps": 0,
           "caught_by": [],
@@ -7894,6 +9862,10 @@
           "alone": 0,
           "caught": 6
         },
+        "model-live+synth": {
+          "alone": 0,
+          "caught": 6
+        },
         "tools-live": {
           "alone": 0,
           "caught": 1
@@ -7917,6 +9889,10 @@
           "caught": 3
         },
         "model-live+fallback": {
+          "alone": 1,
+          "caught": 3
+        },
+        "model-live+synth": {
           "alone": 1,
           "caught": 3
         },
@@ -7946,6 +9922,10 @@
           "alone": 0,
           "caught": 0
         },
+        "model-live+synth": {
+          "alone": 0,
+          "caught": 0
+        },
         "tools-live": {
           "alone": 0,
           "caught": 0
@@ -7969,6 +9949,10 @@
           "caught": 1
         },
         "model-live+fallback": {
+          "alone": 0,
+          "caught": 1
+        },
+        "model-live+synth": {
           "alone": 0,
           "caught": 1
         },
@@ -7998,6 +9982,10 @@
           "alone": 0,
           "caught": 0
         },
+        "model-live+synth": {
+          "alone": 0,
+          "caught": 0
+        },
         "tools-live": {
           "alone": 0,
           "caught": 0
@@ -8021,6 +10009,10 @@
           "caught": 0
         },
         "model-live+fallback": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live+synth": {
           "alone": 0,
           "caught": 0
         },
@@ -8050,6 +10042,10 @@
           "alone": 0,
           "caught": 7
         },
+        "model-live+synth": {
+          "alone": 0,
+          "caught": 7
+        },
         "tools-live": {
           "alone": 0,
           "caught": 2
@@ -8073,6 +10069,10 @@
           "caught": 9
         },
         "model-live+fallback": {
+          "alone": 0,
+          "caught": 9
+        },
+        "model-live+synth": {
           "alone": 0,
           "caught": 9
         },
@@ -8102,6 +10102,10 @@
           "alone": 0,
           "caught": 2
         },
+        "model-live+synth": {
+          "alone": 0,
+          "caught": 2
+        },
         "tools-live": {
           "alone": 0,
           "caught": 2
@@ -8125,6 +10129,10 @@
           "caught": 0
         },
         "model-live+fallback": {
+          "alone": 0,
+          "caught": 0
+        },
+        "model-live+synth": {
           "alone": 0,
           "caught": 0
         },
@@ -8154,6 +10162,10 @@
           "alone": 6,
           "caught": 19
         },
+        "model-live+synth": {
+          "alone": 6,
+          "caught": 19
+        },
         "tools-live": {
           "alone": 0,
           "caught": 4
@@ -8177,6 +10189,10 @@
           "caught": 2
         },
         "model-live+fallback": {
+          "alone": 0,
+          "caught": 2
+        },
+        "model-live+synth": {
           "alone": 0,
           "caught": 2
         },
@@ -8206,6 +10222,10 @@
           "alone": 0,
           "caught": 1
         },
+        "model-live+synth": {
+          "alone": 0,
+          "caught": 2
+        },
         "tools-live": {
           "alone": 0,
           "caught": 0
@@ -8229,6 +10249,10 @@
           "caught": 2
         },
         "model-live+fallback": {
+          "alone": 0,
+          "caught": 3
+        },
+        "model-live+synth": {
           "alone": 0,
           "caught": 3
         },
@@ -8258,6 +10282,10 @@
           "alone": 0,
           "caught": 0
         },
+        "model-live+synth": {
+          "alone": 0,
+          "caught": 0
+        },
         "tools-live": {
           "alone": 0,
           "caught": 0
@@ -8281,6 +10309,10 @@
           "caught": 13
         },
         "model-live+fallback": {
+          "alone": 0,
+          "caught": 13
+        },
+        "model-live+synth": {
           "alone": 0,
           "caught": 13
         },
@@ -8336,6 +10368,24 @@
         }
       },
       "model-live+fallback": {
+        "agent": {
+          "detected": 10,
+          "total": 12
+        },
+        "model": {
+          "detected": 12,
+          "total": 12
+        },
+        "overall": {
+          "detected": 22,
+          "total": 32
+        },
+        "tool": {
+          "detected": 0,
+          "total": 8
+        }
+      },
+      "model-live+synth": {
         "agent": {
           "detected": 10,
           "total": 12
@@ -8412,6 +10462,7 @@
       "full": [],
       "model-live": [],
       "model-live+fallback": [],
+      "model-live+synth": [],
       "tools-live": [],
       "tools-live+drift": [],
       "tools-live+strict": [

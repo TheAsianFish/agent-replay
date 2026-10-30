@@ -419,3 +419,69 @@ def test_termination_names_how_a_scenario_ended():
         "run_error:KeyError",
         "checks",
     ]
+
+
+# --- the synth policy (M17) -----------------------------------------------------------
+
+
+def test_synth_is_the_seventh_configuration_after_the_six_earlier_ones():
+    assert list(CONFIG) == [
+        "full",
+        "tools-live",
+        "model-live",
+        "model-live+fallback",
+        "tools-live+strict",
+        "tools-live+drift",
+        "model-live+synth",
+    ]
+    assert (CONFIG["model-live+synth"].mode, CONFIG["model-live+synth"].policy) == (
+        "model-live",
+        "synth",
+    )
+    # synth rows follow every M11 strict and fallback row, so those keep their place.
+    synth = [r["policy"] == "synth" for r in PATHS["rows"]]
+    assert synth == sorted(synth)
+    assert sum(synth) == len(PATH_VARIANTS) * 2
+
+
+def test_synth_catches_the_model_mutations_fallback_catches_and_no_refactor():
+    for summary in (COMMITTED["summary"], IDENTIFY["summary"]):
+        detection = summary["detection"]
+        assert detection["model-live+synth"]["model"] == detection["model-live+fallback"]["model"]
+        assert summary["false_alarms"]["model-live+synth"] == []
+
+
+@pytest.mark.parametrize("mutation_id", ["guesses_user_id", "reads_wrong_order"])
+def test_synth_feeds_an_identity_mutation_a_stub_the_scripted_model_cannot_read(
+    mutation_id: str,
+):
+    mutation = CATALOGUE[mutation_id]
+
+    keyed = study.replay_suite(
+        mutation.agent, mutation.client, CONFIG["model-live+synth"], identify=True
+    )
+    unkeyed = study.replay_suite(
+        mutation.agent, mutation.client, CONFIG["model-live+synth"], identify=False
+    )
+
+    assert "run_error:KeyError" in keyed.caught_by
+    assert "rule:matches_ground_truth" in keyed.caught_by
+    assert unkeyed.passed
+    assert KEYED_ROWS[mutation_id]["results"]["model-live+synth"] == keyed.to_json()
+    assert UNKEYED_ROWS[mutation_id]["results"]["model-live+synth"] == unkeyed.to_json()
+
+
+def test_a_repeated_read_is_stubbed_and_fails_ground_truth_only_under_synth():
+    variant = next(v for v in PATH_VARIANTS if v.id == "repeats_order_lookup")
+
+    row = study.path_row(variant, "synth", identify=True)
+
+    assert row == _path_row("repeats_order_lookup", "synth", True)
+    assert row["causes"] == {"passed": 2, "run_error:KeyError": 4}
+    assert row["check_types"]["rule:matches_ground_truth"] == 4
+    assert (
+        _path_row("repeats_order_lookup", "fallback", True)["check_types"][
+            "rule:matches_ground_truth"
+        ]
+        == 0
+    )
