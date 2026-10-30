@@ -41,6 +41,7 @@ byte-stable ones and fails on any change.
 | Frozen world vs the model (`model-live`, real model) | qwen2.5:7b, 20 runs per arm: `strict` 18/20 and 9/20, `fallback` 19/20 and 8/20; world-caused endings 0 and 3 of 20 under `strict` (an invented `get_booking` the recording never made), 0 by identity, 0 approximate steps in 80 runs; `cheapest_fare_in_euros` pooled with M9 47/50; 3090 s on 4 vCPU (AMD EPYC 7763); $0 | Frozen-world bias (M12) | `make eval-pydantic-ai-arms` (Ollama) | measured, local model |
 | Model and prompt swaps in `model-live` (real model) | qwen2.5:7b cassettes, 20 runs each: qwen2.5:3b 0 / 20 and 0 / 20 under both `strict` and `fallback` (32 of 40 `strict` runs end by identity, all on the model's wrong argument); 7b without the prompt's guard line 2 / 20 and 2 / 20 (23 identity endings, guessed amounts from parallel tool calls) against the same-day control's 18 / 20 and 10 / 20; `temperature=0` 10 / 10 identical passing runs of a booking that passes 17 / 40 sampled; 0 approximate steps in 170 runs; 4778 s on 4 vCPU (AMD EPYC 7763); $0 | `model-live` survives the change (M15) | `make eval-pydantic-ai-swap` (Ollama) | measured, local model |
 | Frozen-world divergence on a long chain (`model-live`, real model) | qwen2.5:7b, an 8-link rebooking chain (9 served tool calls on the shortest path), 20 runs per arm: 0 / 20 under `strict` and `fallback` alike; 320 of 320 chain lookups served exact; 1 world step in 321 served tool calls (0.31%, against 3 / 143 = 2.1% on M12's short runs); `strict` world endings 1 / 20 (Clopper-Pearson 0.1% to 24.9%) beside 3.47 predicted by independence; clustering not measurable (0 world steps under `fallback`); identity keys fired once in 40 runs; 39 of 40 runs answered a euro total without calling `convert_currency`; no qwen recording passed in 5 attempts; 1703 s on 4 vCPU (AMD EPYC 9V45); $0 | Divergence on a long chain (M16) | `make eval-pydantic-ai-long` (Ollama) | measured, local model |
+| `synth`, the third unrecorded-call policy | offline, seventh configuration `model-live+synth`: 12/12 model mutations (as `fallback`), identity mutations 2/2 with keys by `run_error:KeyError`, refactors 0/5, and the correct `repeats_order_lookup` path fails the ground truth in 4 of 6 scenarios (as `strict`; `fallback` 0); live, qwen2.5:7b without the guard line, 20 runs per arm: `fallback` 2/20 and 3/20, `synth` 0/20 and 2/20 beside M15's `strict` 2/20 and 2/20, so M15's attribution stands; 11 of 20 `synth` fare answers state the stub's 0.00 EUR; 0 passes with a stubbed step; 3803 s on 4 vCPU (AMD EPYC 7763); $0 | `synth`, measured (M17) | `make eval-mutations`; `make eval-pydantic-ai-no-guard` (Ollama) | measured, offline and local model |
 | Verdict-stability curve | 5 runs agree with the all-runs fixed-threshold verdict in ≥ 95% of draws on all 15 committed scenarios, but on only 1 of the 4 new M12 rows (90.3% to 94.3%; 0.15 to 0.35 from the 0.75 threshold); 13 of 19 rows pass 0% or 100% | Frozen-world bias (M12) | `make eval-verdict-curve` | measured, offline |
 | Cassette bytes at scale | quadratic (c2 291 bytes/turn², fitted exponent 1.54 over 5 to 200 turns, 1.85 from 100 to 200); 3.65 MB at 100 turns; gzip 19.5× at 20 turns → 3.8× at 100 (envelopes outgrow its 32 KB window), xz 105×; prefix encoding under xz only 1.07× more, so `.jsonl.xz` and no schema change; `full` replay 1.7 s at 200 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline (sizes byte-stable) |
 | Real recordings vs the fit | live Opus retail requests grow 1.4 to 2.6 KB a turn (synthetic 0.58), projecting to 8.0 to 13.9 MB of requests at 100 turns; xz 8.9× to 13.6× at 3 to 6 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline |
@@ -52,7 +53,7 @@ byte-stable ones and fails on any change.
 | D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
 
 API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
-M16 $0; the live runs of M9, M12, M15 and M16 used qwen2.5:7b and qwen2.5:3b on a
+M17 $0; the live runs of M9, M12, M15, M16 and M17 used qwen2.5:7b and qwen2.5:3b on a
 local CPU).
 
 ## Live recording smoke test (M1)
@@ -2871,6 +2872,260 @@ each suite, 0 drifted (30 compared). `make eval-pydantic-ai-offline` (in
 `make eval`) replays both suites in `full`: the chain 19 steps, 0
 approximate, and the other six scenarios unchanged at 5 steps, 0
 approximate.
+
+## `synth`, measured for the first time, and the no-guard arm's twins (M17)
+
+`synth` is the third unrecorded-call policy. When a replay meets a tool call
+the cassette never saw, `strict` ends the run, `fallback` runs the real tool,
+and `synth` answers with the smallest value that validates against the tool's
+return type (`agent_replay/synth.py`): an empty record, an empty string,
+`0.0`. It shipped in v1 and no number in this file had ever used it. Two
+questions. Offline: in the mutation study, does a stub keep a diverged run
+alive to a true verdict, or does it manufacture a world that the checks then
+blame on the agent? Live: M15's no-guard arm ended 18 of 20 fare runs by
+identity under `strict`, and RESULTS.md M15 attributed them to the model's
+guessed amounts. Does that attribution survive the same arm under `fallback`
+(the guessed amount converted for real) and `synth` (the guessed amount
+answered `0.0`)?
+
+### Offline: a seventh mutation-study configuration
+
+- **Configuration:** `model-live+synth` (`eval/mutation_study.py`, `CONFIGS`):
+  `model-live`, the scripted fake model live, tools served, an unrecorded
+  tool call answered with a stub. It is appended after the six earlier
+  configurations, and its path-variant rows follow the M11 `strict` and
+  `fallback` rows, so every earlier cell keeps its place.
+- **Hypotheses (PLAN.md, written before the run):** the 12 model mutations
+  are caught as in `model-live+fallback` within one; the two identity
+  mutations are caught 2 / 2 with the keys, by a run error or a wrong answer
+  from the stub rather than by ground truth; at least one path variant fails
+  a ground-truth rule or ends in a run error under `synth`, where `fallback`
+  failed none (`repeats_order_lookup` reads a field from a `{}` stub); the
+  refactors stay 0 / 5.
+- **Dataset and method:** the M4 study (D4: 32 mutations, 5 benign
+  refactors, the six fake-model retail scenarios), the M11 identity
+  mutations and path variants, unchanged.
+- **Command:** `make eval-mutations` (195 s on 4 vCPU, AMD EPYC 7763, with
+  the live arms below running on the same cores; a second run left
+  `eval/results/mutations.json` unchanged). Every earlier cell is identical:
+  removing the seventh configuration and the `synth` path rows from the new
+  file gives back the committed M11 file key for key (`mutations`,
+  `refactors`, `summary`, `identify`, `path_variants`, `configurations`,
+  `definitions` all equal). $0.
+
+Raw output of `make eval-mutations`, cut to the rows and the `model-live`
+columns this section is about (`...` marks a cut; the full matrix is in
+`eval/results/mutations.json` and printed by the command):
+
+```
+### Detection rate by configuration
+
+| configuration | all | agent | model | tool |
+|---|---|---|---|---|
+| model-live | 22/32 (69%) | 10/12 (83%) | 12/12 (100%) | 0/8 (0%) |
+| model-live+fallback | 22/32 (69%) | 10/12 (83%) | 12/12 (100%) | 0/8 (0%) |
+| model-live+synth | 22/32 (69%) | 10/12 (83%) | 12/12 (100%) | 0/8 (0%) |
+
+### Benign refactors (false alarms; approximate steps)
+
+False alarms: full 0/5, tools-live 0/5, model-live 0/5, model-live+fallback 0/5, tools-live+strict 1/5, tools-live+drift 0/5, model-live+synth 0/5.
+Survived every configuration: `drops_error_flag`.
+
+### Mutations only identity can see (caught by; — survived)
+
+| mutation | identify | model-live | model-live+fallback | model-live+synth |
+|---|---|---|---|---|
+| `guesses_user_id` | without | — | — | — |
+| `guesses_user_id` | with | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:UnrecordedCallError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:JSONDecodeError`, `tool_sequence` | `arg_schema`, `output_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:KeyError`, `tool_sequence` |
+| `reads_wrong_order` | without | — | — | — |
+| `reads_wrong_order` | with | `run_error:UnrecordedCallError`, `tool_sequence` | `tool_sequence` | `arg_schema`, `required_tools`, `rule:matches_ground_truth`, `run_error:KeyError`, `tool_sequence` |
+
+Detected (of 2) without → with the keys: ... model-live 0 → 2, model-live+fallback 0 → 2, ... model-live+synth 0 → 2.
+
+### Detection rate with the keys (34 mutations)
+
+| model-live+synth | 24/34 (71%) | 12/14 (86%) | 12/12 (100%) | 0/8 (0%) |
+
+False alarms with the keys: ... model-live+synth 0/5.
+
+## Correct-but-different paths (M11), the synth rows with the keys on
+
+| variant | policy | identify | affected | termination | approx | fallback | `arg_schema` | `budget` | `forbidden_tools` | `max_tool_calls` | `output_schema` | `required_tools` | `rule:checked_before_writing` | `rule:db_matches_ground_truth` | `rule:matches_ground_truth` | `tool_sequence` |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `reads_only_needed_orders` | synth | on | 3/6 | 3 checks, 3 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 3 |
+| `swaps_parallel_lookups` | synth | on | 5/6 | 1 checks, 5 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 1 |
+| `repeats_order_lookup` | synth | on | 4/6 | 2 passed, 4 run_error:KeyError | 0 | 0 | 2 | · | · | · | · | 2 | · | · | 4 | 4 |
+| `verifies_after_write` | synth | on | 4/6 | 4 checks, 2 passed | 0 | 0 | · | · | · | · | · | · | · | · | · | 4 |
+| `rewords_transfer_summary` | synth | on | 1/6 | 6 passed | 1 | 0 | · | · | · | · | · | · | · | · | · | · |
+
+- synth, identify on: 4 raise a false alarm; 0 end on an unrecorded call (none); failing check types: `arg_schema` 1, `required_tools` 1, `rule:matches_ground_truth` 1, `tool_sequence` 4.
+- synth, identify off: 4 raise a false alarm; 0 end on an unrecorded call (none); failing check types: `arg_schema` 1, `required_tools` 1, `rule:matches_ground_truth` 1, `tool_sequence` 4.
+```
+
+(The `synth` rows with the keys off are identical to those with them on.
+The `repeats_order_lookup` and `verifies_after_write` rows each served 4
+stubbed steps, one per affected scenario; the other variants served none.)
+
+What the seventh column says, against the hypotheses:
+
+- **Model mutations: 12 / 12, the same as `model-live+fallback`. Holds.**
+  All 32 mutations are detected in the same 22 cases as under `fallback`
+  and `strict`, and 31 of the 32 rows name the same check types. The one
+  difference is `repeats_lookups`, which re-reads the user's profile until
+  it is cut off: its stubbed re-reads add `run_error:KeyError` beside the
+  checks `fallback` already failed. The model mutations rarely make a call the
+  recording lacks, so the policy rarely gets a say.
+- **Identity mutations: 2 / 2 with the keys, by a run error. Holds, with a
+  correction to "rather than by ground truth".** Both end in
+  `run_error:KeyError`: the scripted model reads a field from the `{}` it
+  was served for the misdirected read and crashes. The ground-truth rule
+  fails too, but only because the run ended before its write. Read beside
+  `fallback`, this is the stub's verdict, not the agent's. Under `fallback`
+  `reads_wrong_order` reads the wrong order for real, needs one extra
+  lookup, and fails only `tool_sequence`; the database ends correct. Under
+  `synth` the same mutation fails `rule:matches_ground_truth`,
+  `arg_schema` and `required_tools`, all after the crash.
+- **Path variants: `repeats_order_lookup` fails the ground truth in 4 of 6
+  scenarios under `synth`, where `fallback` failed none. Holds.** The
+  variant reads an order twice; the cassette has one recording of it, so
+  the second read is unrecorded and gets `{}`. The scripted model then
+  indexes `order_id` and the run ends in `KeyError` before its write. That
+  is a false alarm on a correct agent: 4 scenarios fail
+  `rule:matches_ground_truth`, 2 also fail `arg_schema` and `required_tools`.
+  `strict` failed the same 4 scenarios the same way in M11 (the run ended on
+  the unrecorded re-read). So for a correct agent that reads twice, `synth`
+  gave the same false verdict as `strict`, and only `fallback` passed the
+  ground truth. `verifies_after_write` was also stubbed 4 times, but its
+  extra read comes after the write, so only `tool_sequence` noticed (as
+  under `fallback`).
+- **Refactors: 0 / 5. Holds.** No refactor makes an unrecorded call, so
+  `synth` never acts on one (0 stubbed steps).
+- **Caveat.** The crashes are the scripted model's: it indexes the JSON it
+  is served, so a `{}` stub is a `KeyError`. A real model reads `{}` as
+  text and carries on with it, which is what the live arms measure.
+
+### Live: M15's no-guard arm under `fallback` and `synth` on qwen2.5:7b
+
+- **Dataset:** the two scenarios qwen2.5:7b recorded (`cheapest_fare_in_euros`,
+  `book_earliest_flight`, `examples/pydantic_ai_agent/replay-qwen.toml`, M11
+  `identify` keys on), the same cassettes as M12, M15 and the control.
+- **Arms** (`eval/pydantic_ai.py`, `NO_GUARD_ARMS`): qwen2.5:7b (digest
+  `845dbda0…`, the recorder) with the recording prompt minus its guard line
+  (`run_no_guard`, as in M15), `model-live`, 20 runs per scenario, one at a
+  time, under `fallback`, then under `synth`. The `strict` twin is M15's
+  `7b_no_guard_strict`, read from the committed `m15_swap_qwen.json` into the
+  new report (`m15_strict`). Every run row also carries `guard_in_system:
+  [false]`, as asked.
+- **Causes** as in M15, plus one: `synth`, a run that failed (a check, or
+  the agent raised) after a stubbed step, which is possibly the stub's
+  fault, as `approximate` is possibly the recording's. A stubbed step is a
+  world step, as in M16 (any tool step not served `exact`). Each run also
+  records the money figures its answer states (a number next to a currency
+  word or sign, `figures`) and whether one equals a number a stubbed step
+  returned (`states_stub_figure`).
+- **Hypotheses (PLAN.md, written before the run):** under `fallback` the fare
+  passes at most 6 / 20, so M15's attribution stands (15 / 20 or more would
+  withdraw it; 7 to 14 is partial). Under `synth` the fare passes at most as
+  often as under `fallback`, at least 10 of the 20 fare answers state the
+  stub's figure, and no run with a stubbed step passes.
+- **Machine:** 4 vCPU, AMD EPYC 7763, CPU only, Ollama 0.40.11. $0. During
+  the `fallback` arm the offline gate and `make eval-mutations` ran on the
+  same cores, so its wall time is not comparable with the `synth` arm's or
+  M15's; the pass counts do not depend on it.
+- **Raw output:** `eval/results/m17_no_guard_qwen.json` (every run's cause,
+  tool calls with their status and, off the recording, the result they got;
+  answer, figures, stub figures, steps, seconds; the hypotheses as computed).
+
+```
+$ make eval-pydantic-ai-no-guard
+uv run python -m eval.pydantic_ai --no-guard
+  ... (the eight full-mode replays, all PASS, 0 approximate)
+arm fallback: 20 model-live runs of cheapest_fare_in_euros, book_earliest_flight (qwen2.5:7b, no_guard, temperature None, fallback)
+  cheapest_fare_in_euros: 2/20 passed (2 passed, 18 model); 0 by identity, 9 tool paths
+  book_earliest_flight: 3/20 passed (3 passed, 17 model); 0 by identity, 4 tool paths
+  wall time 2069.1 s
+  cheapest_fare_in_euros: 0 runs with a stubbed step, 0 stating a stub's figure, 0 passes with one
+  book_earliest_flight: 0 runs with a stubbed step, 0 stating a stub's figure, 0 passes with one
+arm synth: 20 model-live runs of cheapest_fare_in_euros, book_earliest_flight (qwen2.5:7b, no_guard, temperature None, synth)
+  cheapest_fare_in_euros: 0/20 passed (20 synth); 0 by identity, 7 tool paths
+  book_earliest_flight: 2/20 passed (2 passed, 1 synth, 17 model); 0 by identity, 3 tool paths
+  wall time 1733.8 s
+  cheapest_fare_in_euros: 20 runs with a stubbed step, 11 stating a stub's figure, 0 passes with one
+  book_earliest_flight: 1 runs with a stubbed step, 0 stating a stub's figure, 0 passes with one
+wrote eval/results/m17_no_guard_qwen.json
+```
+
+| `model-live`, qwen2.5:7b without the guard line | Passed | passed / unrecorded / approximate / synth / model | Runs with a world step | Gate | Seconds per run (min / median / max) | Wall |
+|---|---|---|---|---|---|---|
+| M15 `strict`: `cheapest_fare_in_euros` | 2 / 20 | 2 / 18 / 0 / — / 0 | 18 (all by identity) | fail | 14.9 / 15.5 / 86.6 | 1170 s |
+| M15 `strict`: `book_earliest_flight` | 2 / 20 | 2 / 5 / 0 / — / 13 | 5 (all by identity) | fail | 32.2 / 35.8 / 55.4 | |
+| M17 `fallback`: `cheapest_fare_in_euros` | 2 / 20 | 2 / 0 / 0 / 0 / 18 | 18 (a guessed conversion, run for real) | fail | 47.1 / 60.6 / 94.1 | 2069 s |
+| M17 `fallback`: `book_earliest_flight` | 3 / 20 | 3 / 0 / 0 / 0 / 17 | 3 (a wrong flight, booked for real) | fail | 34.3 / 39.5 / 60.0 | |
+| M17 `synth`: `cheapest_fare_in_euros` | 0 / 20 | 0 / 0 / 0 / 20 / 0 | 20 (a guessed conversion, answered `0.0`) | fail | 45.1 / 47.5 / 50.6 | 1734 s |
+| M17 `synth`: `book_earliest_flight` | 2 / 20 | 2 / 0 / 0 / 1 / 17 | 1 (a wrong flight, answered with a blank booking) | fail | 33.7 / 35.6 / 56.4 | |
+
+The M15 rows are copied unchanged from its section; the control on the
+shipped prompt was 18 / 20 and 10 / 20. 80 runs, 3803 s of arms, 0
+approximate steps.
+
+What the 80 runs say, against the hypotheses:
+
+- **The `fallback` fare passes 2 / 20 (at most 6 was the bar), so M15's
+  attribution stands.** The same 18 failures that ended by identity under
+  `strict` ran to the end here, and every one failed `answer_states` on
+  its own. Each of the 18 sent `search_flights` and a guessed
+  `convert_currency` in one reply (`parallel_tool_replies: 1`; amounts 100,
+  120, 123.45, 150, 250, 350 and 450, none of them a fare in the search
+  result). The real tool converted the guess, and 11 of the 18 answers
+  stated that conversion as the fare. The other 7 noticed it did not fit
+  the $189 they had just read and wrote their own estimate (134 to 171 EUR);
+  none wrote 173.88. All 20 answers named the right flight, B6416. So the
+  recording never stood between the model and a passing run: with the
+  real tool behind every guess, the pass count is M15's to the run. The two
+  passes made one call per reply and converted 189, served `exact`.
+- **The `synth` fare passes 0 / 20, at most `fallback`'s 2. Holds, but not
+  because of the stub.** In all 20 `synth` fare runs the model guessed the
+  amount in a parallel reply (against 18 / 20 under `fallback` and 18 / 20
+  in M15), so every run had a stubbed step and no run took the path that
+  passes. Across all three policies no run with an off-recording step
+  passed and no run without one failed the fare, so the policy decided no
+  verdict here; 0 against 2 of 20 is sampling (one-sided Fisher, 0.24).
+- **11 of the 20 `synth` fare answers state the stub's figure. Holds (at
+  least 10).** They converted the guess, got `0.0`, and wrote "approximately
+  0.00 EUR" (or 0 EUR, 0.0 EUR) beside the $189 they had read. The other 9
+  ignored the zero and invented a euro figure (133.00 to 166.15). Neither
+  kind is a figure any real tool returns, so the stub's world shows up in
+  the answer about half the time and the ground-truth rule fails it either
+  way.
+- **0 passes with a stubbed step, on either scenario. Holds.** The one
+  stubbed booking (run 12, WN1849, the latest flight) got a blank booking
+  (`booking_ref: ""`, `paid_usd: 0.0`) and answered "The booking was
+  successful… The fare is $99.00": no reference, and a fare from the search,
+  not the stub. It failed `writes_match` (nothing was written) and
+  `answer_states`, which is the verdict `fallback` gave its 3 wrong
+  bookings with the write performed.
+- **The cause column moves with the policy, not with the fault.** The same
+  failure, a guessed amount, is `unrecorded` (by identity) under `strict`,
+  `model` under `fallback` and `synth` under `synth`. Only `fallback`
+  labels it as the model's, because only `fallback` lets the guess meet a
+  real tool and fail on its own. The booking arm shows the model's other
+  failure mode, unchanged by policy: 13 to 17 runs of 20 searched, announced
+  a flight and stopped without booking (17 under `synth`, 14 under
+  `fallback`, 13 in M15).
+
+**What `synth` is for, from these numbers.** On a real model it gave the
+same gate verdict as `fallback` on both scenarios (fail, fail) without
+running a single real tool past the recording, and it performed no write:
+the wrong booking was answered with a blank record, not made. That is its
+use: a `model-live` gate for an agent whose tools cannot be called from CI
+(a payment, a booking, a production database), where `fallback` is not an
+option and `strict` stops every diverged run before its answer. It is not a
+way to tell a correct new path from a wrong one. Offline, the correct agent
+that re-reads an order failed the ground truth under `synth` exactly as under
+`strict` (4 of 6 scenarios), where `fallback` passed it. And live, its cause
+column blamed the stub for 20 runs that were the model's. Read a `synth`
+failure as "the run left the recording"; whose fault it was takes a
+`fallback` twin, as M15 found for `strict`.
 
 ## To measure
 
