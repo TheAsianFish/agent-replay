@@ -98,7 +98,7 @@ with ``OLLAMA_CONTEXT_LENGTH=8192`` and still counts the runs that pass 4,096.""
 
 ACTS_ON_PARALLEL = frozenset({"first_tool_only", "mismatches_tool_use_ids"})
 """Mutations that change a run only when one reply holds two or more ``tool_use``
-blocks; with fewer they never acted, and a pass is not a survival."""
+blocks; with fewer they never acted, a pass is not a survival and a failure is not a catch."""
 
 M19_MUTATIONS = (
     "skips_order_lookup",
@@ -757,7 +757,9 @@ def detection(arms: dict[str, Any], scripted: dict[str, Any] | None = None) -> d
             {c for r in s["outcomes"] for c in r["failed_checks"]}
             | {f"run_error:{r['error'].split(':')[0]}" for r in s["outcomes"] if r["error"]}
         )
-        reported = verdict if acted or verdict != "survives" else "never acted"
+        # A mutation that never acted cannot have caused a failure: its passes are the
+        # baseline's, so it is never acted whatever the rule reads (``rule_verdict``).
+        reported = verdict if acted else "never acted"
         predicted = PREDICTED.get(label, (None, None))
         row: dict[str, Any] = {
             "passes": k,
@@ -771,13 +773,13 @@ def detection(arms: dict[str, Any], scripted: dict[str, Any] | None = None) -> d
             "predicted": predicted[0],
             "mechanism": predicted[1],
         }
-        if resolvable and predicted[0] is not None:
+        if resolvable and acted and predicted[0] is not None:
             row["as_predicted"] = (verdict == "survives") == (predicted[0] == "survives") and (
                 verdict != "unresolved"
             )
         if scripted is not None and label in scripted:
             row["scripted"] = scripted[label]
-            if resolvable and verdict != "unresolved":
+            if resolvable and acted and verdict != "unresolved":
                 row["agrees_with_scripted"] = verdict == scripted[label]["verdict"]
         rows[label] = row
     return {

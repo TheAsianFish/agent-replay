@@ -178,8 +178,10 @@ def test_the_arms_on_the_fake_model(tmp_path: Path) -> None:
         "strips_policy": "survives",
         "truncates_history": "caught",
     }
-    assert all(row["agrees_with_scripted"] for row in detection["mutations"].values())
-    assert all(row["as_predicted"] for row in detection["mutations"].values())
+    acted = [row for row in detection["mutations"].values() if row["acted"]]
+    assert len(acted) == 6
+    assert all(row["agrees_with_scripted"] for row in acted)
+    assert all(row["as_predicted"] for row in acted)
     # Without the replay.toml checks the crash is still the fake's: it parses the cut JSON.
     truncated = detection["mutations"]["truncates_tool_results"]
     assert truncated["by_a_crash"] == ["run_error:JSONDecodeError"]
@@ -365,10 +367,15 @@ def test_a_parallel_call_mutation_that_never_saw_two_calls_never_acted() -> None
         False,
     )
     assert rows["mismatches_tool_use_ids"]["verdict"] == "survives"
-    # A catch is a catch whatever the reply held: the mutation cannot have caused it, but
-    # the rule reports what the runs did.
-    caught = retail_error.detection({"unmutated": _arm(10, 10), "first_tool_only": _arm(0, 5)})
-    assert caught["mutations"]["first_tool_only"]["verdict"] == "caught"
+    # Failures in runs it never acted on are the baseline's, not a catch: the rule's own
+    # reading is kept beside the verdict, and no agreement is claimed.
+    scripted = {"first_tool_only": {"verdict": "survives", "caught_by": [], "by_a_crash": []}}
+    caught = retail_error.detection(
+        {"unmutated": _arm(8, 10), "first_tool_only": _arm(1, 5)}, scripted
+    )["mutations"]["first_tool_only"]
+    assert (caught["verdict"], caught["rule_verdict"]) == ("never acted", "caught")
+    assert "as_predicted" not in caught
+    assert "agrees_with_scripted" not in caught
 
 
 def test_detection_sets_each_verdict_beside_the_prediction_and_the_scripted_model() -> None:
