@@ -42,6 +42,7 @@ byte-stable ones and fails on any change.
 | Model and prompt swaps in `model-live` (real model) | qwen2.5:7b cassettes, 20 runs each: qwen2.5:3b 0 / 20 and 0 / 20 under both `strict` and `fallback` (32 of 40 `strict` runs end by identity, all on the model's wrong argument); 7b without the prompt's guard line 2 / 20 and 2 / 20 (23 identity endings, guessed amounts from parallel tool calls) against the same-day control's 18 / 20 and 10 / 20; `temperature=0` 10 / 10 identical passing runs of a booking that passes 17 / 40 sampled; 0 approximate steps in 170 runs; 4778 s on 4 vCPU (AMD EPYC 7763); $0 | `model-live` survives the change (M15) | `make eval-pydantic-ai-swap` (Ollama) | measured, local model |
 | Frozen-world divergence on a long chain (`model-live`, real model) | qwen2.5:7b, an 8-link rebooking chain (9 served tool calls on the shortest path), 20 runs per arm: 0 / 20 under `strict` and `fallback` alike; 320 of 320 chain lookups served exact; 1 world step in 321 served tool calls (0.31%, against 3 / 143 = 2.1% on M12's short runs); `strict` world endings 1 / 20 (Clopper-Pearson 0.1% to 24.9%) beside 3.47 predicted by independence; clustering not measurable (0 world steps under `fallback`); identity keys fired once in 40 runs; 39 of 40 runs answered a euro total without calling `convert_currency`; no qwen recording passed in 5 attempts; 1703 s on 4 vCPU (AMD EPYC 9V45); $0 | Divergence on a long chain (M16) | `make eval-pydantic-ai-long` (Ollama) | measured, local model |
 | `synth`, the third unrecorded-call policy | offline, seventh configuration `model-live+synth`: 12/12 model mutations (as `fallback`), identity mutations 2/2 with keys by `run_error:KeyError`, refactors 0/5, and the correct `repeats_order_lookup` path fails the ground truth in 4 of 6 scenarios (as `strict`; `fallback` 0); live, qwen2.5:7b without the guard line, 20 runs per arm: `fallback` 2/20 and 3/20, `synth` 0/20 and 2/20 beside M15's `strict` 2/20 and 2/20, so M15's attribution stands; 11 of 20 `synth` fare answers state the stub's 0.00 EUR; 0 passes with a stubbed step; 3803 s on 4 vCPU (AMD EPYC 7763); $0 | `synth`, measured (M17) | `make eval-mutations`; `make eval-pydantic-ai-no-guard` (Ollama) | measured, offline and local model |
+| A task where a tool legitimately fails | offline: `drops_error_flag`, which survived every configuration on the six tasks, is caught in 4 of 7 on a hand-written wrong-zip task (`model-live` under `strict`, `fallback` and `synth`; `tools-live+strict`) and survives `full`, `tools-live` and `tools-live+drift`, where the model's reply is served; unmutated passes all 7; live on qwen2.5:7b (`model-live`, `fallback`, 10 runs each): not found with no write 8/10 unmutated, 9/10 with `drops_error_flag` (9 and 10 read by hand), because Ollama's `/v1/messages` drops `is_error` before the prompt (probe 84 / 84 tokens with and without it, control 87); recorded on the first of 3 attempts; largest prompt 2,991 of 4,096 tokens; 485 s of arms on 4 vCPU (AMD EPYC 9V74); $0 | A task where a tool legitimately fails (M18) | `make eval-mutations`; `make eval-retail-error-qwen` (Ollama) | measured, offline and local model |
 | Verdict-stability curve | 5 runs agree with the all-runs fixed-threshold verdict in ≥ 95% of draws on all 15 committed scenarios, but on only 1 of the 4 new M12 rows (90.3% to 94.3%; 0.15 to 0.35 from the 0.75 threshold); 13 of 19 rows pass 0% or 100% | Frozen-world bias (M12) | `make eval-verdict-curve` | measured, offline |
 | Cassette bytes at scale | quadratic (c2 291 bytes/turn², fitted exponent 1.54 over 5 to 200 turns, 1.85 from 100 to 200); 3.65 MB at 100 turns; gzip 19.5× at 20 turns → 3.8× at 100 (envelopes outgrow its 32 KB window), xz 105×; prefix encoding under xz only 1.07× more, so `.jsonl.xz` and no schema change; `full` replay 1.7 s at 200 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline (sizes byte-stable) |
 | Real recordings vs the fit | live Opus retail requests grow 1.4 to 2.6 KB a turn (synthetic 0.58), projecting to 8.0 to 13.9 MB of requests at 100 turns; xz 8.9× to 13.6× at 3 to 6 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline |
@@ -53,8 +54,8 @@ byte-stable ones and fails on any change.
 | D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
 
 API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
-M17 $0; the live runs of M9, M12, M15, M16 and M17 used qwen2.5:7b and qwen2.5:3b on a
-local CPU).
+M18 $0; the live runs of M9, M12, M15, M16, M17 and M18 used qwen2.5:7b and qwen2.5:3b on
+a local CPU).
 
 ## Live recording smoke test (M1)
 
@@ -3127,6 +3128,202 @@ column blamed the stub for 20 runs that were the model's. Read a `synth`
 failure as "the run left the recording"; whose fault it was takes a
 `fallback` twin, as M15 found for `strict`.
 
+## A task where a tool legitimately fails (M18)
+
+**Question.** Since v1, `drops_error_flag` (the agent reports a failed tool as
+an ordinary result: `is_error` lost in a refactor) has survived every
+configuration of the mutation study, with 0 approximate steps. Is that the
+checks' failure or the dataset's? Which replay modes can see a lost error flag
+at all? And does a lost flag matter to a real model, which can read the error
+text the agent still sends (`Error: user not found`)?
+
+**Dataset.** A seventh retail task, hand-written for this repo and not from
+τ-bench (`examples/retail_agent/tasks.py`, `HANDWRITTEN`; `TASKS` keeps the six
+vendored ones): *"I'm Noah Ito, zip code 98178. Please cancel my pending order
+#W6729841 because I no longer need it. Yes, I confirm."* Noah Ito exists, at
+98187, so `find_user_id_by_name_zip` raises `user not found` and the agent sends
+the model an `is_error: true` result. Ground truth: no write and no transfer
+(`expected_actions = ()`), and an answer that says the account was not found
+(the new rule `reports_account_not_found`: no write tool called, and the answer
+matches a fixed not-found pattern, `rules.NOT_FOUND`). Its suite,
+`examples/retail_agent/replay-error.toml`, is separate from `replay.toml`, so
+every earlier table is unchanged. It has no `tool_sequence` check: which
+lookups a model tries before giving up is not the regression. Its fake-model
+cassette (`cassettes/error/`, 3 envelopes) is the first retail recording with
+an `is_error: true` tool result.
+
+### Offline: the error task in the mutation study
+
+`make eval-mutations` gains the `error_task` section: the task unmutated and
+under each of the 12 agent mutations, in all seven configurations, without the
+identify keys (as the v1 tables run). Every earlier key of
+`eval/results/mutations.json` is byte-identical to the committed M17 file;
+only `error_task` is new. 1 min 41 s on 4 vCPU, offline.
+
+```
+$ make eval-mutations
+uv run python eval/mutation_study.py --out eval/results/mutations.json
+...
+Detected (of 12 agent mutations): full 1, tools-live 1, model-live 2, model-live+fallback 2, tools-live+strict 4, tools-live+drift 1, model-live+synth 2. Unmutated fails in: none.
+```
+
+| variant | full | tools-live | model-live | model-live+fallback | tools-live+strict | tools-live+drift | model-live+synth |
+|---|---|---|---|---|---|---|---|
+| `unmutated` | pass; 0 approx | pass; 0 | pass; 0 | pass; 0 | pass; 0 | pass; 0 | pass; 0 |
+| `drops_error_flag` | —; 1 approx | —; 1 | `run_error:UnrecordedCallError`, `rule:reports_account_not_found`; 0 | `run_error:JSONDecodeError`, `rule:reports_account_not_found`; 0 | `no_approximate_steps`; 1 | —; 1 | `run_error:KeyError`, `rule:reports_account_not_found`; 0 |
+| `returns_empty_answer` | `rule:reports_account_not_found` | same | same | same | same | same | same |
+| `unregisters_product_tool` | —; 2 approx | —; 2 | —; 0 | —; 0 | `no_approximate_steps`; 2 | —; 2 | —; 0 |
+| `strips_policy` | —; 2 approx | —; 2 | —; 0 | —; 0 | `no_approximate_steps`; 2 | —; 2 | —; 0 |
+| the other 8 agent mutations | — everywhere, 0 approx | | | | | | |
+
+The full table is in the study's Markdown output and in `mutations.json`
+(`error_task`).
+
+**Hypotheses (PLAN.md, written before the run), answered:**
+
+- **`drops_error_flag` is caught in at least 2 of the 7 configurations. Holds:
+  4 of 7.** The predicted three (`model-live`, `model-live+fallback`,
+  `tools-live+strict`), plus `model-live+synth`. In every `model-live`
+  configuration the fake model, which branches on `is_error`, gets the error
+  text as an ordinary result and uses it as a user id: it calls
+  `get_user_details(user_id="Error: user not found")` and
+  `get_order_details("#W6729841")`. Under `strict` the recording has neither
+  call (`UnrecordedCallError`). Under `fallback` the real `get_user_details` fails
+  too, the mutant strips that flag as well, and the fake model parses the
+  error text as a profile (`JSONDecodeError`). Under `synth` the stubs' empty
+  records lack the keys the fake model reads (`KeyError`). In `tools-live+strict` the model reply is
+  served, but the request that should carry the flag differs from the
+  recording, so its one approximate step fails `no_approximate_steps`.
+- **It survives `full` and `tools-live+drift`, as predicted, and plain
+  `tools-live` too.** The reason is the same in all three: the flag lives in
+  the agent's message *to the model*, and in these modes the model's reply is
+  served from the recording whatever that message says. The changed request
+  is recorded as 1 approximate step, which only `tools-live+strict` turns into
+  a failure. The drift check compares *tool results*, and the tool fails
+  exactly as recorded (same error, same text); the flag is added afterwards,
+  by the agent.
+- **The unmutated task passes every configuration. Holds.**
+- **So v1's 0 of 6 was the dataset's.** No recorded run had a failing tool, so
+  the mutation had nothing to drop. Given one, the modes where the model runs
+  catch it, and so does the strict request match.
+
+The other agent mutations show how narrow a probe this task is. It ends after
+one failed lookup (two model calls, three messages), so 8 of the 12 mutations
+have nothing to act on: no order is read, nothing is written, one tool per
+turn, a result under 120 characters, a conversation within the 3-turn and
+4-message limits. `returns_empty_answer` is caught everywhere by the new rule.
+`unregisters_product_tool` and `strips_policy` change the request bytes, so
+`tools-live+strict` catches them; the fake model ignores both the tool list and
+the prompt.
+
+### Live: the same task on qwen2.5:7b through Ollama
+
+**Recording.** `make record-retail-error-qwen` (`eval/retail_error.py
+--record`): `examples/retail_agent/ollama.py` runs the retail agent unchanged
+(same prompt, tools and loop) with its `Anthropic` client pointed at Ollama's
+`/v1/messages`. Up to 3 attempts; **attempt 1 passed** (152.2 s) and is
+committed as `examples/retail_agent/cassettes/qwen/account_not_found_wrong_zip.jsonl`.
+qwen2.5:7b looked the user up by name and zip, then by an email it made up
+(`noah.ito@example.com`, which also fails), and answered *"I couldn't find a
+user associated with the provided email and name. Could you please provide
+your email again or check your name details?"* No write. Log:
+`eval/results/m18_qwen_recording.json`.
+
+**Context window.** Ollama 0.40.11 starts qwen2.5:7b with a 4096-token context
+and context shift on (`llama-server -c 4096 --context-shift`), so a long
+prompt would be cut silently. The retail policy, tools and task are 2,876
+tokens (the recording's first call, on a cold cache). Ollama's
+`usage.input_tokens` counts only what its prompt cache did not already hold:
+43 and 33 for the recording's next two calls. So each run also gets an upper
+bound on its largest prompt (`prompt_bound`: the cold prefix, plus every later
+call's input, plus every earlier call's output). It is 3,024 tokens for the
+recording and at most 3,024 in all 20 arm runs. The server's own
+`task.n_tokens`, read from its debug log, agree: the largest prompt among all
+73 requests of the session was 2,991 tokens (2,879 / 2,941 / 2,991 per turn).
+No prompt reached the window. The counts are in
+`eval/results/m18_ollama_is_error_trace.txt`.
+
+**What Ollama does with `is_error`.** With `OLLAMA_DEBUG=2` the server logs
+each Anthropic request as it arrived and as converted. A `tool_result` with
+`is_error: true` arrives with the flag and is converted to a `role: tool`
+message holding only the content; with and without the flag the model's
+prompt is the same 201 tokens. The excerpt is in
+`eval/results/m18_ollama_is_error_trace.txt`. The harness repeats this without the
+log (`probe_flag`, in the raw report as `flag_probe`). It sends the same
+tool result with the flag, without it, and with three words added (the
+control), each after a warm-up call so that all three find the same prefix in
+the prompt cache. The counts were 84 (flag), 84 (no flag) and 87 (control):
+**on Ollama the flag never reaches the model**. A first start of the arms was stopped
+after its probe misread. Without the warm-up, the first probe also paid for
+the uncached chat-template prefix (189 against 84). The warm-up was added
+and the arms restarted from scratch; nothing from the stopped start is in
+the report.
+
+**Arms.** `make eval-retail-error-qwen` (`eval/retail_error.py`): the probe,
+then the task in `model-live` under `fallback` on the qwen recording with the
+suite's identify keys, 10 runs with the unmutated agent and 10 with
+`drops_error_flag` (`eval/mutations/agents.py:drops_error_flag_ollama`), both on
+qwen2.5:7b (digest `845dbda0…`), one run at a time (`wilson` gate, so exactly 10).
+4 vCPU AMD EPYC 9V74, CPU only, Ollama 0.40.11, nothing else running on the
+cores. $0. Raw report: `eval/results/m18_error_qwen.json` (every run's tool calls
+with status and result, answer, not-found verdict, `is_error` flags its
+requests carried, input and output tokens, prompt bound, seconds).
+
+```
+$ make eval-retail-error-qwen
+uv run python -m eval.retail_error --runs 10
+flag probe: the flag never reaches the model ([84, 84, 84, 87])
+arm unmutated: 10 model-live runs under fallback
+  account_not_found_wrong_zip: 8/10 passed, 8 replied not found with no write; 235.9 s
+arm drops_error_flag: 10 model-live runs under fallback
+  account_not_found_wrong_zip: 9/10 passed, 9 replied not found with no write; 248.8 s
+near-equivalent: the mutant replies not found as the unmutated agent does; wrote .../eval/results/m18_error_qwen.json
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 8:20.80
+```
+
+| `model-live`, `fallback`, qwen2.5:7b | Passed | Not found, no write (rule) | By reading the answers | Runs whose requests carried `is_error` | Tool paths (1 lookup / 2) | World steps | Seconds per run (min / median / max) | Wall |
+|---|---|---|---|---|---|---|---|---|
+| unmutated | 8 / 10 | 8 / 10 | 9 / 10 | 10 / 10 (1 or 2 flags) | 3 / 7 | 0 (every step `exact`) | 15.2 / 25.3 / 29.1 | 236 s |
+| `drops_error_flag` | 9 / 10 | 9 / 10 | 10 / 10 | 0 / 10 | 2 / 8 | 0 (every step `exact`) | 18.3 / 25.7 / 28.8 | 249 s |
+
+Every failure was the not-found rule. No run in either arm wrote, transferred
+or called anything but the two lookups, and every tool step was served
+`exact`: the model's guessed email was always the one in the recording. Read
+by hand, two of the three answers the pattern missed do say it: *"It seems
+there was an issue locating your user ID"* (mutant run 4) and *"there was an
+issue finding your user ID"* (unmutated run 1). The third, *"Could you please
+provide me with your email address so I can locate your user ID?"* (unmutated
+run 3), does not. The rule was fixed before the runs and is not loosened after
+them; the "by reading" column is my reading of the 20 answers in the raw
+report. Both arms fail the default `wilson` gate (lower bound under 0.8 at
+8 / 10 and 9 / 10): 10 runs cannot certify an 80% pass rate, and the gate is
+not the question here.
+
+**Hypothesis (PLAN.md): the mutant replies "not found" with no write in at
+least 8 of 10, within 2 of the unmutated arm. Holds: 9 against 8 by the rule,
+10 against 9 by reading.** For qwen2.5:7b served by Ollama, `drops_error_flag`
+is not a regression. The plan's reason was "a model that reads the error text
+does not need the flag". The probe shows something stronger, and different.
+qwen never saw the flag in either arm, because Ollama's Anthropic layer drops
+it before the prompt is built. The unmutated runs sent it (10 of 10), the
+mutant's did not (0 of 10), and the model's prompts were the same size turn
+by turn (2,879 / 2,941 / 2,991 tokens in both arms). So on this stack the two
+arms are two samples of the same input, and 8 against 9 is sampling. The
+fake-model catches above are the fake policy's dependence on the flag, as
+predicted. Whether a model that *does* see the flag misbehaves without it
+needs a provider that delivers it. Anthropic's API documents `is_error` as
+telling the model the tool failed, so the Claude recording is under "To
+measure".
+
+What this means for a team using Replay. A lost `is_error` is caught where the
+model runs against the recording (`model-live` under any policy) or where the
+request bytes are compared (`fail_on_approximate`), on a fake model that
+branches on it. Whether it is a regression depends on the provider. On
+Ollama's `/v1/messages` the flag is dropped on the way in, so the refactor
+changes nothing the model sees. The approximate step `tools-live+strict` flags
+is then a true difference in what the agent sent that makes no difference to
+the model.
+
 ## To measure
 
 - **SPRT savings vs the fixed-sample test.** `make bench-sprt` (offline, about
@@ -3172,6 +3369,19 @@ failure as "the run left the recording"; whose fault it was takes a
   eval/results/llmbar.json` reproduces it without a key; under the default
   `baseline` statistics the intervals are Wald, so prefer
   `REPLAY_STATS_IMPL=core make eval-llmbar` once `stats.py` exists.
+- **The M18 error task on Claude.** `uv run replay record
+  examples.retail_agent.agent:run --client anthropic -t "I'm Noah Ito, zip code
+  98178. Please cancel my pending order #W6729841 because I no longer need it.
+  Yes, I confirm." -o examples/retail_agent/cassettes/opus/account_not_found_wrong_zip.jsonl`
+  records it once with `claude-opus-5-5`, for about $0.10 (the M2 cold-cache run
+  of the six tasks cost $0.29, and this one stops after the failed lookup). Then
+  `uv run replay ci examples/retail_agent/replay-error.toml --cassette-dir
+  examples/retail_agent/cassettes/opus` checks it. The directory is its own, so
+  `make bench-scale`, which reads `cassettes/live/`, is unchanged. Unlike
+  Ollama's layer (M18), Anthropic's API documents `is_error` as telling the
+  model the tool failed. So this is the recording on which `drops_error_flag`
+  changes what a real model sees. `eval/retail_error.py` runs its arms on
+  Ollama only; a Claude arm is not built.
 - The M2 live smoke test above can be re-run with the two commands in its
   section (about $0.30 each with `claude-opus-5-5` and a cold prompt cache);
   the M3 cost-gate run with the two commands in its section (about $1.00);
