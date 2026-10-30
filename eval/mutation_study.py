@@ -53,6 +53,13 @@ correct-but-different paths of the fake model (``eval/mutations/paths.py``) in
 records per scenario which checks failed and how the run ended; M17 appends the same
 rows under ``synth``.
 
+The ``error_task`` section (M18) replays a seventh, hand-written task in its own suite
+(``examples/retail_agent/replay-error.toml``: a wrong zip code, so the user lookup
+fails with ``is_error: true`` and the right reply is that the account was not found)
+unmutated and under every agent mutation, in all seven configurations, without the
+identify keys as the v1 tables are. It is the one task whose recording has a failed
+tool, so it is where ``drops_error_flag`` has something to drop.
+
 Everything is offline and deterministic; the output has no timestamps or
 absolute paths, so re-running it reproduces the JSON byte for byte.
 
@@ -93,6 +100,7 @@ from examples.retail_agent import tools as retail_tools
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITE = ROOT / "examples" / "retail_agent" / "replay.toml"
+ERROR_SUITE = ROOT / "examples" / "retail_agent" / "replay-error.toml"
 TARGETS: tuple[Target, ...] = ("agent", "model", "tool")
 
 
@@ -205,11 +213,13 @@ def outcome(report: SuiteReport) -> Outcome:
     )
 
 
-def replay_suite(agent: str, client: str, config: Config, *, identify: bool = False) -> Outcome:
+def replay_suite(
+    agent: str, client: str, config: Config, *, identify: bool = False, suite: Path = SUITE
+) -> Outcome:
     """Run the suite once with ``agent`` in ``config``; the database starts fresh.
 
     ``identify``: with the suite's identifying arguments. Off, the suite runs as it did
-    before it had them (the v1 tables)."""
+    before it had them (the v1 tables). ``suite``: another suite than the six tasks'."""
     report = _run(
         Overrides(
             agent=agent,
@@ -219,15 +229,16 @@ def replay_suite(agent: str, client: str, config: Config, *, identify: bool = Fa
             fail_on_approximate=True if config.strict else None,
             fail_on_tool_drift=True if config.drift else None,
             identify=None if identify else {},
-        )
+        ),
+        suite=suite,
     )
     return outcome(report)
 
 
-def _run(overrides: Overrides, sink: RunSink | None = None) -> SuiteReport:
+def _run(overrides: Overrides, sink: RunSink | None = None, suite: Path = SUITE) -> SuiteReport:
     retail_tools.reset_db()
     try:
-        report = run_suite(SUITE, overrides=overrides, sink=sink)
+        report = run_suite(suite, overrides=overrides, sink=sink)
     finally:
         retail_tools.reset_db()
     if report.broken:
@@ -243,11 +254,18 @@ def _run(overrides: Overrides, sink: RunSink | None = None) -> SuiteReport:
 
 
 def _rows(
-    variants: Sequence[Mutation | Refactor], configs: Sequence[Config], *, identify: bool
+    variants: Sequence[Mutation | Refactor],
+    configs: Sequence[Config],
+    *,
+    identify: bool,
+    suite: Path = SUITE,
 ) -> list[JsonValue]:
     rows: list[JsonValue] = []
     for v in variants:
-        results = {c.id: replay_suite(v.agent, v.client, c, identify=identify) for c in configs}
+        results = {
+            c.id: replay_suite(v.agent, v.client, c, identify=identify, suite=suite)
+            for c in configs
+        }
         row: dict[str, JsonValue] = {"id": v.id}
         if isinstance(v, Mutation):
             row["target"] = v.target
@@ -297,6 +315,7 @@ def run(
             mutation_rows, refactor_rows, mutations, refactors, identity_mutations, configs
         ),
         "path_variants": path_study(path_variants),
+        "error_task": error_task_study(mutations, configs),
     }
 
 
@@ -347,6 +366,71 @@ def identify_study(
         "identity_mutations_without_keys": without,
         "changed_by_keys": changed,
     }
+
+
+# --- a task where a tool legitimately fails (M18) ------------------------------------
+
+UNMUTATED = Refactor("unmutated", "the retail agent as it is", REAL_AGENT)
+"""The error task's control row: it must pass every configuration."""
+
+
+def error_task_study(
+    mutations: Sequence[Mutation], configs: Sequence[Config]
+) -> dict[str, JsonValue]:
+    """The hand-written error task, unmutated and under every agent mutation, in every
+    configuration (without the identify keys, as the v1 tables)."""
+    agent_mutations = [m for m in mutations if m.target == "agent"]
+    control = _rows([UNMUTATED], configs, identify=False, suite=ERROR_SUITE)
+    rows = _rows(agent_mutations, configs, identify=False, suite=ERROR_SUITE)
+    config_ids = [c.id for c in configs]
+    return {
+        "suite": ERROR_SUITE.relative_to(ROOT).as_posix(),
+        "scenarios": [s.name for s in load_suite(ERROR_SUITE).scenario],
+        "unmutated": control[0],
+        "mutations": rows,
+        "detected": {c: [_field(r, "id") for r in rows if _detected(r, c)] for c in config_ids},
+        "unmutated_failed": [c for c in config_ids if _detected(control[0], c)],
+    }
+
+
+def error_task_markdown(section: JsonValue, configs: Sequence[str]) -> list[str]:
+    assert isinstance(section, dict)
+    rows = [section["unmutated"], *_list(section["mutations"])]
+    header = "| " + " | ".join(configs) + " |"
+    rule = "|" + "---|" * len(configs)
+    lines = [
+        "",
+        "## A task where a tool legitimately fails (M18)",
+        "",
+        f"`{section['suite']}`: one hand-written task (not from τ-bench) whose user gives a "
+        "wrong zip code, so `find_user_id_by_name_zip` fails with `is_error: true` and the "
+        "right reply is that the account was not found, with nothing written. Unmutated and "
+        "under every agent mutation, without the identify keys. Cells: check types that "
+        "caught it (— survived) and approximate steps.",
+        "",
+        "| variant " + header,
+        "|---" + rule,
+    ]
+    for row in rows:
+        cells = [
+            f"{_caught_cell(row, c)}; {_results(row, c)['approximate_steps']} approx"
+            for c in configs
+        ]
+        lines.append(f"| `{_field(row, 'id')}` | " + " | ".join(cells) + " |")
+    detected = section["detected"]
+    assert isinstance(detected, dict)
+    total = len(rows) - 1
+    lines += [
+        "",
+        "Detected (of "
+        + str(total)
+        + " agent mutations): "
+        + ", ".join(f"{c} {len(_list(detected[c]))}" for c in configs)
+        + ". Unmutated fails in: "
+        + (", ".join(str(c) for c in _list(section["unmutated_failed"])) or "none")
+        + ".",
+    ]
+    return lines
 
 
 # --- correct-but-different paths (M11) ----------------------------------------------
@@ -705,6 +789,8 @@ def to_markdown(study: dict[str, JsonValue]) -> str:
         lines += identify_markdown(study, configs)
     if "path_variants" in study:
         lines += paths_markdown(study["path_variants"])
+    if "error_task" in study:
+        lines += error_task_markdown(study["error_task"], configs)
     return "\n".join(lines) + "\n"
 
 

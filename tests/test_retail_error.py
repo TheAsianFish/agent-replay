@@ -4,6 +4,7 @@ recordings, and the live harness (``eval/retail_error.py``) run against the fake
 from __future__ import annotations
 
 import dataclasses
+import json
 from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,6 +15,8 @@ import pytest
 from agent_replay import Cassette
 from agent_replay.ci import Overrides, run_suite
 from agent_replay.runner import make_client, record
+from eval import mutation_study as study
+from eval.mutations import MUTATIONS
 from examples.retail_agent import agent as retail
 from examples.retail_agent import fake_model, rules, tools
 from examples.retail_agent.tasks import ACCOUNT_NOT_FOUND, ALL_TASKS, HANDWRITTEN, TASKS, task_for
@@ -132,3 +135,37 @@ def test_the_rule_fails_a_write_even_with_a_not_found_answer():
     assert rules.reports_account_not_found(run)[0] is False
     assert rules.reports_account_not_found(_run("User not found.", []))[0] is True
     assert rules.reports_account_not_found(_run("Your order is cancelled.", []))[0] is False
+
+
+# --- the mutation study's section -----------------------------------------------------
+
+COMMITTED: dict[str, Any] = json.loads(
+    (ROOT / "eval" / "results" / "mutations.json").read_text(encoding="utf-8")
+)
+
+
+def test_the_committed_error_task_section():
+    section = COMMITTED["error_task"]
+    agent_mutations = [m.id for m in MUTATIONS if m.target == "agent"]
+
+    assert [r["id"] for r in section["mutations"]] == agent_mutations
+    assert section["unmutated_failed"] == []
+    caught = [c for c, ids in section["detected"].items() if "drops_error_flag" in ids]
+    assert len(caught) >= 2
+    assert {"model-live", "model-live+fallback", "tools-live+strict"} <= set(caught)
+    assert not {"full", "tools-live+drift"} & set(caught)
+
+
+def test_drops_error_flag_on_the_error_task_is_seen_where_the_model_runs():
+
+    configs = {c.id: c for c in study.CONFIGS}
+    agent = "eval.mutations.agents:drops_error_flag"
+    full = study.replay_suite(agent, FAKE, configs["full"], suite=study.ERROR_SUITE)
+    live = study.replay_suite(agent, FAKE, configs["model-live"], suite=study.ERROR_SUITE)
+
+    # In full the agent's request lacks the flag (one approximate step), but the
+    # recorded reply is served all the same.
+    assert full.passed
+    assert full.approximate_steps == 1
+    # The fake model takes the error text for a user id; the recording has no such call.
+    assert "run_error:UnrecordedCallError" in live.caught_by
