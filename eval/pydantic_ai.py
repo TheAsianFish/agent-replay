@@ -34,6 +34,13 @@
    prediction from M12's short runs), the rate of a world step after an earlier one in
    the same run against the arm's base rate, and the identity keys' firings
    (:func:`long_analysis`).
+6. M17, ``--no-guard``: M15's no-guard arm (qwen2.5:7b without the prompt's guard line)
+   again, under ``fallback`` and ``synth`` (:data:`NO_GUARD_ARMS`), 20 runs per arm of
+   the two qwen-recorded scenarios. ``synth`` answers a call the recording lacks with a
+   schema-minimal stub (``0.0`` for a conversion), which is a world step like any other
+   step off the recording. Each run gains the figures its answer states and whether one
+   of them is a stub's (:func:`figures`), and the report answers the milestone's
+   hypotheses beside M15's ``strict`` arm (:func:`no_guard_hypotheses`).
 
 Usage::
 
@@ -41,6 +48,7 @@ Usage::
     uv run python -m eval.pydantic_ai --arms strict,fallback --runs 20
     uv run python -m eval.pydantic_ai --swap
     uv run python -m eval.pydantic_ai --long
+    uv run python -m eval.pydantic_ai --no-guard
     uv run python -m eval.pydantic_ai --arms strict --model qwen2.5:3b --prompt-variant no_guard
 """
 
@@ -52,6 +60,7 @@ import dataclasses
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 import time
@@ -84,6 +93,7 @@ ARMS_OUT = ROOT / "eval" / "results" / "m12_arms_qwen.json"
 SWAP_OUT = ROOT / "eval" / "results" / "m15_swap_qwen.json"
 LONG_OUT = ROOT / "eval" / "results" / "m16_long_qwen.json"
 LONG_RECORDING_LOG = ROOT / "eval" / "results" / "m16_qwen_recording.json"
+NO_GUARD_OUT = ROOT / "eval" / "results" / "m17_no_guard_qwen.json"
 SMALL_MODEL = "qwen2.5:3b"
 AGENTS: dict[tuple[PromptVariant, float | None], str] = {
     ("recording", None): "examples.pydantic_ai_agent.agent:run",
@@ -93,13 +103,15 @@ AGENTS: dict[tuple[PromptVariant, float | None], str] = {
 """The suite's ``agent`` for each prompt variant and temperature an arm can ask for."""
 ARM_SCENARIOS = ("cheapest_fare_in_euros", "book_earliest_flight")
 """The scenarios whose cassettes qwen2.5:7b recorded (the third serves the fake model's)."""
-CAUSES = ("passed", "unrecorded", "approximate", "model")
+CAUSES = ("passed", "unrecorded", "approximate", "synth", "model")
 CAUSE_MEANING = {
     "passed": "every check passed",
     "unrecorded": "a call no unused recording matched (by tool, or by the identify keys) "
     "ended the run under strict: the frozen world's limit",
     "approximate": "a step was served approximately (another request's recording) and a "
     "check then failed: possibly the frozen world's fault",
+    "synth": "a call the recording lacks was answered with a stub (the synth policy) and a "
+    "check then failed or the agent raised: possibly the stub's fault",
     "model": "a check failed (or the agent raised) with every served step exact: the "
     "model's own failure",
 }
@@ -179,15 +191,17 @@ def flake(runs: int, out: Path) -> int:
 
 def cause(outcome: RunOutcome) -> str:
     """How a run ended, one of :data:`CAUSES`, in that order of precedence: a pass is a
-    pass even with an approximate step; an unrecorded call ends a ``strict`` run before
-    any check runs; a failure after an approximate step may be the world's; the rest is
-    the model's."""
+    pass even with an approximate or stubbed step; an unrecorded call ends a ``strict``
+    run before any check runs; a failure after an approximate step may be the world's,
+    and so may one after a stub; the rest is the model's."""
     if outcome.passed:
         return "passed"
     if outcome.error is not None and outcome.error.type == "UnrecordedCallError":
         return "unrecorded"
     if outcome.steps.get("approximate", 0):
         return "approximate"
+    if outcome.steps.get("synth", 0):
+        return "synth"
     return "model"
 
 
@@ -225,9 +239,10 @@ def _temperature(request: dict[str, Any]) -> Any:
 
 
 def wire(result: RunResult | None) -> dict[str, Any]:
-    """One run's tool calls (name, input, status), its answer, the model, temperature and
-    guard line its model requests carried (``None`` when the request had none), and how
-    many of its model replies asked for more than one tool at once."""
+    """One run's tool calls (name, input, status, and for a call off the recording that
+    still returned, the result it got), its answer, the model, temperature and guard line
+    its model requests carried (``None`` when the request had none), and how many of its
+    model replies asked for more than one tool at once."""
     if result is None:
         return {}
     steps = result.trajectory.model_steps()
@@ -237,7 +252,12 @@ def wire(result: RunResult | None) -> dict[str, Any]:
     guard = GUARD.split("\n", 1)[0]
     return {
         "tool_calls": [
-            {"name": s.name, "input": s.request, "status": s.status.value}
+            {
+                "name": s.name,
+                "input": s.request,
+                "status": s.status.value,
+                **({"response": s.response} if s.status.value in OFF_RECORDING else {}),
+            }
             for s in result.trajectory.tool_steps()
         ],
         "output": result.output,
@@ -246,6 +266,10 @@ def wire(result: RunResult | None) -> dict[str, Any]:
         "guard_in_system": sorted({guard in json.dumps(r.get("system")) for r in requests}),
         "parallel_tool_replies": sum(1 for s in steps if _tool_uses(s.response) > 1),
     }
+
+
+OFF_RECORDING = ("fallback", "synth")
+"""Statuses of a tool step that ran off the recording and still returned a result."""
 
 
 def _tool_uses(response: Any) -> int:
@@ -808,6 +832,197 @@ def run_long(
     return result
 
 
+NO_GUARD_ARMS = (
+    Arm("fallback", "fallback", prompt_variant="no_guard"),
+    Arm("synth", "synth", prompt_variant="no_guard"),
+)
+"""M17's arms: M15's no-guard prompt on the recorder, under the two policies that keep a
+diverged run going (``strict`` is M15's ``7b_no_guard_strict``)."""
+NO_GUARD_RUNS = 20
+M15_NO_GUARD_ARM = "7b_no_guard_strict"
+FARE_SCENARIO = "cheapest_fare_in_euros"
+FALLBACK_STANDS, FALLBACK_WITHDRAWN = 6, 15
+"""M15's attribution stands if the ``fallback`` fare passes at most 6 of 20, is withdrawn
+at 15 or more, and is partial in between."""
+STUB_FIGURE_RUNS = 10
+"""``synth`` fare runs that state a stub's figure, at least (the hypothesis)."""
+_AMOUNT = r"\d[\d,]*(?:\.\d+)?"
+_CURRENCY = r"(?:€|\$|EUR|USD|euros?|dollars?)"
+CURRENCY_FIGURE = re.compile(
+    rf"{_CURRENCY}\s*({_AMOUNT})|(?<![\w.])({_AMOUNT})\s*{_CURRENCY}", re.IGNORECASE
+)
+
+
+def _numbers(value: Any) -> list[float]:
+    """Every number in a JSON value, booleans aside."""
+    if isinstance(value, bool):
+        return []
+    if isinstance(value, int | float):
+        return [float(value)]
+    if isinstance(value, dict):
+        return [n for v in value.values() for n in _numbers(v)]
+    if isinstance(value, list):
+        return [n for v in value for n in _numbers(v)]
+    return []
+
+
+def figures(row: dict[str, Any]) -> dict[str, Any]:
+    """The money figures one run's answer states (a number next to a currency word or
+    sign), the numbers its stubbed steps returned, and whether the answer states one of
+    them: a figure the stub, not any recording or real tool, produced."""
+    output = row.get("output")
+    text = output if isinstance(output, str) else ""
+    stated = [float((a or b).replace(",", "")) for a, b in CURRENCY_FIGURE.findall(text)]
+    stubbed = [c for c in row.get("tool_calls", []) if c["status"] == "synth"]
+    stub_numbers = sorted({n for c in stubbed for n in _numbers(c.get("response"))})
+    return {
+        "figures": stated,
+        "stubbed_steps": len(stubbed),
+        "stub_numbers": stub_numbers,
+        "states_stub_figure": any(f in stub_numbers for f in stated),
+        "world_steps": sum(1 for c in row.get("tool_calls", []) if is_world(c["status"])),
+    }
+
+
+def no_guard_analysis(scenario: dict[str, Any]) -> dict[str, Any]:
+    """One arm's scenario: each run gains :func:`figures`; the counts the hypotheses read,
+    and every pass with a stubbed step with its answer and tool calls (the manufactured
+    world, if any)."""
+    rows = scenario["outcomes"]
+    for row in rows:
+        row.update(figures(row))
+    stubbed_passes = [r for r in rows if r["passed"] and r["stubbed_steps"]]
+    return {
+        "runs_with_a_world_step": sum(1 for r in rows if r["world_steps"]),
+        "runs_with_a_stubbed_step": sum(1 for r in rows if r["stubbed_steps"]),
+        "runs_stating_a_stub_figure": sum(1 for r in rows if r["states_stub_figure"]),
+        "passes_with_a_stubbed_step": len(stubbed_passes),
+        "stubbed_passes": [
+            {"index": r["index"], "output": r.get("output"), "tool_calls": r.get("tool_calls")}
+            for r in stubbed_passes
+        ],
+        "figures_by_run": [r["figures"] for r in rows],
+    }
+
+
+def m15_no_guard(path: Path = SWAP_OUT) -> dict[str, Any] | None:
+    """M15's no-guard ``strict`` arm, per scenario: passes, runs, causes and identity
+    endings, from its committed report (``None`` when it is absent)."""
+    if not path.exists():
+        return None
+    arm = json.loads(path.read_text(encoding="utf-8"))["arms"].get(M15_NO_GUARD_ARM)
+    if arm is None:
+        return None
+    return {
+        s["name"]: {
+            "passes": s["passes"],
+            "runs": s["runs"],
+            "causes": s["causes"],
+            "unrecorded_by_identity": s["unrecorded_by_identity"],
+        }
+        for s in arm["scenarios"]
+    }
+
+
+def _scenario(arm: dict[str, Any] | None, name: str) -> dict[str, Any] | None:
+    if arm is None:
+        return None
+    return next((s for s in arm["scenarios"] if s["name"] == name), None)
+
+
+def no_guard_hypotheses(arms: dict[str, Any]) -> dict[str, Any]:
+    """The milestone's live hypotheses, read off the two arms' fare runs (M17 in PLAN.md):
+    the ``fallback`` fare passes at most 6 of 20 (M15's attribution stands; 15 or more
+    withdraws it; between is partial); ``synth`` passes at most as often as ``fallback``;
+    at least 10 ``synth`` fare answers state a stub's figure; no run with a stubbed step
+    passes, on either scenario."""
+    fallback = _scenario(arms.get("fallback"), FARE_SCENARIO)
+    synth = _scenario(arms.get("synth"), FARE_SCENARIO)
+    result: dict[str, Any] = {}
+    if fallback is not None:
+        passes = fallback["passes"]
+        verdict = (
+            "stands"
+            if passes <= FALLBACK_STANDS
+            else "withdrawn"
+            if passes >= FALLBACK_WITHDRAWN
+            else "partial"
+        )
+        result["fallback_fare"] = {
+            "passes": passes,
+            "runs": fallback["runs"],
+            "m15_attribution": verdict,
+            "holds": verdict == "stands",
+        }
+    if synth is not None:
+        stub_figures = synth["no_guard"]["runs_stating_a_stub_figure"]
+        result["synth_fare_stub_figures"] = {
+            "runs": stub_figures,
+            "of": synth["runs"],
+            "at_least": STUB_FIGURE_RUNS,
+            "holds": stub_figures >= STUB_FIGURE_RUNS,
+        }
+        if fallback is not None:
+            result["synth_at_most_fallback"] = {
+                "synth": synth["passes"],
+                "fallback": fallback["passes"],
+                "holds": synth["passes"] <= fallback["passes"],
+            }
+        stubbed = sum(
+            s["no_guard"]["passes_with_a_stubbed_step"] for s in arms["synth"]["scenarios"]
+        )
+        result["passes_with_a_stubbed_step"] = {"runs": stubbed, "holds": stubbed == 0}
+    return result
+
+
+def run_no_guard(
+    runs: int,
+    out: Path,
+    *,
+    client: str = CLIENT,
+    suite: Path = QWEN_SUITE,
+    environment: dict[str, Any] | None = None,
+    sink: RunSink | None = None,
+    m15: Path = SWAP_OUT,
+) -> dict[str, Any]:
+    """M17: :data:`NO_GUARD_ARMS`, ``runs`` runs per scenario each; the report is rewritten
+    after every arm so a stopped run keeps the arm it finished."""
+    result: dict[str, Any] = {
+        "command": "uv run python -m eval.pydantic_ai --no-guard",
+        "suite": str(suite.relative_to(ROOT)) if suite.is_relative_to(ROOT) else str(suite),
+        "client": client,
+        "mode": "model-live",
+        "identify": "the suite's [defaults.identify] keys",
+        "recorded_on": MODEL,
+        "environment": environment if environment is not None else describe(),
+        "causes": CAUSE_MEANING,
+        "world_step": "a tool step not served exactly from the recording (approximate, "
+        "unrecorded, fallback or synth), as in M16",
+        "m15_strict": m15_no_guard(m15),
+        "arms": {},
+        "hypotheses": {},
+    }
+    out.parent.mkdir(parents=True, exist_ok=True)
+    for arm in NO_GUARD_ARMS:
+        summary, _ = run_arm(
+            dataclasses.replace(arm, runs=runs), client=client, suite=suite, sink=sink
+        )
+        for s in summary["scenarios"]:
+            s["no_guard"] = no_guard_analysis(s)
+            ng = s["no_guard"]
+            print(
+                f"  {s['name']}: {ng['runs_with_a_stubbed_step']} runs with a stubbed step, "
+                f"{ng['runs_stating_a_stub_figure']} stating a stub's figure, "
+                f"{ng['passes_with_a_stubbed_step']} passes with one",
+                flush=True,
+            )
+        result["arms"][arm.label] = summary
+        result["hypotheses"] = no_guard_hypotheses(result["arms"])
+        out.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"wrote {out}")
+    return result
+
+
 def parse_arms(text: str) -> tuple[Policy, ...]:
     arms = tuple(a.strip() for a in text.split(",") if a.strip())
     known = get_args(Policy.__value__)
@@ -873,6 +1088,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--long-out", type=Path, default=LONG_OUT, help="raw report of --long")
     parser.add_argument(
+        "--no-guard",
+        action="store_true",
+        help="M17: the no-guard prompt under fallback and synth (--runs: default 20)",
+    )
+    parser.add_argument(
+        "--no-guard-out", type=Path, default=NO_GUARD_OUT, help="raw report of --no-guard"
+    )
+    parser.add_argument(
         "--model", default=None, help=f"--arms: the live model (default {MODEL}, the recorder)"
     )
     parser.add_argument(
@@ -888,10 +1111,14 @@ def main(argv: list[str] | None = None) -> int:
     swapped = (args.model, args.prompt_variant, args.temperature) != (None, "recording", None)
     if args.long and (args.arms or args.swap or swapped):
         parser.error("--long runs its own arms; it takes no --arms, --swap or live-side flags")
+    if args.no_guard and (args.arms or args.swap or args.long or swapped):
+        parser.error(
+            "--no-guard runs its own arms; it takes no --arms, --swap, --long or live-side flags"
+        )
     if args.runs is not None and args.runs < 1:
         parser.error(f"--runs must be at least 1; got {args.runs}")
     if args.runs is None and not args.long:
-        args.runs = 10
+        args.runs = NO_GUARD_RUNS if args.no_guard else 10
     if swapped and not args.arms:
         parser.error("--model, --prompt-variant and --temperature change an --arms run")
     arms = SWAP_ARMS if args.swap else _custom_arms(args, parser) if swapped else ()
@@ -908,7 +1135,14 @@ def main(argv: list[str] | None = None) -> int:
             f"{', '.join(missing)} (ollama serve; {pulls}; or set REPLAY_OLLAMA_URL)"
         )
         return 0
-    if args.long:
+    return _live(args, arms, argv)
+
+
+def _live(args: argparse.Namespace, arms: Sequence[Arm], argv: list[str] | None) -> int:
+    """The model-live half :func:`main` asked for, once Ollama is known to serve it."""
+    if args.no_guard:
+        run_no_guard(args.runs, args.no_guard_out.resolve())
+    elif args.long:
         run_long(long_runs() if args.runs is None else args.runs, args.long_out.resolve())
     elif args.swap:
         run_swap(arms, args.swap_out.resolve(), probe=probe_temperature())

@@ -7,7 +7,7 @@
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
 	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough \
 	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline \
-	eval-pydantic-ai-arms eval-pydantic-ai-swap eval-pydantic-ai-long record-pydantic-ai-chain eval-verdict-curve bench-scale bench-scale-record bench-upstream
+	eval-pydantic-ai-arms eval-pydantic-ai-swap eval-pydantic-ai-long eval-pydantic-ai-no-guard record-pydantic-ai-chain eval-verdict-curve bench-scale bench-scale-record bench-upstream
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -220,6 +220,14 @@ eval-pydantic-ai-swap:
 # 4 CPUs. Locally or from the manual Ollama workflow, never on a PR.
 eval-pydantic-ai-long:
 	uv run python -m eval.pydantic_ai --long
+
+# M17: M15's no-guard prompt (qwen2.5:7b without the guard line) on the two
+# qwen2.5:7b-recorded scenarios under fallback and synth, 20 model-live runs each,
+# every run classified by cause with the figures its answer states, into
+# eval/results/m17_no_guard_qwen.json. Needs `ollama serve` with qwen2.5:7b (about an hour on
+# 4 CPU cores); never on pull requests (ollama.yml's `no_guard` input runs it).
+eval-pydantic-ai-no-guard:
+	uv run python -m eval.pydantic_ai --no-guard
 
 # M12: how often a subset of n runs gives the all-runs fixed-threshold verdict, for every
 # committed flake report (seeded draws without replacement; offline, byte-stable).

@@ -70,6 +70,12 @@ def _outcome(**fields: object) -> RunOutcome:
         ({"steps": {"exact": 2, "live": 3}, "failed_checks": ("rule:answer_states",)}, "model"),
         ({"error": ErrorInfo(type="UnexpectedModelBehavior", message="retries")}, "model"),
         ({"steps": {"fallback": 1, "live": 3}, "failed_checks": ("tool_sequence",)}, "model"),
+        ({"steps": {"synth": 1, "live": 3}, "failed_checks": ("rule:answer_states",)}, "synth"),
+        ({"passed": True, "steps": {"synth": 1, "live": 3}}, "passed"),
+        (
+            {"steps": {"approximate": 1, "synth": 1}, "failed_checks": ("tool_sequence",)},
+            "approximate",
+        ),
     ],
 )
 def test_cause_precedence(fields: dict[str, object], expected: str) -> None:
@@ -91,7 +97,13 @@ def test_the_fake_model_passes_both_arms_on_the_qwen_recordings(tmp_path: Path) 
         assert set(arms[arm]) == set(pydantic_ai.ARM_SCENARIOS)
         for s in arms[arm].values():
             assert (s["runs"], s["passes"], s["decision"]) == (2, 2, "pass")
-            assert s["causes"] == {"passed": 2, "unrecorded": 0, "approximate": 0, "model": 0}
+            assert s["causes"] == {
+                "passed": 2,
+                "unrecorded": 0,
+                "approximate": 0,
+                "synth": 0,
+                "model": 0,
+            }
 
 
 def test_another_entity_is_unrecorded_under_strict_and_runs_the_tool_under_fallback(
