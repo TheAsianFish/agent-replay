@@ -54,10 +54,10 @@ make ci-demo      replay ci on the retail suite in every mode; each seeded regre
 make bench-sprt   simulate the sequential CI gate over true pass rates (offline; core skipped until written)
 make flake-demo   replay flake offline: the fake model passes; a seeded flaky model must exit 1
 make eval-judge-smoke  judge vs deterministic checks on 24 retail runs, from the committed verdict cache
-make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in six replay
-                       configurations; detection per check type and mode; again with the suite's
+make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in seven replay
+                       configurations (the seventh, model-live+synth, since M17); detection per check type and mode; again with the suite's
                        identify keys plus 2 identity mutations; 5 correct-but-different paths in
-                       model-live under strict and fallback (offline, byte-stable JSON)
+                       model-live under strict, fallback and synth (offline, byte-stable JSON)
 make golden       rebuild eval/golden/retail from the live recordings and mutants (offline; 21 items from 24 runs)
 make record-golden  D1: 120 model-live retail runs (Opus and Haiku) into eval/golden/retail-d1
                   (needs ANTHROPIC_API_KEY; ~$2.19 estimated)
@@ -81,6 +81,8 @@ make eval-pydantic-ai-swap  M15: the same with the live side changed (qwen2.5:3b
 make record-pydantic-ai-chain  M16: the rebooking chain's qwen2.5:7b recording attempts (5, logged)
 make eval-pydantic-ai-long  M16: the rebooking chain (9 sequential tool calls) under strict and fallback,
                   20 runs each, survival curve and clustering into eval/results/m16_long_qwen.json
+make eval-pydantic-ai-no-guard  M17: qwen2.5:7b without the prompt's guard line under fallback and synth,
+                  20 runs per scenario each, causes and answer figures into eval/results/m17_no_guard_qwen.json
 make demo-data    real replay ci / replay flake runs of the retail example into .replay/demo.db
 make openapi      regenerate dashboard/openapi.json (then `npm run gen:types` in dashboard/)
 make ui           npm ci + build the dashboard into agent_replay/server/static
