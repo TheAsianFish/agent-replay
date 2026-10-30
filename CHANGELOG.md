@@ -78,6 +78,18 @@ every older version.
   the identify keys' firings; `make record-pydantic-ai-chain` logs its live recording
   attempts.
 
+- A seventh retail task, hand-written and not from τ-bench
+  (`account_not_found_wrong_zip`, `examples/retail_agent/replay-error.toml`): a wrong zip
+  code, so the user lookup fails with `is_error: true` and the right reply is that the
+  account was not found, with nothing written; the rule `reports_account_not_found`; a
+  fake-model cassette and a qwen2.5:7b one. The mutation study replays it unmutated and
+  under every agent mutation in all seven configurations (`error_task`).
+- `examples/retail_agent/ollama.py`: the retail agent on a local model through Ollama.
+- `make record-retail-error-qwen` and `make eval-retail-error-qwen`
+  (`eval/retail_error.py`, a `retail_error` input of the manual Ollama workflow): the
+  task recorded on qwen2.5:7b, a probe of what Ollama does with `is_error`, and
+  `model-live` arms with the unmutated agent and with `drops_error_flag`.
+
 ### Changed
 
 - `make record-pydantic-ai` re-records only M9's three tasks; the rebooking chain

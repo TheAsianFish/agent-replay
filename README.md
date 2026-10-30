@@ -139,13 +139,14 @@ the rows still to measure.
 | Model and prompt swaps against the qwen2.5:7b cassettes | qwen2.5:3b 0 / 20 and 0 / 20 under `strict` and `fallback` alike (32 `strict` runs stopped by identity keys, every one on the model's wrong argument); the prompt without its guard line 2 / 20 and 2 / 20 (amounts guessed in parallel tool calls) against a same-day control's 18 / 20 and 10 / 20; `temperature=0` 10 identical passes of a booking that passes 17 / 40 sampled; 0 approximate steps in 170 runs | `make eval-pydantic-ai-swap` (RESULTS.md, M15) |
 | Frozen-world divergence on a long chain | qwen2.5:7b on an 8-link rebooking chain, 20 runs under `strict` and `fallback`: 320 of 320 chain lookups served exact, 1 world step in 321 served calls (0.31%, against 2.1% on the short runs), so 40 of 40 runs survived the 8 lookups where independence predicts 0.844 each; 0 / 20 passed in both arms, 39 of 40 answering a euro total without calling the conversion tool | `make eval-pydantic-ai-long` (RESULTS.md, M16) |
 | `synth`, the third unrecorded-call policy | offline (7th mutation-study configuration): 12 / 12 model mutations as `fallback`, 0 / 5 false alarms, but a correct agent that re-reads an order fails the ground truth in 4 of 6 scenarios, as under `strict` (`fallback` 0); live (qwen2.5:7b without the guard line, 20 runs per arm): `synth` 0 / 20 and 2 / 20, `fallback` 2 / 20 and 3 / 20, M15's `strict` 2 / 20 and 2 / 20, so the guessed amounts, not the recording, failed the runs; 11 of 20 `synth` answers stated the stub's 0.00 EUR; 0 passes with a stubbed step | `make eval-mutations`; `make eval-pydantic-ai-no-guard` (RESULTS.md, M17) |
+| A tool that legitimately fails (lost `is_error`) | `drops_error_flag`, which survived every configuration on the six τ-bench tasks, is caught in 4 of 7 on a hand-written wrong-zip task: wherever the model runs (`model-live` under `strict`, `fallback`, `synth`) and with `fail_on_approximate`; it survives `full`, `tools-live` and `tools-live` with `fail_on_tool_drift`, where the model's reply is served; live, qwen2.5:7b through Ollama said "not found" with no write in 8 / 10 unmutated runs and 9 / 10 mutant runs, because Ollama's `/v1/messages` drops `is_error` before the prompt (84 / 84 tokens with and without it) | `make eval-mutations`; `make eval-retail-error-qwen` (RESULTS.md, M18) |
 | Runs a fixed-threshold verdict needs | 5 runs agree with the all-runs verdict in ≥ 95% of draws on all 15 committed scenarios, but not on 3 of the 4 new ones (90–94%), which sit 0.15–0.35 from the 0.75 threshold | `make eval-verdict-curve` |
 | Cassette bytes at scale | quadratic in turns: 3.65 MB at 100 turns, 13.1 MB at 200 (seeded text, retail-sized prompt); live Opus retail traces grow 2.4 to 4.4× faster per turn; `full` replay 1.7 s at 200 turns | `make bench-scale` |
 | What compression recovers at 100 turns | xz 105×; gzip 3.8× (19× at 20 turns, until envelopes outgrow its 32 KB window); a shared-prefix encoding adds only 1.07× under xz, so cassettes compress as `.jsonl.xz` and the schema is unchanged | `make bench-scale` |
 | Run store at scale | a stored run costs what its uncompressed cassette does: 282 KB at 20 turns, 3.8 MB at 100 (not changed yet) | `make bench-scale` |
 | A recording killed with SIGKILL | the k envelopes before the kill replay in `full` (all `exact`) and diff against a finished run, for `.jsonl` and `.jsonl.xz`; appending costs at most 44 µs per envelope, 0.0025% of the 1.8 s median live model call | `tests/test_partial_cassettes.py`, `make bench-replay` |
 | Cassette load, 100 → 400 turns | 1.22× to 1.33× linear in bytes over two runs with the collector paused during the parse, 1.84× to 2.11× with it on (full collections, more than parsing, made M13's load superlinear); about 12× the cassette's bytes in memory | `make bench-scale` |
-| **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
+| **To measure** (key or labels needed) | judge-human kappa (~$1.30), D1 golden set (~$2.19), real judge on LLMBar (~$12.73), the M18 error task on Claude (~$0.10), SPRT runs saved (needs `stats.py`) | RESULTS.md, "To measure" |
 
 ## Install
 
@@ -1310,14 +1311,16 @@ Next (evolution round 3, 2026-10-28; evidence and hypotheses in
     for the model's guesses; `fallback` 2 / 20 confirmed M15's attribution;
     see [RESULTS.md](RESULTS.md))
 
-Next (evolution round 4, 2026-10-29; evidence and hypotheses in
-[PLAN.md](PLAN.md), "Evolution round 4"):
+18. ~~A retail task where a tool legitimately fails~~ (done: a hand-written
+    wrong-zip task. `drops_error_flag`, the one mutation that had survived
+    every configuration since v1, is caught in 4 of 7 once a recording holds
+    a failed tool, and survives where the model's reply is served. On
+    qwen2.5:7b through Ollama it is no regression at all (9 / 10 against
+    8 / 10), because Ollama's `/v1/messages` drops `is_error` before the
+    prompt is built; see [RESULTS.md](RESULTS.md))
 
-18. A retail task where a tool legitimately fails (a wrong zip code), so the
-    one mutation that has survived every configuration since v1,
-    `drops_error_flag`, has a recorded error to act on; which replay modes
-    can see a lost error flag at all, and whether qwen2.5:7b, which can read
-    the error text, notices the flag is gone
+Next: the same task recorded on `claude-opus-5-5`, where the flag reaches the
+model (RESULTS.md, "To measure", about $0.10).
 
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and running a flake suite's scenarios in parallel as well

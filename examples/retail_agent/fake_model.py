@@ -24,7 +24,13 @@ from examples.retail_agent.tasks import task_for
 from examples.retail_agent.tools import TERMINAL_TOOLS, WRITE_TOOLS
 
 Intent = Literal[
-    "return_else_cancel", "change_address2", "return", "exchange", "latest_total", "swap_refunds"
+    "return_else_cancel",
+    "change_address2",
+    "return",
+    "exchange",
+    "latest_total",
+    "swap_refunds",
+    "cancel",
 ]
 Record = dict[str, Any]
 
@@ -64,6 +70,10 @@ PLANS: dict[str, Plan] = {
     ),
     "lookup_latest_order_total": Plan("latest_total", "Noah", "Ito", "98187"),
     "transfer_swapped_refunds": Plan("swap_refunds", email="mia.garcia2723@example.com"),
+    # Hand-written (M18): the zip is wrong, so the lookup fails and the plan stops there.
+    "account_not_found_wrong_zip": Plan(
+        "cancel", "Noah", "Ito", "98178", order_id="#W6729841", reason="no longer needed"
+    ),
 }
 
 
@@ -255,6 +265,21 @@ def exchange(state: State) -> Reply:
     )
 
 
+def cancel(state: State) -> Reply:
+    order = state.orders[state.plan.order_id]
+    if order["status"] != "pending":
+        return Reply(text=f"Order {order['order_id']} is {order['status']}, so I can't cancel it.")
+    return Reply(
+        text=f"Order {order['order_id']} is pending, so I'll cancel it.",
+        tool_calls=[
+            ToolCall(
+                "cancel_pending_order",
+                {"order_id": order["order_id"], "reason": state.plan.reason},
+            )
+        ],
+    )
+
+
 def latest_total(state: State) -> Reply:
     order = state.orders[state.user["orders"][-1]]
     paid = sum(p["amount"] for p in order["payment_history"] if p["transaction_type"] == "payment")
@@ -291,6 +316,7 @@ HANDLERS: dict[Intent, Callable[[State], Reply]] = {
     "exchange": exchange,
     "latest_total": latest_total,
     "swap_refunds": swap_refunds,
+    "cancel": cancel,
 }
 
 

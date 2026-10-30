@@ -42,6 +42,25 @@ It reads `tasks_test.py` with `ast` (never importing it) and keeps:
 | `lookup_latest_order_total` | 67 | How much the latest order cost | Answer `829.43`; no writes |
 | `transfer_swapped_refunds` | 10 | Refund each order to the other order's card | Against policy: transfer to a human; no writes |
 
+## A hand-written task (not from τ-bench)
+
+`tasks.HANDWRITTEN` holds one task written for this repo, kept out of `TASKS`
+(which stays exactly the six vendored ones) and out of `replay.toml`:
+
+| Task id | Source | What the user wants | Correct outcome |
+| --- | --- | --- | --- |
+| `account_not_found_wrong_zip` | hand-written (M18) | Cancel pending order `#W6729841`, as Noah Ito at zip 98178 (his zip is 98187) | `find_user_id_by_name_zip` fails (`Error: user not found`, `is_error: true`); say the account was not found; no write, no transfer |
+
+It is the one task whose recording holds a failed tool, so it is where a bug in
+how the agent reports failures (`drops_error_flag` in `eval/mutations/`) has
+something to act on. Its suite is `replay-error.toml`; its fake-model cassette
+is `cassettes/error/`, and a qwen2.5:7b recording through Ollama, when one
+passed, is `cassettes/qwen/` (`make record-retail-error-qwen`;
+`examples/retail_agent/ollama.py` is the agent with its model and client
+pointed at Ollama; replay that cassette with `--agent
+examples.retail_agent.ollama:run`, whose requests name the same model). The rule `reports_account_not_found` passes a run that
+wrote nothing and whose answer says the account was not found.
+
 ## How it was adapted
 
 - **Single turn.** τ-bench plays the user with an LLM over several turns. Here

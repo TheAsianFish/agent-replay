@@ -20,7 +20,8 @@ agent_replay/migrations/  Alembic revisions for the run store (applied on open)
 agent_replay/server/ FastAPI app over the store (`replay serve`); the dashboard
                      build lands in agent_replay/server/static (untracked)
 dashboard/           React 19 + TypeScript strict (Vite, TanStack Query, Tailwind)
-examples/            retail_agent (τ-bench retail subset, MIT, attributed), a toy agent, and
+examples/            retail_agent (τ-bench retail subset, MIT, attributed, plus one hand-written
+                     error task), a toy agent, and
                      pydantic_ai_agent (a pydantic-ai travel desk; fake and qwen2.5:7b cassettes)
 eval/                datasets, mutation suite, SPRT simulation, eval scripts
 tests/               offline, deterministic; no network ever
@@ -57,7 +58,8 @@ make eval-judge-smoke  judge vs deterministic checks on 24 retail runs, from the
 make eval-mutations    the mutation study: 32 retail mutations + 5 benign refactors in seven replay
                        configurations (the seventh, model-live+synth, since M17); detection per check type and mode; again with the suite's
                        identify keys plus 2 identity mutations; 5 correct-but-different paths in
-                       model-live under strict, fallback and synth (offline, byte-stable JSON)
+                       model-live under strict, fallback and synth; the hand-written error task
+                       (M18) unmutated and under every agent mutation (offline, byte-stable JSON)
 make golden       rebuild eval/golden/retail from the live recordings and mutants (offline; 21 items from 24 runs)
 make record-golden  D1: 120 model-live retail runs (Opus and Haiku) into eval/golden/retail-d1
                   (needs ANTHROPIC_API_KEY; ~$2.19 estimated)
@@ -83,6 +85,10 @@ make eval-pydantic-ai-long  M16: the rebooking chain (9 sequential tool calls) u
                   20 runs each, survival curve and clustering into eval/results/m16_long_qwen.json
 make eval-pydantic-ai-no-guard  M17: qwen2.5:7b without the prompt's guard line under fallback and synth,
                   20 runs per scenario each, causes and answer figures into eval/results/m17_no_guard_qwen.json
+make record-retail-error-qwen  M18: the retail error task recorded on qwen2.5:7b (up to 3 attempts,
+                  each model call's input tokens logged to eval/results/m18_qwen_recording.json)
+make eval-retail-error-qwen  M18: an is_error probe of Ollama, then the error task in model-live under
+                  fallback, 10 runs unmutated and 10 with drops_error_flag, into eval/results/m18_error_qwen.json
 make demo-data    real replay ci / replay flake runs of the retail example into .replay/demo.db
 make openapi      regenerate dashboard/openapi.json (then `npm run gen:types` in dashboard/)
 make ui           npm ci + build the dashboard into agent_replay/server/static
@@ -123,7 +129,7 @@ that change the retail agent (`make regression-pr` opens one built to fail), and
 [act](https://github.com/nektos/act): `act pull_request -j action -W .github/workflows/ci.yml
 -P ubuntu-latest=catthehacker/ubuntu:act-latest --artifact-server-path /tmp/act-artifacts`
 (`-j replay -W .github/workflows/replay.yml` runs the real, failing job on a seeded suite).
-The local-model runs (`make record-pydantic-ai`, `make eval-pydantic-ai`) need `ollama serve`
+The local-model runs (`make record-pydantic-ai`, `make eval-pydantic-ai`, `make eval-retail-error-qwen`) need `ollama serve`
 and `ollama pull qwen2.5:7b` (`make eval-pydantic-ai-swap` also `qwen2.5:3b`); on GitHub they run only from the manual `ollama.yml` workflow.
 Release steps are in RELEASE.md; never publish by hand.
 

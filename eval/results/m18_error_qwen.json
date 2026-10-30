@@ -1,0 +1,1103 @@
+{
+  "arms": {
+    "drops_error_flag": {
+      "agent": "eval.mutations.agents:drops_error_flag_ollama",
+      "label": "drops_error_flag",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 1,
+            "passed": 9,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "flaky",
+          "decision": "fail",
+          "distinct_outputs": 9,
+          "distinct_tool_paths": 2,
+          "failures": {
+            "rule:reports_account_not_found": 1
+          },
+          "max_prompt_tokens_bound": 3024,
+          "name": "account_not_found_wrong_zip",
+          "not_found_no_write": 9,
+          "outcomes": [
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the provided email or name and zip code combination. Could you please double-check your information and try again? If you're sure about your details, please provide them once more.",
+              "output_tokens": [
+                44,
+                28,
+                43
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/0",
+              "seconds": 27.9,
+              "seed": 1575159824,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the provided email or name and zip code. Could you please provide the user ID or check if the details are correct?",
+              "output_tokens": [
+                44,
+                28,
+                32
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/1",
+              "seconds": 25.7,
+              "seed": 719599750,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find your user ID, Noah. Could you please provide your email address again for me to look up your information?",
+              "output_tokens": [
+                44,
+                28,
+                27
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/2",
+              "seconds": 24.7,
+              "seed": 3018680636,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the provided email or name and zip code combination. Could you please provide the user ID or check the details and try again?",
+              "output_tokens": [
+                44,
+                28,
+                33
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/3",
+              "seconds": 25.9,
+              "seed": 3303692714,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [
+                "rule:reports_account_not_found"
+              ],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                43
+              ],
+              "not_found_no_write": false,
+              "not_found_reason": "the answer does not say the account was not found",
+              "output": "It seems there was an issue locating your user ID. Could you please provide your email address so I can verify your identity and proceed with the cancellation of your order?",
+              "output_tokens": [
+                44,
+                34
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 2963,
+              "run_id": "account_not_found_wrong_zip/4",
+              "seconds": 18.3,
+              "seed": 1519307785,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [],
+              "identity": false,
+              "index": 5,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find the user associated with the email noah.ito@example.com or the name and zip code you provided. Could you please check and provide the correct information? If you have any other details, feel free to share.",
+              "output_tokens": [
+                44,
+                28,
+                48
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/5",
+              "seconds": 28.8,
+              "seed": 764017823,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [],
+              "identity": false,
+              "index": 6,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the provided information. Could you please check if the email or name and zip code are correct? If you're sure about the details, please provide them again.",
+              "output_tokens": [
+                44,
+                28,
+                40
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/6",
+              "seconds": 27.4,
+              "seed": 3028331813,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [],
+              "identity": false,
+              "index": 7,
+              "input_tokens": [
+                1,
+                43
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the name Noah Ito and zip code 98178. Could you please provide the email address associated with the account or the user ID?",
+              "output_tokens": [
+                44,
+                39
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 2963,
+              "run_id": "account_not_found_wrong_zip/7",
+              "seconds": 19.1,
+              "seed": 3280444851,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [],
+              "identity": false,
+              "index": 8,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the provided email or name and zip code. Could you please provide more details or check the information again?",
+              "output_tokens": [
+                44,
+                28,
+                29
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/8",
+              "seconds": 25.2,
+              "seed": 1396211746,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 0,
+              "failed_checks": [],
+              "identity": false,
+              "index": 9,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the provided email or name and zip code. Could you please provide the user ID or check if the details are correct?",
+              "output_tokens": [
+                44,
+                28,
+                32
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/9",
+              "seconds": 25.7,
+              "seed": 608153780,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            }
+          ],
+          "passes": 9,
+          "passes_with_an_approximate_step": 0,
+          "run_seconds_total": 248.7,
+          "runs": 10,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 0,
+          "runs_with_an_error_flag_sent": 0,
+          "runs_without_a_bound": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 248.8
+    },
+    "unmutated": {
+      "agent": "examples.retail_agent.ollama:run",
+      "label": "unmutated",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 2,
+            "passed": 8,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "flaky",
+          "decision": "fail",
+          "distinct_outputs": 10,
+          "distinct_tool_paths": 2,
+          "failures": {
+            "rule:reports_account_not_found": 2
+          },
+          "max_prompt_tokens_bound": 3024,
+          "name": "account_not_found_wrong_zip",
+          "not_found_no_write": 8,
+          "outcomes": [
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 1,
+              "failed_checks": [],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                43
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find your user ID with the provided name and zip code. Could you please provide your email address so I can verify your identity and proceed with the cancellation?",
+              "output_tokens": [
+                44,
+                35
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 2963,
+              "run_id": "account_not_found_wrong_zip/0",
+              "seconds": 18.4,
+              "seed": 1575159824,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "error_flags_sent": 1,
+              "failed_checks": [
+                "rule:reports_account_not_found"
+              ],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                43
+              ],
+              "not_found_no_write": false,
+              "not_found_reason": "the answer does not say the account was not found",
+              "output": "It seems like there was an issue finding your user ID, Noah. Could you please provide your email address so I can locate your information?",
+              "output_tokens": [
+                44,
+                29
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 2963,
+              "run_id": "account_not_found_wrong_zip/1",
+              "seconds": 17.5,
+              "seed": 719599750,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 2,
+              "failed_checks": [],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find an account associated with the provided email and name. Could you please check if the details are correct or provide the email address?",
+              "output_tokens": [
+                44,
+                28,
+                30
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/2",
+              "seconds": 25.4,
+              "seed": 3018680636,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "error_flags_sent": 1,
+              "failed_checks": [
+                "rule:reports_account_not_found"
+              ],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                43
+              ],
+              "not_found_no_write": false,
+              "not_found_reason": "the answer does not say the account was not found",
+              "output": "Could you please provide me with your email address so I can locate your user ID?",
+              "output_tokens": [
+                44,
+                18
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 2963,
+              "run_id": "account_not_found_wrong_zip/3",
+              "seconds": 15.2,
+              "seed": 3303692714,
+              "steps": {
+                "exact": 1,
+                "live": 2
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 2,
+              "failed_checks": [],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the email noah.ito@example.com or the name and zip code you provided. Could you please check and provide the correct email or more details?",
+              "output_tokens": [
+                44,
+                28,
+                38
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/4",
+              "seconds": 26.9,
+              "seed": 1519307785,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 2,
+              "failed_checks": [],
+              "identity": false,
+              "index": 5,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the email noah.ito@example.com or matching your name and zip code. Could you please provide your email or try again with the correct details?",
+              "output_tokens": [
+                44,
+                28,
+                38
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/5",
+              "seconds": 27.0,
+              "seed": 764017823,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 2,
+              "failed_checks": [],
+              "identity": false,
+              "index": 6,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find a user with the provided details. Could you please double-check your email or provide more information?",
+              "output_tokens": [
+                44,
+                28,
+                24
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/6",
+              "seconds": 24.2,
+              "seed": 3028331813,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 2,
+              "failed_checks": [],
+              "identity": false,
+              "index": 7,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I'm unable to locate your user ID, Noah. Could you please provide your email address or try signing in again? If you're still unable to provide these details, I'll need to transfer you to a human agent for further assistance.",
+              "output_tokens": [
+                44,
+                28,
+                49
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/7",
+              "seconds": 29.1,
+              "seed": 3280444851,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 2,
+              "failed_checks": [],
+              "identity": false,
+              "index": 8,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find the user associated with the email noah.ito@example.com or the name and zip code provided. Could you please provide more details or check the information and try again?",
+              "output_tokens": [
+                44,
+                28,
+                39
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/8",
+              "seconds": 27.1,
+              "seed": 1396211746,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "error_flags_sent": 2,
+              "failed_checks": [],
+              "identity": false,
+              "index": 9,
+              "input_tokens": [
+                1,
+                43,
+                33
+              ],
+              "not_found_no_write": true,
+              "not_found_reason": "no writes, and the answer says the account was not found",
+              "output": "I couldn't find your user ID using the provided email or name and zip code. Could you please provide more details or try again?",
+              "output_tokens": [
+                44,
+                28,
+                28
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3024,
+              "run_id": "account_not_found_wrong_zip/9",
+              "seconds": 25.2,
+              "seed": 608153780,
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98178"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": null,
+                  "status": "exact"
+                },
+                {
+                  "input": {
+                    "email": "noah.ito@example.com"
+                  },
+                  "name": "find_user_id_by_email",
+                  "response": null,
+                  "status": "exact"
+                }
+              ]
+            }
+          ],
+          "passes": 8,
+          "passes_with_an_approximate_step": 0,
+          "run_seconds_total": 236.0,
+          "runs": 10,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 0,
+          "runs_with_an_error_flag_sent": 10,
+          "runs_without_a_bound": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 235.9
+    }
+  },
+  "cassette": "examples/retail_agent/cassettes/qwen/account_not_found_wrong_zip.jsonl",
+  "cassette_source": "qwen recording",
+  "client": "examples.retail_agent.ollama:make_client",
+  "command": "uv run python -m eval.retail_error --runs 10",
+  "context_window": 4096,
+  "environment": {
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "logical_cpus": 4,
+    "model": "qwen2.5:7b",
+    "ollama": "0.40.11",
+    "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.43"
+  },
+  "flag_probe": {
+    "control_changes_prompt": true,
+    "flag_changes_prompt": false,
+    "probes": [
+      {
+        "content": "Error: user not found",
+        "input_tokens": 84,
+        "is_error": false,
+        "nonce": "W"
+      },
+      {
+        "content": "Error: user not found",
+        "input_tokens": 84,
+        "is_error": true,
+        "nonce": "A"
+      },
+      {
+        "content": "Error: user not found",
+        "input_tokens": 84,
+        "is_error": false,
+        "nonce": "B"
+      },
+      {
+        "content": "Error: user not found (lookup failed)",
+        "input_tokens": 87,
+        "is_error": false,
+        "nonce": "C"
+      }
+    ],
+    "reading": "the flag never reaches the model"
+  },
+  "hypothesis": {
+    "difference": -1,
+    "not_found_no_write": {
+      "drops_error_flag": 9,
+      "unmutated": 8
+    },
+    "rule": "mutant >= 8/10 and within 2 of unmutated: near-equivalent; mutant < 6/10 and unmutated more than 2 above it: the flag matters; mutant < 6/10 otherwise: inconclusive; else partial",
+    "runs": {
+      "drops_error_flag": 10,
+      "unmutated": 10
+    },
+    "verdict": "near-equivalent: the mutant replies not found as the unmutated agent does"
+  },
+  "identify": "the suite's [defaults.identify] keys",
+  "instruction": "I'm Noah Ito, zip code 98178. Please cancel my pending order #W6729841 because I no longer need it. Yes, I confirm.",
+  "mode": "model-live",
+  "policy": "fallback",
+  "prompt_prefix_tokens": 2876,
+  "recording_attempts": 1,
+  "suite": "examples/retail_agent/replay-error.toml",
+  "task": "account_not_found_wrong_zip"
+}

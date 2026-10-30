@@ -5,7 +5,9 @@ name: Local model (Ollama)
 # scenario), or with `arms` the M12 strict and fallback arms (make eval-pydantic-ai-arms),
 # or with `swap` the M15 model, prompt and temperature arms (make eval-pydantic-ai-swap),
 # or with `long` the M16 rebooking chain under strict and fallback (make eval-pydantic-ai-long),
-# or with `no_guard` the M15 no-guard prompt under fallback and synth (make eval-pydantic-ai-no-guard).
+# or with `no_guard` the M15 no-guard prompt under fallback and synth (make eval-pydantic-ai-no-guard),
+# or with `retail_error` the M18 retail error task: record it, then its unmutated and
+# drops_error_flag arms (make record-retail-error-qwen eval-retail-error-qwen).
 # Free (an open model, no key) but slow: started by hand only, never on a
 # push or pull request. Results come back as an artifact to review and commit.
 on:
@@ -33,6 +35,10 @@ on:
         default: false
       no_guard:
         description: "Instead of the flake: M17, the no-guard prompt under fallback and synth (make eval-pydantic-ai-no-guard)"
+        type: boolean
+        default: false
+      retail_error:
+        description: "Instead of the flake: M18, record the retail error task, then its two arms (make record-retail-error-qwen eval-retail-error-qwen)"
         type: boolean
         default: false
 
@@ -72,20 +78,25 @@ jobs:
         if: ${{ inputs.record }}
         run: make record-pydantic-ai
       - name: replay ci in full, then replay flake in model-live
-        if: ${{ !inputs.arms && !inputs.swap && !inputs.long && !inputs.no_guard }}
+        if: ${{ !inputs.arms && !inputs.swap && !inputs.long && !inputs.no_guard && !inputs.retail_error }}
         run: uv run python -m eval.pydantic_ai --runs ${{ inputs.runs }}
       - name: replay ci in full, then the strict and fallback arms in model-live
-        if: ${{ inputs.arms && !inputs.long && !inputs.no_guard }}
+        if: ${{ inputs.arms && !inputs.long && !inputs.no_guard && !inputs.retail_error }}
         run: make eval-pydantic-ai-arms
       - name: replay ci in full, then the M15 swap arms in model-live
-        if: ${{ inputs.swap && !inputs.arms && !inputs.long && !inputs.no_guard }}
+        if: ${{ inputs.swap && !inputs.arms && !inputs.long && !inputs.no_guard && !inputs.retail_error }}
         run: make eval-pydantic-ai-swap
       - name: replay ci in full, then the M16 rebooking chain in model-live
-        if: ${{ inputs.long && !inputs.no_guard }}
+        if: ${{ inputs.long && !inputs.no_guard && !inputs.retail_error }}
         run: make eval-pydantic-ai-long
       - name: replay ci in full, then the M17 no-guard arms under fallback and synth
-        if: ${{ inputs.no_guard }}
+        if: ${{ inputs.no_guard && !inputs.retail_error }}
         run: make eval-pydantic-ai-no-guard
+      - name: M18, record the retail error task, then its two arms in model-live
+        if: ${{ inputs.retail_error }}
+        run: |
+          make record-retail-error-qwen || echo "no qwen attempt passed; the arms use the fake-model recording"
+          make eval-retail-error-qwen
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -96,5 +107,7 @@ jobs:
             eval/results/m15_*
             eval/results/m16_*
             eval/results/m17_*
+            eval/results/m18_*
             examples/pydantic_ai_agent/cassettes/qwen/
+            examples/retail_agent/cassettes/qwen/
             /tmp/ollama.log

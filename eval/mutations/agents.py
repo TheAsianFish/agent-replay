@@ -22,6 +22,7 @@ from examples.retail_agent.agent import (
     ToolTable,
     final_text,
 )
+from examples.retail_agent.ollama import OllamaRetailAgent
 from examples.retail_agent.tools import WRITE_TOOLS, reset_db
 
 
@@ -195,3 +196,10 @@ strips_policy = StripsPolicy().run
 truncates_history = TruncatesHistory().run
 guesses_user_id = GuessesUserId().run
 reads_wrong_order = ReadsWrongOrder().run
+
+
+class OllamaDropsErrorFlag(OllamaRetailAgent, DropsErrorFlag):
+    """:class:`DropsErrorFlag` on the local model (M18's live mutant arm)."""
+
+
+drops_error_flag_ollama = OllamaDropsErrorFlag().run

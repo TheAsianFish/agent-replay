@@ -1,0 +1,39 @@
+# M18: a task where a tool legitimately fails. Hand-written, not from τ-bench: the user
+# gives a wrong zip code, find_user_id_by_name_zip returns an error, and the correct reply
+# is that the account was not found, with nothing written.
+# `uv run replay ci examples/retail_agent/replay-error.toml` replays the fake-model
+# recording; `--cassette-dir examples/retail_agent/cassettes/qwen --agent
+# examples.retail_agent.ollama:run` the qwen2.5:7b one (with the agent that asks for
+# qwen2.5:7b, so its model requests match the recording's).
+# Kept out of replay.toml so the mutation study's six-scenario tables stay as they are.
+#
+# No tool_sequence check: which lookups a model tries before giving up (a guessed email,
+# a second spelling) is not the regression; writing, transferring or claiming success is.
+
+[defaults]
+agent = "examples.retail_agent.agent:run"
+mode = "full"
+policy = "strict"
+checks = [
+  { type = "rule", ref = "examples.retail_agent.rules:checked_before_writing" },
+  { type = "max_tool_calls", limit = 12 },
+  { type = "budget", max_model_calls = 8 },
+]
+
+# Only the lookup is recorded (the suite checks that every key names a recorded tool): a
+# lookup of another name or zip is unrecorded, and the policy decides.
+[defaults.identify]
+find_user_id_by_name_zip = ["first_name", "last_name", "zip"]
+
+[[scenario]]
+name = "account_not_found_wrong_zip"
+cassette = "cassettes/error/account_not_found_wrong_zip.jsonl"
+checks = [
+  # Ground truth: no consequential action (no write, no transfer).
+  { type = "rule", ref = "examples.retail_agent.rules:matches_ground_truth", args = { task = "account_not_found_wrong_zip" } },
+  { type = "rule", ref = "examples.retail_agent.rules:db_matches_ground_truth", args = { task = "account_not_found_wrong_zip" } },
+  # The answer says the account was not found, and nothing was written.
+  { type = "rule", ref = "examples.retail_agent.rules:reports_account_not_found" },
+  { type = "required_tools", tools = ["find_user_id_by_name_zip"] },
+  { type = "forbidden_tools", tools = ["cancel_pending_order", "modify_pending_order_address", "return_delivered_order_items", "exchange_delivered_order_items"] },
+]

@@ -71,6 +71,761 @@
     "synth": "model-live+synth answers an unrecorded tool call with a schema-minimal stub of the tool's return type (agent_replay.synth) instead of ending the run",
     "termination": "how a path-variant scenario ended: passed, unrecorded (an unrecorded call ended the run), run_error:<Type>, or checks (it finished and a check failed)"
   },
+  "error_task": {
+    "detected": {
+      "full": [
+        "returns_empty_answer"
+      ],
+      "model-live": [
+        "drops_error_flag",
+        "returns_empty_answer"
+      ],
+      "model-live+fallback": [
+        "drops_error_flag",
+        "returns_empty_answer"
+      ],
+      "model-live+synth": [
+        "drops_error_flag",
+        "returns_empty_answer"
+      ],
+      "tools-live": [
+        "returns_empty_answer"
+      ],
+      "tools-live+drift": [
+        "returns_empty_answer"
+      ],
+      "tools-live+strict": [
+        "drops_error_flag",
+        "returns_empty_answer",
+        "unregisters_product_tool",
+        "strips_policy"
+      ]
+    },
+    "mutations": [
+      {
+        "agent": "examples.retail_agent.mutants:skips_order_lookup",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "answers get_order_details with an error instead of running it",
+        "id": "skips_order_lookup",
+        "results": {
+          "full": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "examples.retail_agent.mutants:wrong_write_argument",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "changes one argument of every write before calling it",
+        "id": "wrong_write_argument",
+        "results": {
+          "full": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "examples.retail_agent.mutants:first_tool_only",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "runs only the first tool call of each turn",
+        "id": "first_tool_only",
+        "results": {
+          "full": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "eval.mutations.agents:drops_error_flag",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "reports failed tool calls without is_error",
+        "id": "drops_error_flag",
+        "results": {
+          "full": {
+            "approximate_steps": 1,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found",
+              "run_error:UnrecordedCallError"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found",
+              "run_error:JSONDecodeError"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found",
+              "run_error:KeyError"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          },
+          "tools-live": {
+            "approximate_steps": 1,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 1,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 1,
+            "caught_by": [
+              "no_approximate_steps"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "eval.mutations.agents:truncates_tool_results",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "cuts every tool result to 120 characters",
+        "id": "truncates_tool_results",
+        "results": {
+          "full": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "eval.mutations.agents:max_turns_too_low",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "gives up after three model turns",
+        "id": "max_turns_too_low",
+        "results": {
+          "full": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "eval.mutations.agents:returns_empty_answer",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "does the work but returns an empty final answer",
+        "id": "returns_empty_answer",
+        "results": {
+          "full": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          },
+          "tools-live": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          },
+          "tools-live+drift": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          },
+          "tools-live+strict": {
+            "approximate_steps": 0,
+            "caught_by": [
+              "rule:reports_account_not_found"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "eval.mutations.agents:repeats_write_calls",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "calls every write tool a second time after it succeeded",
+        "id": "repeats_write_calls",
+        "results": {
+          "full": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "eval.mutations.agents:mismatches_tool_use_ids",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "pairs parallel tool results with the wrong tool_use_id",
+        "id": "mismatches_tool_use_ids",
+        "results": {
+          "full": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "eval.mutations.agents:unregisters_product_tool",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "leaves get_product_details out of the tool table",
+        "id": "unregisters_product_tool",
+        "results": {
+          "full": {
+            "approximate_steps": 2,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 2,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 2,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 2,
+            "caught_by": [
+              "no_approximate_steps"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "eval.mutations.agents:strips_policy",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "sends the system prompt without the retail policy",
+        "id": "strips_policy",
+        "results": {
+          "full": {
+            "approximate_steps": 2,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 2,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 2,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 2,
+            "caught_by": [
+              "no_approximate_steps"
+            ],
+            "failed_scenarios": [
+              "account_not_found_wrong_zip"
+            ],
+            "passed": false
+          }
+        },
+        "target": "agent"
+      },
+      {
+        "agent": "eval.mutations.agents:truncates_history",
+        "client": "examples.retail_agent.fake_model:make_client",
+        "description": "sends only the last four messages to the model",
+        "id": "truncates_history",
+        "results": {
+          "full": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+fallback": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "model-live+synth": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+drift": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          },
+          "tools-live+strict": {
+            "approximate_steps": 0,
+            "caught_by": [],
+            "failed_scenarios": [],
+            "passed": true
+          }
+        },
+        "target": "agent"
+      }
+    ],
+    "scenarios": [
+      "account_not_found_wrong_zip"
+    ],
+    "suite": "examples/retail_agent/replay-error.toml",
+    "unmutated": {
+      "agent": "examples.retail_agent.agent:run",
+      "client": "examples.retail_agent.fake_model:make_client",
+      "description": "the retail agent as it is",
+      "id": "unmutated",
+      "results": {
+        "full": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+fallback": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "model-live+synth": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+drift": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        },
+        "tools-live+strict": {
+          "approximate_steps": 0,
+          "caught_by": [],
+          "failed_scenarios": [],
+          "passed": true
+        }
+      }
+    },
+    "unmutated_failed": []
+  },
   "identify": {
     "changed_by_keys": [],
     "identity_mutations": [

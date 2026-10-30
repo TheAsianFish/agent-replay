@@ -1,10 +1,15 @@
-"""Six τ-bench retail test tasks, adapted to a single turn.
+"""Six τ-bench retail test tasks, adapted to a single turn, and one hand-written task.
 
 tau-bench drives the agent with a simulated user over several turns; here the
 instruction states the user's identity and the whole request up front, and the
 user's confirmation of the write action is given in advance. The ground truth
 (``expected_actions``, ``expected_outputs``) comes unchanged from tau-bench's
 ``tasks_test.py`` via ``data/tasks.json`` (rebuilt by ``vendor.py``).
+
+:data:`HANDWRITTEN` holds a task that is *not* from τ-bench (M18): a wrong zip code,
+so the user lookup legitimately fails and the right reply is that the account was not
+found, with nothing written. :data:`TASKS` keeps exactly the six vendored tasks;
+:data:`ALL_TASKS` has all seven.
 """
 
 from __future__ import annotations
@@ -32,8 +37,8 @@ class Action:
 @dataclass(frozen=True)
 class Task:
     id: str
-    tau_bench_index: int
-    """Index into tau-bench's retail ``TASKS_TEST``."""
+    tau_bench_index: int | None
+    """Index into tau-bench's retail ``TASKS_TEST``; ``None`` for a hand-written task."""
     user_id: str
     instruction: str
     """The single-turn task text given to the agent."""
@@ -110,10 +115,32 @@ def _load() -> dict[str, Task]:
 
 TASKS: dict[str, Task] = _load()
 
+ACCOUNT_NOT_FOUND = "account_not_found_wrong_zip"
+
+HANDWRITTEN: dict[str, Task] = {
+    ACCOUNT_NOT_FOUND: Task(
+        id=ACCOUNT_NOT_FOUND,
+        tau_bench_index=None,
+        # Noah Ito exists, at zip 98187; the user transposes two digits.
+        user_id="noah_ito_3850",
+        instruction="I'm Noah Ito, zip code 98178. Please cancel my pending order #W6729841 "
+        "because I no longer need it. Yes, I confirm.",
+        source_instruction="",
+        # The policy authenticates the user before any action; the lookup fails, so the
+        # agent says it could not find the account and changes nothing.
+        expected_actions=(),
+        expected_outputs=(),
+    ),
+}
+"""Hand-written tasks, not from τ-bench: kept out of :data:`TASKS` so the six vendored
+tasks (and every table built over them) stay as they are."""
+
+ALL_TASKS: dict[str, Task] = {**TASKS, **HANDWRITTEN}
+
 
 def task_for(instruction: str) -> Task | None:
-    """The task whose instruction is exactly ``instruction``, if any."""
-    return next((t for t in TASKS.values() if t.instruction == instruction), None)
+    """The task (vendored or hand-written) whose instruction is exactly ``instruction``."""
+    return next((t for t in ALL_TASKS.values() if t.instruction == instruction), None)
 
 
 def expected_db_hash(task: Task) -> str:

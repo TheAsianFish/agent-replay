@@ -298,7 +298,8 @@ def test_committed_results_cover_the_catalogue_and_summarise_consistently():
     rows = len(MUTATIONS) + len(REFACTORS) + len(summary["check_types"])
     identity_rows = 2 * len(IDENTITY_MUTATIONS)
     path_rows = len(PATH_VARIANTS) * len(study.PATH_POLICIES) * 2
-    assert markdown.count("\n| `") == rows + identity_rows + path_rows
+    error_rows = 1 + sum(1 for m in MUTATIONS if m.target == "agent")  # unmutated + agent
+    assert markdown.count("\n| `") == rows + identity_rows + path_rows + error_rows
 
 
 def test_every_configured_check_type_has_a_row_even_without_catches():

@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import copy
 import functools
+import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from agent_replay.runner import RunResult
 from agent_replay.trajectory import StepStatus
-from examples.retail_agent.tasks import TASKS, Action, expected_db_hash
+from examples.retail_agent.tasks import ALL_TASKS, Action, expected_db_hash
 from examples.retail_agent.tools import DB, DB_LOCK, TERMINAL_TOOLS, WRITE_TOOLS, db_hash
 
 ToolCalls = Sequence[tuple[str, Mapping[str, Any]]]
@@ -94,11 +95,37 @@ def outputs_match(output: object, expected_outputs: Sequence[str]) -> Verdict:
 
 def matches_ground_truth(run: RunResult, task: str) -> Verdict:
     """τ-bench's ground truth for ``task``: its consequential actions, then its outputs."""
-    expected = TASKS[task]
+    expected = ALL_TASKS[task]
     verdict = write_actions_match(tool_calls(run), expected.expected_actions)
     if not verdict[0]:
         return verdict
     return outputs_match(run.output, expected.expected_outputs)
+
+
+NOT_FOUND = re.compile(
+    r"\b(?:could\s*n[o'\u2019]?t|can\s*not|can[\u2019']t|unable to|was\s*n[o'\u2019]?t able to|"
+    r"did\s*n[o'\u2019]?t|failed to)\s+(?:find|locate|verify|identify|match)\s+(?:\w+\s+){0,3}?"
+    r"(?:account|user|customer|record|identity|you)s?\b"
+    r"|\b(?:account|user|customer|record)s?\b[^.!?]{0,30}?"
+    r"\bnot (?:be )?(?:found|located|verified)\b"
+    r"|\bno (?:matching |such )?(?:account|user|customer|record)s?\b"
+    r"|\b(?:does|do)\s*n[o'\u2019]?t match (?:\w+\s+){0,2}?(?:account|user|customer|record)s?\b",
+    re.IGNORECASE,
+)
+"""An answer that says the account could not be found: "I couldn't find your account",
+"user not found", "no account matches". The failure must name the account, the user or
+their identity, so "I couldn't find a laptop in your orders" or "the payment did not
+match" (no write, but not this reply) is not read as one."""
+
+
+def reports_account_not_found(run: RunResult) -> Verdict:
+    """Nothing was written and the answer says the account was not found (M18's task)."""
+    writes = [name for name, _ in tool_calls(run) if name in WRITE_TOOLS]
+    if writes:
+        return False, f"wrote {writes} for a user who was never found"
+    if NOT_FOUND.search(str(run.output or "")) is None:
+        return False, "the answer does not say the account was not found"
+    return True, "no writes, and the answer says the account was not found"
 
 
 def checked_before_writing(run: RunResult) -> Verdict:
@@ -126,7 +153,7 @@ def _expected_db(task: str) -> tuple[str, dict[str, dict[str, Any]]]:
     with DB_LOCK:
         saved = copy.deepcopy(DB.snapshot())
         try:
-            digest = expected_db_hash(TASKS[task])
+            digest = expected_db_hash(ALL_TASKS[task])
             return digest, copy.deepcopy(DB.snapshot())
         finally:
             DB.users, DB.orders, DB.products = saved["users"], saved["orders"], saved["products"]
