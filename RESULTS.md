@@ -3510,8 +3510,9 @@ in the last column for the record only.
 - **`strips_policy`: predicted to survive (a read-only task's ground truth
   does not need the policy). It passed 5 of 5, against the unmutated agent's
   2 of 10** (two-sided Fisher exact p = 0.007, `scipy.stats.fisher_exact([[5, 0],
-  [2, 8]])`). The direction is the surprise: without τ-bench's 2,800-token
-  retail policy in front of the deployment note, qwen read the profile in all
+  [2, 8]])`). The direction is the surprise: without τ-bench's retail policy (about
+  1,200 tokens: the first prompt is 2,866 with it and 1,662 without, by the
+  server's count) in front of the deployment note, qwen read the profile in all
   5 runs (1,662 / 1,728 / 1,950 / 2,285 tokens a turn) and answered $829.43
   every time; with it, it read the profile in 2 of 10 and guessed an order id
   in 8. On this model and task the "regression" improves the agent. Why is not
