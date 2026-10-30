@@ -8,7 +8,8 @@
 	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough \
 	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline \
 	eval-pydantic-ai-arms eval-pydantic-ai-swap eval-pydantic-ai-long eval-pydantic-ai-no-guard record-pydantic-ai-chain eval-verdict-curve \
-	record-retail-error-qwen eval-retail-error-qwen bench-scale bench-scale-record bench-upstream
+	record-retail-error-qwen eval-retail-error-qwen record-retail-lookup-qwen eval-retail-mutations-qwen \
+	eval-retail-qwen-offline bench-scale bench-scale-record bench-upstream
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -107,7 +108,7 @@ bench-replay-record:
 # golden set's objective labels, the LLMBar heuristic floors, the token-rate check, the
 # verdict-stability curve over the committed flake reports. No key.
 eval: eval-mutations eval-judge-smoke eval-judge-objective eval-llmbar-heuristics token-rates \
-	eval-pydantic-ai-offline eval-verdict-curve
+	eval-pydantic-ai-offline eval-verdict-curve eval-retail-qwen-offline
 
 # Every offline benchmark: the sequential gate simulation, replay speed and cassette bytes
 # at scale. No key.
@@ -245,6 +246,30 @@ record-retail-error-qwen:
 # qwen2.5:7b (CPU only); never on pull requests (ollama.yml's `retail_error` input runs it).
 eval-retail-error-qwen:
 	uv run python -m eval.retail_error --runs 10
+
+# The retail tasks' qwen2.5:7b recordings replayed in full by their suites with the agent that
+# recorded them: each passes with 0 approximate steps (offline; part of `make eval`).
+eval-retail-qwen-offline:
+	uv run python -m eval.retail_error --offline
+
+# M19: lookup_latest_order_total recorded on qwen2.5:7b through Ollama, as M18's task is: up
+# to 3 attempts, the first that passes replay-qwen.toml's checks kept in
+# examples/retail_agent/cassettes/qwen/, every attempt logged (with each model call's input
+# tokens) to eval/results/m19_qwen_recording.json. Never on pull requests (ollama.yml's
+# `retail_mutations` input runs it).
+record-retail-lookup-qwen:
+	uv run python -m eval.retail_error --task lookup_latest_order_total --record
+
+# M19: a probe of whether a mismatched tool_use_id reaches the model, then the lookup task in
+# model-live under fallback on qwen2.5:7b: 10 runs of the unmutated agent and 5 of each of
+# the eight agent mutations that can act on a read-only task, into
+# eval/results/m19_retail_mutations_qwen.json. Start the server with
+# OLLAMA_CONTEXT_LENGTH=8192 and its log in $(OLLAMA_LOG) (every prompt's size is read from
+# it). About 1 to 2 hours on 4 CPU cores; never on pull requests.
+OLLAMA_LOG ?= /tmp/ollama.log
+eval-retail-mutations-qwen:
+	uv run python -m eval.retail_error --task lookup_latest_order_total \
+		--runs 10 --mutant-runs 5 --server-log $(OLLAMA_LOG)
 
 # M12: how often a subset of n runs gives the all-runs fixed-threshold verdict, for every
 # committed flake report (seeded draws without replacement; offline, byte-stable).

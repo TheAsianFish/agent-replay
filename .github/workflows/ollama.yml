@@ -7,7 +7,10 @@ name: Local model (Ollama)
 # or with `long` the M16 rebooking chain under strict and fallback (make eval-pydantic-ai-long),
 # or with `no_guard` the M15 no-guard prompt under fallback and synth (make eval-pydantic-ai-no-guard),
 # or with `retail_error` the M18 retail error task: record it, then its unmutated and
-# drops_error_flag arms (make record-retail-error-qwen eval-retail-error-qwen).
+# drops_error_flag arms (make record-retail-error-qwen eval-retail-error-qwen), or with
+# `retail_mutations` M19: the retail lookup task recorded, then the unmutated agent and the
+# eight agent mutations that can act on it (make record-retail-lookup-qwen
+# eval-retail-mutations-qwen), with the server started with OLLAMA_CONTEXT_LENGTH=8192.
 # Free (an open model, no key) but slow: started by hand only, never on a
 # push or pull request. Results come back as an artifact to review and commit.
 on:
@@ -41,6 +44,10 @@ on:
         description: "Instead of the flake: M18, record the retail error task, then its two arms (make record-retail-error-qwen eval-retail-error-qwen)"
         type: boolean
         default: false
+      retail_mutations:
+        description: "Instead of the flake: M19, record the retail lookup task, then the agent mutations on it (make record-retail-lookup-qwen eval-retail-mutations-qwen)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -70,6 +77,8 @@ jobs:
           curl -fsSL -o /tmp/ollama.tar.zst \
             "https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}/ollama-linux-amd64.tar.zst"
           mkdir -p /tmp/ollama && tar --use-compress-program=unzstd -xf /tmp/ollama.tar.zst -C /tmp/ollama
+          # M19 reads every prompt's size from this log; its window is 8192, not the default 4096.
+          if [ "${{ inputs.retail_mutations }}" = "true" ]; then export OLLAMA_CONTEXT_LENGTH=8192; fi
           OLLAMA_NUM_PARALLEL=1 nohup /tmp/ollama/bin/ollama serve > /tmp/ollama.log 2>&1 &
           for _ in $(seq 30); do curl -fs localhost:11434/api/version && break; sleep 1; done
           /tmp/ollama/bin/ollama pull "$MODEL"
@@ -78,25 +87,30 @@ jobs:
         if: ${{ inputs.record }}
         run: make record-pydantic-ai
       - name: replay ci in full, then replay flake in model-live
-        if: ${{ !inputs.arms && !inputs.swap && !inputs.long && !inputs.no_guard && !inputs.retail_error }}
+        if: ${{ !inputs.arms && !inputs.swap && !inputs.long && !inputs.no_guard && !inputs.retail_error && !inputs.retail_mutations }}
         run: uv run python -m eval.pydantic_ai --runs ${{ inputs.runs }}
       - name: replay ci in full, then the strict and fallback arms in model-live
-        if: ${{ inputs.arms && !inputs.long && !inputs.no_guard && !inputs.retail_error }}
+        if: ${{ inputs.arms && !inputs.long && !inputs.no_guard && !inputs.retail_error && !inputs.retail_mutations }}
         run: make eval-pydantic-ai-arms
       - name: replay ci in full, then the M15 swap arms in model-live
-        if: ${{ inputs.swap && !inputs.arms && !inputs.long && !inputs.no_guard && !inputs.retail_error }}
+        if: ${{ inputs.swap && !inputs.arms && !inputs.long && !inputs.no_guard && !inputs.retail_error && !inputs.retail_mutations }}
         run: make eval-pydantic-ai-swap
       - name: replay ci in full, then the M16 rebooking chain in model-live
-        if: ${{ inputs.long && !inputs.no_guard && !inputs.retail_error }}
+        if: ${{ inputs.long && !inputs.no_guard && !inputs.retail_error && !inputs.retail_mutations }}
         run: make eval-pydantic-ai-long
       - name: replay ci in full, then the M17 no-guard arms under fallback and synth
-        if: ${{ inputs.no_guard && !inputs.retail_error }}
+        if: ${{ inputs.no_guard && !inputs.retail_error && !inputs.retail_mutations }}
         run: make eval-pydantic-ai-no-guard
       - name: M18, record the retail error task, then its two arms in model-live
-        if: ${{ inputs.retail_error }}
+        if: ${{ inputs.retail_error && !inputs.retail_mutations }}
         run: |
           make record-retail-error-qwen || echo "no qwen attempt passed; the arms use the fake-model recording"
           make eval-retail-error-qwen
+      - name: M19, record the retail lookup task, then the agent mutations in model-live
+        if: ${{ inputs.retail_mutations }}
+        run: |
+          make record-retail-lookup-qwen || echo "no qwen attempt passed; the arms use the fake-model recording"
+          make eval-retail-mutations-qwen OLLAMA_LOG=/tmp/ollama.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -108,6 +122,7 @@ jobs:
             eval/results/m16_*
             eval/results/m17_*
             eval/results/m18_*
+            eval/results/m19_*
             examples/pydantic_ai_agent/cassettes/qwen/
             examples/retail_agent/cassettes/qwen/
             /tmp/ollama.log
