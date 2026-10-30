@@ -1,7 +1,7 @@
 # PLAN.md — Replay: record-and-replay regression testing for LLM agents
 
 Single source of truth for this project. Tick a milestone only when its
-definition of done is met and CI is green. Last updated: 2026-10-29 (evolution round 4).
+definition of done is met and CI is green. Last updated: 2026-10-30 (evolution round 5).
 
 ## Goal
 
@@ -1074,6 +1074,258 @@ one).
   Unchanged from rounds 1 to 3: nothing measured this round makes any of
   them the question.
 
+## Evolution round 5 (2026-10-30)
+
+M17 and M18 are merged and the eighteen planned milestones are done. This is
+the fifth and last planning round, and adding nothing was the default. One
+thing cleared the bar: the project's second question, written on day one and
+deferred in round 1, can now be answered with free tools, and every outside
+reading of the results has named its absence as the biggest remaining
+weakness of the headline table.
+
+### Where the project stands (measured in this round)
+
+- `make check` after `make setup` (Python 3.12.16, uv 0.13.6; 4 vCPU AMD
+  EPYC 7763): ruff and mypy clean. The first `pytest` run: 1 failed, 1501
+  passed, 22 skipped, 58 xfailed in 139 s (the xfails are still
+  `agent_replay/stats.py`). The failure is
+  `tests/test_pydantic_ai_no_guard.py::test_a_pass_with_a_stubbed_step_is_reported_with_its_answer`:
+  the lucky-guess fake's `synth` arm printed `0/1 passed (1 synth)` where the
+  test expects one pass with a stubbed step. It passes 3 of 3 times alone,
+  19 of 19 in its file, 91 of 91 across the six pydantic-ai test files, and a
+  second full run passed 1502 in 127 s. The M18 build notes record one
+  `make check` failure that did not reproduce either, so the test is
+  order- or timing-dependent, about one full run in three here. The raw
+  report the harness writes (`no_guard.json` under pytest's basetemp) holds
+  the failed run's `error` and is the place to look; the test should print
+  it on failure. **The gate is not green until this is fixed**, so it is the
+  first commit of the next PR.
+- `make eval` (2 min 26 s) and `make bench` (4 min 47 s) leave the tree
+  unchanged. `make bench-replay` on this machine: the six live recordings
+  replay in `full` at 294× (249× with checks) and the append costs at most
+  85 µs per envelope (0.0048% of the 1775 ms median model call), inside the
+  ranges RESULTS.md reports. `make bench-scale`: a 400-turn cassette loads in
+  0.47 s with the collector paused against 0.66 s with it on, and replays in
+  6.5 s (5.6 s frozen).
+- **The mutation study's one open question is still the model.** Every
+  number in the headline table (RESULTS.md M4, M10, M11, M17, M18) comes from
+  the scripted fake model. Its own per-mutation matrix says three of the ten
+  agent-mutation catches in `model-live` are the fake crashing on a
+  conversation it cannot parse (`truncates_tool_results` and
+  `unregisters_product_tool` by `run_error:JSONDecodeError`,
+  `mismatches_tool_use_ids` by `run_error:KeyError`), and `strips_policy`
+  survives every configuration except `tools-live+strict`'s byte comparison
+  because the fake never reads the prompt. M18 then showed a fake-model
+  catch (`drops_error_flag`, 4 of 7 configurations) to be no regression at
+  all on qwen2.5:7b. Project question 2, the mutation study on a real open
+  model in `model-live`, was deferred in round 1 for three reasons. Two still
+  hold and bound the scope: the 12 model mutations wrap the fake's policy and
+  the 8 tool bugs cannot act in `model-live`, so only the 12 agent mutations
+  apply. The third, no real-model baseline to read a detection against, is
+  gone: M12 to M18 built the unmutated-arm-beside-mutant pattern with a
+  cause per run and a prompt bound (`eval/retail_error.py`), and
+  `examples/retail_agent/ollama.py` runs the retail agent unchanged on
+  qwen2.5:7b (M18's recording passed on its first attempt; 15 to 29 s per
+  three-call run with the 2,876-token policy cached). `OllamaDropsErrorFlag`
+  in `eval/mutations/agents.py` is the two-line mixin that turns any agent
+  mutation into an Ollama arm. Two things stand in the way and are cheap:
+  `_CopiedLoop.run` (the base of `strips_policy` and `truncates_history`)
+  hard-codes `model=MODEL`, so those two cannot run on Ollama until the loop
+  takes the model from the agent; and Ollama's converted `role: tool`
+  message carries a `tool_call_id` that qwen2.5's chat template never
+  renders, so `mismatches_tool_use_ids` is predicted invisible on this stack
+  exactly as `is_error` was, which M18's three-call probe settles before any
+  run is spent.
+- **Which task.** The round-1 pilot (PLAN.md, round 1) is the only evidence:
+  qwen2.5:7b answered `lookup_latest_order_total` correctly ($829.43) after
+  fetching one order where Opus fetched three, and failed only the exact
+  sequence; its suite entry already has no `tool_sequence` check (ground
+  truth, forbidden tools and the `$829.43` pattern). Of the 12 agent
+  mutations, eight can act on a read-only task; `wrong_write_argument`,
+  `repeats_write_calls`, `unregisters_product_tool` and `drops_error_flag`
+  have nothing to act on there. One task is what the 180-minute cap holds
+  (below); a second is not promised.
+- **The context window, read off the committed recordings.** The six live
+  Opus recordings' final prompts are 5,988 to 9,098 Claude tokens (input +
+  cache read + cache creation at the last call; the lookup task 6,158), and
+  qwen2.5 tokenises the retail policy at 2,876 tokens against Claude's 4,463
+  (0.64×). So a qwen run on Opus's path would send about 3,830 to 5,820
+  tokens, and two of the six tasks (the return at about 4,760 and the
+  exchange at about 5,820) exceed the 4,096-token slot Ollama 0.40.11 starts
+  qwen2.5:7b with (M18's server trace: `n_ctx_slot = 4096, n_keep = 4`). The
+  lookup task sits 155 tokens under it on Opus's three order reads, before
+  the model's own output, which shares the slot. A prompt over the slot is
+  shifted silently, and with `n_keep = 4` the policy is what goes. So the
+  arms run with the server started at `OLLAMA_CONTEXT_LENGTH=8192`, its log
+  kept, and every request's `n_tokens` read into the report as M18 did;
+  the largest prompt per run is then a number the report carries for free,
+  and the question "would the default window have cut it" is answered by
+  reading, not inferred.
+- **Parallel tool calls do not reorder on this machine.** Six of the seven
+  Opus recordings hold 2 to 4 `tool_use` blocks in one reply, the trajectory
+  orders tool steps by start, and `diff.py` on three `get_order_details`
+  steps against the same three rotated gives distance 2.0 (one added, one
+  removed row). But 2,000 trials each of `ThreadPoolExecutor` (4, 8 and 40
+  workers) and asyncio's default executor with three instant tasks started
+  0 out of order, the retail agent executes blocks sequentially, and no
+  committed pydantic-ai recording has a parallel reply. The variance source
+  is the model's own block order across runs, which no committed report
+  keeps.
+- **A replayed SDK error is not the SDK's error.** No committed cassette
+  holds a model-call error (0 of 27). `rebuild_exception`
+  (`agent_replay/errors.py`) makes a hybrid that passes
+  `isinstance(e, anthropic.RateLimitError)` and carries the class-level
+  `status_code`, but has no `.response`, `.body` or `.request_id`, so an
+  agent that reads `e.response.headers["retry-after"]` takes a different
+  path in replay than it did live. The SDK's own retries (a 529 then a 200)
+  sit inside one envelope whose latency includes the backoff, by
+  construction of wrapping `messages.create`. Both are settled by reading;
+  the first is a fidelity bug to fix when `errors.py` is next touched, with
+  an `httpx2.MockTransport` injected through `Anthropic(http_client=...)`
+  as the offline fixture (it does drive the real SDK's retry loop here,
+  unlike `respx`).
+- No Ollama, API key or GitHub credentials in this environment; the
+  local-model arms run locally or from `ollama.yml`, as M9 to M18 did.
+
+### What comes next, and why
+
+**M19: the agent mutations on a real model** (project question 2; the steer's
+"failure modes real teams hit"; the one caveat every reading of the headline
+table has carried). *Question:* on a model that reads the prompt and the tool
+results, which of the mutations the scripted model catches are regressions,
+and by which check? *Built, offline:* `examples/retail_agent/replay-qwen.toml`,
+the retail suite's ground-truth checks for a local model (no exact sequences;
+the M11 `identify` keys; cassettes in `cassettes/qwen/`); `eval/retail_error.py`
+generalised to a task and a list of agent mutations (`--task`, `--mutations`,
+the M18 arms unchanged as its default), with the Ollama seam in `_CopiedLoop`
+so every agent mutation can run on Ollama; the harness tested offline against
+the fake model (the fake plays qwen, byte-stable). *Live:* `make
+record-retail-lookup-qwen` (`lookup_latest_order_total` on qwen2.5:7b, up to 3
+attempts, logged with each attempt's input tokens as M18's) and `make
+eval-retail-mutations-qwen` (an `ollama.yml` input, never on pull requests):
+the server started with `OLLAMA_CONTEXT_LENGTH=8192` and its log kept, with
+the `n_ctx_slot` line and every request's `n_tokens` read into the report; a
+three-call id probe (the same tool result with its matching `tool_use_id`,
+a mismatched one and a three-word control, after a warm-up, as M18's flag
+probe); 10 `model-live` runs under `fallback` of the unmutated agent, then 5
+runs each of the eight agent mutations that can act on a read-only task:
+`skips_order_lookup`, `first_tool_only`, `truncates_tool_results`,
+`max_turns_too_low`, `returns_empty_answer`, `mismatches_tool_use_ids`,
+`strips_policy`, `truncates_history`; the other four named as unable to act.
+Every run is classified by cause as in M15 and by the checks that failed, with
+its tool calls, answer, seconds and largest prompt. *Detection rule, fixed
+before the run:* the arms resolve only if the unmutated agent passes at least
+8 of 10 (M18's trivial task managed 8); a mutation is *caught* at 1 of 5
+passes or fewer, *survives* at 4 of 5 or more, and is *unresolved* between.
+If the unmutated agent passes fewer than 8, the result is "not resolvable on
+qwen2.5:7b for this task", written as such, and that is an acceptable end.
+*Hypotheses, per mutation, with the mechanism:* caught by the answer rule or
+ground truth, not by a crash: `skips_order_lookup` (the order read answers
+"lookup skipped", so no total), `truncates_tool_results` (120 characters cut
+the order JSON before its total), `truncates_history` (the last four messages
+no longer hold the request), `max_turns_too_low` (the lookup needs four turns:
+`run_error:RuntimeError`, as on the fake) and `returns_empty_answer` (the
+control: caught by construction on any model). Survive: `first_tool_only`
+and `mismatches_tool_use_ids` because they cannot act (qwen reads one order
+per reply, and both only change a reply with two or more `tool_use` blocks;
+each run records its most blocks in one reply, so "survived" and "never
+acted" are told apart, and the probe's token counts with and without a
+mismatched id say whether the id would reach the model if they did), and
+`strips_policy` (a read-only task's ground truth does not depend on the
+policy, so a policy regression needs a task the policy decides).
+*The comparison column is the scripted model on this task, not the suite
+column.* The suite-wide `model-live` column catches 7 of these 8, but the
+scripted model's verdict on `lookup_latest_order_total` alone (its
+`failed_scenarios` in `eval/results/mutations.json`, re-checked with `replay
+ci examples/retail_agent/replay.toml --mode model-live --agent
+eval.mutations.agents:<mutation> --client
+examples.retail_agent.fake_model:make_client`) catches 5:
+`skips_order_lookup`, `truncates_tool_results` (by
+`run_error:JSONDecodeError`: the fake crashes parsing the cut result),
+`max_turns_too_low`, `returns_empty_answer` and `truncates_history`. It
+survives the same three predicted to survive on qwen. So the prediction is
+agreement on all eight verdicts, and the claim this milestone can make or
+lose is about the *mechanism*: on this task the scripted model has exactly one
+crash catch (`truncates_tool_results`), and on qwen it is predicted to
+become a ground-truth catch (the model reads a cut string instead of a parser
+failing), with every qwen catch by the answer rule, ground truth or
+`run_error:RuntimeError` and none by a parse crash. Any verdict that differs
+from the scripted model's on this task is the finding and is shown with its
+transcript; a caught `strips_policy` or a surviving `truncates_tool_results`
+would be the surprise. On the window: the largest
+prompt in the 50 runs is reported with the count of runs over 4,096 (expected
+0 if qwen reads one order, several if it reads three); either way the arms
+ran uncut. *Budget:* recording at most 3 attempts (one cold load of about
+135 s), the probe, 10 + 8 × 5 = 50 runs at 60 to 120 s: 60 to 110 minutes,
+inside the cap with margin; a second task does not fit one job and is not
+promised. *Measured as:* `make eval-retail-mutations-qwen`, raw report
+`eval/results/m19_retail_mutations_qwen.json`; RESULTS.md holds the real-model
+row beside the scripted model's `model-live` verdict on the same task for the
+same eight mutations, each hypothesis answered, the probe and the window numbers, wall
+time and CPU; the README results row for the mutation study gains the line;
+every earlier number unchanged.
+
+Before it, as the next PR's first commit: the flaky harness test above,
+fixed at its cause, with the test printing the run's error on failure.
+
+### Considered and not chosen this round
+
+- **A `max_input_tokens` check and a six-task window sweep** (two windows,
+  12 runs). Its own arithmetic refutes its headline before a run: two of six
+  tasks exceed 4,096 on Opus's path, not four, and qwen's paths are shorter.
+  On Ollama `usage.input_tokens` is net of the prompt cache (M18), so the
+  check would read a true number on Anthropic cassettes only. Folded into
+  M19 as the 8192 start, the kept log and the largest-prompt column; the
+  check is built if a prompt is ever found cut.
+- **The first real recording past 6 turns** (M16's chain without the EUR
+  conversion qwen failed 39 of 40 times). All five M16 attempts walked the
+  eight links with exact references, so the recording and a pass rate are
+  foregone and no hypothesis can fail; the frozen world is measured flat
+  twice. Inventory, not a question; a rider at the end of an Ollama job if
+  anyone wants the `bench-scale` row.
+- **Order-free `tool_sequence` within a turn, and a turn-aligned diff.**
+  The reorder never happens on this machine (above), the retail agent is
+  sequential, and `in_order` enforces the listed order too, so the offline
+  "flip rate" would be 0 and the diff's 2.0 on a rotation is construction.
+  A `Trajectory.turns()` helper with a unit test is a small change, not a
+  milestone.
+- **Messy traces through a mocked transport** (529 then 200, retries
+  exhausted, a timeout, a stream cut, a 400). Both hypotheses are settled
+  by reading (above), the cassette's `ErrorInfo` is `extra="forbid"` so new
+  fields are a v3 with a frozen v2 module, store and dashboard types, and
+  the only real event available free is an Ollama timeout, which is M14's
+  killed recording again. The `.response` fidelity gap is noted as a bug;
+  the transport fixture is ordinary coverage when `errors.py` changes.
+- **The local judge** (re-checked: about 2.5 minutes a verdict from the
+  committed qwen token rates, 21 verdicts and one position probe about
+  110 minutes, no self-consistency, intervals 20 points wide, kappa needing
+  `stats.py`). Still cut on what it would say, not on time alone.
+- **A second retail task in M19.** Two tasks are two jobs; the plan says
+  one and names the second as not promised rather than halving the runs.
+- **An `openai` adapter, parallel replay throughput, the run store by
+  reference, dashboard authentication and live updates.** Unchanged from
+  rounds 1 to 4.
+
+### Review of this round (2026-10-30)
+
+The evidence was re-run and holds: `make check` (1502 passed, 22 skipped, 58
+xfailed), the six live recordings' final prompts (5,988 to 9,098 tokens, the
+lookup task 6,158, most `tool_use` blocks in one reply 2 to 4), `_CopiedLoop`'s
+hard-coded `MODEL`, `OllamaDropsErrorFlag`, the lookup suite entry (no
+`tool_sequence`) and the 120-character cut falling before the order's
+`payment_history`. One claim did not hold as the hypothesis used it: "the
+scripted model's `model-live` column catches 7 of 8" counts all six tasks. On
+`lookup_latest_order_total` alone it catches 5, and the three predicted to
+survive on qwen are exactly the three the scripted model already survives
+there, so "at least 2 of the 8 it catches are not regressions for qwen" could
+not fail as written, and of "the two crash catches" only
+`truncates_tool_results` crashes on this task. M19's hypothesis and
+definition of done now compare against the on-task verdict, predict agreement
+on all eight, put the claim on the mechanism (the one crash catch becoming a
+check catch), and record each run's most `tool_use` blocks in one reply so
+that a mutation that never acted is not reported as a survival. M19 stays
+the round's one milestone.
+
 ## Milestones
 
 - [x] M1: Scaffolding, CI and a thin vertical slice — `uv` project with ruff, mypy `--strict`, pytest, Hypothesis; GitHub Actions running lint, type-check and tests; `Makefile` targets; cassette schema v1; Anthropic SDK wrapper and `@replay.tool`; `replay record` and `replay run --mode full` on a toy agent driven by a deterministic fake model; the `tool_sequence` check; MIT LICENSE; README quickstart that works. Done when a committed cassette replays offline, the check passes, a mutated toy agent fails it, and CI is green.
@@ -1723,3 +1975,4 @@ one).
     task's suite has no `tool_sequence` check, and its identify keys name only
     the lookup it records (the suite checks that every key names a recorded
     tool).
+- [ ] M19: The agent mutations on a real model — `examples/retail_agent/replay-qwen.toml` (the retail suite's ground-truth checks for a local model: no exact sequences, the M11 `identify` keys, cassettes in `cassettes/qwen/`); `eval/retail_error.py` generalised to `--task` and `--mutations` (the M18 arms as its default) with the Ollama seam in `_CopiedLoop` so every agent mutation runs on Ollama; `make record-retail-lookup-qwen` (`lookup_latest_order_total` on qwen2.5:7b, up to 3 attempts, logged with input tokens) and `make eval-retail-mutations-qwen` (an `ollama.yml` input, never on pull requests; the server started with `OLLAMA_CONTEXT_LENGTH=8192`, its log kept, the `n_ctx_slot` line and every request's `n_tokens` in the report): a three-call `tool_use_id` probe as M18's flag probe, 10 `model-live` runs under `fallback` of the unmutated agent, then 5 runs each of the eight agent mutations that can act on a read-only task (`skips_order_lookup`, `first_tool_only`, `truncates_tool_results`, `max_turns_too_low`, `returns_empty_answer`, `mismatches_tool_use_ids`, `strips_policy`, `truncates_history`; the other four named as unable to act), every run classified by cause and by the checks that failed, with its tool calls, its most `tool_use` blocks in one reply, answer, seconds and largest prompt; the harness tested offline against the fake model; the flaky `test_a_pass_with_a_stubbed_step_is_reported_with_its_answer` fixed at its cause first, printing the run's error on failure. Done when the raw report `eval/results/m19_retail_mutations_qwen.json` is committed, RESULTS.md holds the real-model row beside the scripted model's `model-live` verdict on `lookup_latest_order_total` alone (5 of the 8 caught, `truncates_tool_results` by a JSONDecodeError crash; not the suite-wide column's 7 of 8) for the same eight mutations under the rule fixed in PLAN.md (resolved only if the unmutated agent passes at least 8 of 10; caught at 1 of 5 or fewer, survives at 4 of 5 or more, unresolved between; fewer than 8 unmutated passes written as not resolvable on this model) with each per-mutation hypothesis answered (predicted caught by ground truth: `skips_order_lookup`, `truncates_tool_results`, `truncates_history`, `max_turns_too_low`, `returns_empty_answer`; predicted to survive: `first_tool_only` and `mismatches_tool_use_ids`, each reported as never acting if no run's reply held two `tool_use` blocks, with the probe's token counts, and `strips_policy`; agreement with the scripted model's on-task verdict stated per mutation, and whether `truncates_tool_results` is caught by a check rather than a crash), the probe and the largest-prompt column with the count of runs over 4,096, wall time and CPU, the qwen lookup recording (if one passed) replaying in `full` with 0 approximate steps in `make eval`, the README results row carrying the line, five consecutive full-suite runs green, and every earlier number unchanged.
