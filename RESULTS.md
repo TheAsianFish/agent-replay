@@ -3059,8 +3059,8 @@ wrote eval/results/m17_no_guard_qwen.json
 |---|---|---|---|---|---|---|
 | M15 `strict`: `cheapest_fare_in_euros` | 2 / 20 | 2 / 18 / 0 / — / 0 | 18 (all by identity) | fail | 14.9 / 15.5 / 86.6 | 1170 s |
 | M15 `strict`: `book_earliest_flight` | 2 / 20 | 2 / 5 / 0 / — / 13 | 5 (all by identity) | fail | 32.2 / 35.8 / 55.4 | |
-| M17 `fallback`: `cheapest_fare_in_euros` | 2 / 20 | 2 / 0 / 0 / 0 / 18 | 18 (a guessed conversion, run for real) | fail | 47.1 / 60.6 / 94.1 | 2069 s |
-| M17 `fallback`: `book_earliest_flight` | 3 / 20 | 3 / 0 / 0 / 0 / 17 | 3 (a wrong flight, booked for real) | fail | 34.3 / 39.5 / 60.0 | |
+| M17 `fallback`: `cheapest_fare_in_euros` | 2 / 20 | 2 / 0 / 0 / 0 / 18 | 18 (a guessed conversion, run for real) | fail | 47.1 / 60.5 / 94.1 | 2069 s |
+| M17 `fallback`: `book_earliest_flight` | 3 / 20 | 3 / 0 / 0 / 0 / 17 | 3 (a wrong flight, booked for real) | fail | 34.3 / 38.9 / 60.0 | |
 | M17 `synth`: `cheapest_fare_in_euros` | 0 / 20 | 0 / 0 / 0 / 20 / 0 | 20 (a guessed conversion, answered `0.0`) | fail | 45.1 / 47.5 / 50.6 | 1734 s |
 | M17 `synth`: `book_earliest_flight` | 2 / 20 | 2 / 0 / 0 / 1 / 17 | 1 (a wrong flight, answered with a blank booking) | fail | 33.7 / 35.6 / 56.4 | |
 

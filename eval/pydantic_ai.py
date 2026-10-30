@@ -622,7 +622,7 @@ LEVEL = 0.95
 
 def is_world(status: str) -> bool:
     """A tool step off the recorded path: served from another request's recording
-    (``approximate``) or not in the cassette (``unrecorded``, ``fallback``)."""
+    (``approximate``) or not in the cassette (``unrecorded``, ``fallback``, ``synth``)."""
     return status != "exact"
 
 
