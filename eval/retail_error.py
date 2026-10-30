@@ -501,12 +501,14 @@ more words."""
 ID_PROBES = (
     ("W", "call_1", "noah_ito_3850"),
     ("A", "call_1", "noah_ito_3850"),
-    ("B", "call_2", "noah_ito_3850"),
+    ("B", "toolu_01_mismatched_call_9", "noah_ito_3850"),
     ("C", "call_1", "noah_ito_3850 (one exact match)"),
 )
 """(nonce, the result's ``tool_use_id``, tool result text), the tool call's id always
-``call_1``: W warms the cache; A's id matches the call, B's does not (same length, so a
-template that printed ids would count the same); C is the control, A with three more
+``call_1``: W warms the cache; A's id matches the call, B's does not and is several
+tokens longer, so a template that printed the result's id would count B higher (M19's
+committed run used ``call_2``, the same length, which could only show that the
+mismatched result was neither dropped nor reshaped); C is the control, A with three more
 words in the result."""
 
 

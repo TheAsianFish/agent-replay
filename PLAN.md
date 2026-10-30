@@ -1988,9 +1988,10 @@ the round's one milestone.
     crash, including `truncates_tool_results` (the scripted model's one crash
     catch here), which acted in only 1 run; `first_tool_only` and
     `mismatches_tool_use_ids` never acted (no reply held two `tool_use`
-    blocks), yet the rule would have read their 1 / 5 as caught, and the id
-    probe (88 / 88 tokens, control 92) shows a mismatched id never reaches the
-    prompt on Ollama; `strips_policy` passed 5 / 5 against 2 / 10 (Fisher p =
+    blocks), yet the rule would have read their 1 / 5 as caught; the id probe
+    (88 / 88 tokens, control 92) shows a mismatched id's result reaches the
+    prompt at the same size, but its same-length id cannot show whether ids are
+    printed (the probe now sends a longer one); `strips_policy` passed 5 / 5 against 2 / 10 (Fisher p =
     0.007), reading the profile every time. Largest prompt 3,708 tokens (server
     count, `n_ctx_slot = 8192`), 0 of 50 runs over 4,096, 0 truncated; M18's
     prompt bound reached 4,890, so the server's count is the one to trust.

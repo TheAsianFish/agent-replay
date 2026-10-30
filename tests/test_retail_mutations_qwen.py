@@ -296,7 +296,9 @@ def test_the_id_probe_reads_equal_counts_as_an_id_that_never_arrives() -> None:
     assert probe["reading"] == "the id never reaches the model"
     assert (probe["id_changes_prompt"], probe["control_changes_prompt"]) == (False, True)
     ids = [r["messages"][-1]["content"][0]["tool_use_id"] for r in sent]
-    assert ids == ["call_1", "call_1", "call_2", "call_1"]
+    assert ids == ["call_1", "call_1", "toolu_01_mismatched_call_9", "call_1"]
+    # A template that printed the id would count the mismatched one differently.
+    assert len(ids[2]) > len(ids[1])
     assert {r["messages"][1]["content"][0]["id"] for r in sent} == {"call_1"}
     assert len({r["messages"][0]["content"] for r in sent}) == 4
 
