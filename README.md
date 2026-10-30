@@ -1319,8 +1319,20 @@ Next (evolution round 3, 2026-10-28; evidence and hypotheses in
     8 / 10), because Ollama's `/v1/messages` drops `is_error` before the
     prompt is built; see [RESULTS.md](RESULTS.md))
 
-Next: the same task recorded on `claude-opus-5-5`, where the flag reaches the
-model (RESULTS.md, "To measure", about $0.10).
+Next (evolution round 5, 2026-10-30; evidence and hypotheses in
+[PLAN.md](PLAN.md), "Evolution round 5"):
+
+19. The agent mutations on a real model: the eight agent mutations that can
+    act on a read-only task, on qwen2.5:7b through Ollama against the
+    `lookup_latest_order_total` task, 10 unmutated and 5 mutant `model-live`
+    runs each under a detection rule fixed before the run, with a
+    `tool_use_id` probe and the server's own prompt sizes, beside the scripted
+    model's column. Hypothesis: at least 2 of the 8 the scripted model catches
+    are not regressions for qwen on this task, and its two crash catches
+    become ground-truth catches or survivals.
+
+Also next: the M18 task recorded on `claude-opus-5-5`, where the flag reaches
+the model (RESULTS.md, "To measure", about $0.10).
 
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and running a flake suite's scenarios in parallel as well
