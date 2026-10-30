@@ -308,12 +308,13 @@ class ServerLog:
             return []
         with self.path.open("rb") as f:
             f.seek(self.offset)
-            text = f.read().decode("utf-8", errors="replace")
-        # Only whole lines; a request still being logged is read next time.
-        complete = text[: text.rfind("\n") + 1]
-        self.offset += len(complete.encode("utf-8", errors="replace"))
+            data = f.read()
+        # Only whole lines; a request still being logged is read next time. The offset
+        # counts the file's bytes, not re-encoded text, so an undecodable byte cannot move it.
+        complete = data[: data.rfind(b"\n") + 1]
+        self.offset += len(complete)
         requests: list[dict[str, int]] = []
-        for line in complete.splitlines():
+        for line in complete.decode("utf-8", errors="replace").splitlines():
             if m := _NEW_PROMPT.search(line):
                 requests.append({"n_ctx_slot": int(m[1]), "prompt_tokens": int(m[2])})
             elif (m := _RELEASE.search(line)) and requests and "truncated" not in requests[-1]:

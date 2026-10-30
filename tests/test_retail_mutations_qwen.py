@@ -272,6 +272,21 @@ def test_the_server_log_is_read_request_by_request(tmp_path: Path) -> None:
     assert server.read() == []
 
 
+def test_an_undecodable_byte_does_not_move_the_server_log_offset(tmp_path: Path) -> None:
+    log = tmp_path / "ollama.log"
+    log.write_bytes(b"")
+    server = retail_error.ServerLog(log)
+    server.skip()
+    with log.open("ab") as f:
+        f.write(b"model output \xff\xfe cut mid-character\n")
+        f.write(_REQUEST.format(t=1, n=2866, m=2900, cut=0).encode())
+    assert server.read() == [{"n_ctx_slot": 8192, "prompt_tokens": 2866, "truncated": 0}]
+    assert server.offset == log.stat().st_size
+    with log.open("ab") as f:
+        f.write(_REQUEST.format(t=2, n=3001, m=3050, cut=0).encode())
+    assert server.read() == [{"n_ctx_slot": 8192, "prompt_tokens": 3001, "truncated": 0}]
+
+
 def test_a_missing_server_log_reads_as_nothing(tmp_path: Path) -> None:
     server = retail_error.ServerLog(tmp_path / "none.log")
     server.skip()
