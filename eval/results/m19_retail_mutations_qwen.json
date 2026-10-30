@@ -1,0 +1,5187 @@
+{
+  "arms": {
+    "first_tool_only": {
+      "agent": "eval.mutations.agents:first_tool_only_ollama",
+      "label": "first_tool_only",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 4,
+            "passed": 1,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "flaky",
+          "decision": "fail",
+          "distinct_outputs": 5,
+          "distinct_tool_paths": 3,
+          "failed_checks": {
+            "rule:matches_ground_truth": 4
+          },
+          "failures": {
+            "rule:matches_ground_truth": 4
+          },
+          "largest_prompt": 3489,
+          "max_prompt_tokens_bound": 3541,
+          "most_tool_uses_in_a_reply": 1,
+          "name": "lookup_latest_order_total",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find an order placed by you. Could you please check the order ID or provide more details about the order you want to check?",
+              "output_tokens": [
+                44,
+                29,
+                30
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/0",
+              "seconds": 35.9,
+              "seed": 2070263533,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems like there was an issue finding your most recent order. Could you please provide me with the order ID or any additional details so I can assist you better?",
+              "output_tokens": [
+                44,
+                29,
+                34
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/1",
+              "seconds": 36.8,
+              "seed": 207783547,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems there was an issue finding your most recent order. Could you please provide more details about the order, such as the order ID, or let me know if you need assistance with anything else?",
+              "output_tokens": [
+                44,
+                29,
+                41
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/2",
+              "seconds": 38.5,
+              "seed": 2506872769,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                47,
+                39
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find the order you've placed recently. Could you please provide more details or check the order ID for me?",
+              "output_tokens": [
+                44,
+                32,
+                26
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3028,
+              "run_id": "lookup_latest_order_total/3",
+              "seconds": 36.4,
+              "seed": 3798787927,
+              "server": {
+                "largest_prompt": 2987,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2987
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0912345678"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "The order you placed most recently, order id #W6729841, had a total payment of $829.43.",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                33
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/4",
+              "seconds": 85.0,
+              "seed": 2080928500,
+              "server": {
+                "largest_prompt": 3489,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3154,
+                  3489
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            }
+          ],
+          "passes": 1,
+          "passes_with_an_approximate_step": 0,
+          "run_errors": {},
+          "run_seconds_total": 232.6,
+          "runs": 5,
+          "runs_over_the_default_window": 0,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 4,
+          "runs_without_a_bound": 0,
+          "truncated_requests": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 232.5
+    },
+    "max_turns_too_low": {
+      "agent": "eval.mutations.agents:max_turns_too_low_ollama",
+      "label": "max_turns_too_low",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 5,
+            "passed": 0,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "failing",
+          "decision": "fail",
+          "distinct_outputs": 5,
+          "distinct_tool_paths": 5,
+          "failed_checks": {
+            "rule:matches_ground_truth": 5
+          },
+          "failures": {
+            "error:RuntimeError": 1,
+            "rule:matches_ground_truth": 5
+          },
+          "largest_prompt": 3154,
+          "max_prompt_tokens_bound": 3193,
+          "most_tool_uses_in_a_reply": 1,
+          "name": "lookup_latest_order_total",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems like your most recent order couldn't be found. Could you please provide more details about the order, such as the order ID, so I can look it up for you?",
+              "output_tokens": [
+                44,
+                29,
+                38
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/0",
+              "seconds": 40.4,
+              "seed": 2070263533,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0999999"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                47,
+                39
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find the order you recently placed. Could you please provide me with the order ID so I can check the payment amount for you?",
+              "output_tokens": [
+                44,
+                32,
+                30
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3028,
+              "run_id": "lookup_latest_order_total/1",
+              "seconds": 39.6,
+              "seed": 207783547,
+              "server": {
+                "largest_prompt": 2987,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2987
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0897123456"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": "RuntimeError: agent did not finish within 3 turns",
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                47,
+                206
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": null,
+              "output_tokens": [
+                44,
+                30,
+                29
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3193,
+              "run_id": "lookup_latest_order_total/2",
+              "seconds": 50.5,
+              "seed": 2506872769,
+              "server": {
+                "largest_prompt": 3154,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3154
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems like the order you're looking for couldn't be found. Could you please provide more details about the order, such as the date or any part of the order number, so I can assist you better?",
+              "output_tokens": [
+                44,
+                29,
+                44
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/3",
+              "seconds": 40.8,
+              "seed": 3798787927,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000023"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems there was an issue finding your recent order. Could you please provide more details about the order, such as the date or any specific product you might have ordered?",
+              "output_tokens": [
+                44,
+                29,
+                35
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/4",
+              "seconds": 38.3,
+              "seed": 2080928500,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0987654"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            }
+          ],
+          "passes": 0,
+          "passes_with_an_approximate_step": 0,
+          "run_errors": {
+            "RuntimeError": 1
+          },
+          "run_seconds_total": 209.6,
+          "runs": 5,
+          "runs_over_the_default_window": 0,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 4,
+          "runs_without_a_bound": 0,
+          "truncated_requests": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 209.7
+    },
+    "mismatches_tool_use_ids": {
+      "agent": "eval.mutations.agents:mismatches_tool_use_ids_ollama",
+      "label": "mismatches_tool_use_ids",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 4,
+            "passed": 1,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "flaky",
+          "decision": "fail",
+          "distinct_outputs": 5,
+          "distinct_tool_paths": 3,
+          "failed_checks": {
+            "rule:matches_ground_truth": 4
+          },
+          "failures": {
+            "rule:matches_ground_truth": 4
+          },
+          "largest_prompt": 3489,
+          "max_prompt_tokens_bound": 3541,
+          "most_tool_uses_in_a_reply": 1,
+          "name": "lookup_latest_order_total",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find any recent orders for you, Noah. Could you please check if you provided the correct order ID or provide more details about the order you're trying to find?",
+              "output_tokens": [
+                44,
+                29,
+                37
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/0",
+              "seconds": 40.1,
+              "seed": 2070263533,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "The total amount you paid for the most recent order (order id: #W6729841) was $829.43.",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                34
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/1",
+              "seconds": 88.4,
+              "seed": 207783547,
+              "server": {
+                "largest_prompt": 3489,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3154,
+                  3489
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find an order placed by you recently. Could you please check the order ID and try again? If you need further assistance, feel free to let me know.",
+              "output_tokens": [
+                44,
+                29,
+                36
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/2",
+              "seconds": 39.0,
+              "seed": 2506872769,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems there was an issue locating your most recent order. Could you please provide me with the order ID or any other details about the order, such as the date it was placed?",
+              "output_tokens": [
+                44,
+                29,
+                38
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/3",
+              "seconds": 39.3,
+              "seed": 3798787927,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000009"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems like the order you're looking for couldn't be found. Could you please provide more details about the order, such as the date it was placed or any part of the order ID if you remember it?",
+              "output_tokens": [
+                44,
+                29,
+                44
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/4",
+              "seconds": 43.1,
+              "seed": 2080928500,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000009"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            }
+          ],
+          "passes": 1,
+          "passes_with_an_approximate_step": 0,
+          "run_errors": {},
+          "run_seconds_total": 249.9,
+          "runs": 5,
+          "runs_over_the_default_window": 0,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 4,
+          "runs_without_a_bound": 0,
+          "truncated_requests": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 249.9
+    },
+    "returns_empty_answer": {
+      "agent": "eval.mutations.agents:returns_empty_answer_ollama",
+      "label": "returns_empty_answer",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 5,
+            "passed": 0,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "failing",
+          "decision": "fail",
+          "distinct_outputs": 1,
+          "distinct_tool_paths": 4,
+          "failed_checks": {
+            "rule:matches_ground_truth": 5
+          },
+          "failures": {
+            "rule:matches_ground_truth": 5
+          },
+          "largest_prompt": 3489,
+          "max_prompt_tokens_bound": 3541,
+          "most_tool_uses_in_a_reply": 1,
+          "name": "lookup_latest_order_total",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "",
+              "output_tokens": [
+                44,
+                29,
+                32
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/0",
+              "seconds": 37.6,
+              "seed": 2070263533,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "",
+              "output_tokens": [
+                44,
+                29,
+                31
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/1",
+              "seconds": 38.1,
+              "seed": 207783547,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                47,
+                37
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "",
+              "output_tokens": [
+                44,
+                30,
+                35
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3024,
+              "run_id": "lookup_latest_order_total/2",
+              "seconds": 38.4,
+              "seed": 2506872769,
+              "server": {
+                "largest_prompt": 2985,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2985
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W00123456"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                30
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/3",
+              "seconds": 85.9,
+              "seed": 3798787927,
+              "server": {
+                "largest_prompt": 3489,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3154,
+                  3489
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "",
+              "output_tokens": [
+                44,
+                29,
+                32
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/4",
+              "seconds": 38.0,
+              "seed": 2080928500,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0012345"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            }
+          ],
+          "passes": 0,
+          "passes_with_an_approximate_step": 0,
+          "run_errors": {},
+          "run_seconds_total": 238.0,
+          "runs": 5,
+          "runs_over_the_default_window": 0,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 4,
+          "runs_without_a_bound": 0,
+          "truncated_requests": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 238.1
+    },
+    "skips_order_lookup": {
+      "agent": "eval.mutations.agents:skips_order_lookup_ollama",
+      "label": "skips_order_lookup",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 5,
+            "passed": 0,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "failing",
+          "decision": "fail",
+          "distinct_outputs": 5,
+          "distinct_tool_paths": 2,
+          "failed_checks": {
+            "rule:matches_ground_truth": 5
+          },
+          "failures": {
+            "rule:matches_ground_truth": 5
+          },
+          "largest_prompt": 3205,
+          "max_prompt_tokens_bound": 3257,
+          "most_tool_uses_in_a_reply": 1,
+          "name": "lookup_latest_order_total",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                47,
+                35
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find the details of your most recent order. Let me try another way. Could you please provide me with the order ID, or any part of the confirmation email you might have received?",
+              "output_tokens": [
+                44,
+                29,
+                41
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3021,
+              "run_id": "lookup_latest_order_total/0",
+              "seconds": 40.7,
+              "seed": 2070263533,
+              "server": {
+                "largest_prompt": 2983,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2983
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                35
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems there was an issue retrieving your most recent order details. Let's try another order. Could you please confirm which order you're interested in, or provide the order ID directly?",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                38
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3257,
+              "run_id": "lookup_latest_order_total/1",
+              "seconds": 64.2,
+              "seed": 207783547,
+              "server": {
+                "largest_prompt": 3205,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3154,
+                  3205
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 2,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                47,
+                35
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find your recent order. Could you please provide the order ID so I can check the payment amount for you?",
+              "output_tokens": [
+                44,
+                29,
+                26
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3021,
+              "run_id": "lookup_latest_order_total/2",
+              "seconds": 35.5,
+              "seed": 2506872769,
+              "server": {
+                "largest_prompt": 2983,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2983
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                47,
+                35
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find your recent order. Could you please provide me with the order ID so I can check the payment amount for you?",
+              "output_tokens": [
+                44,
+                29,
+                28
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3021,
+              "run_id": "lookup_latest_order_total/3",
+              "seconds": 35.5,
+              "seed": 3798787927,
+              "server": {
+                "largest_prompt": 2983,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2983
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                47,
+                35
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find the details of your most recent order. Let me try another approach. Can you please provide me with the order ID so I can look up the payment information for you?",
+              "output_tokens": [
+                44,
+                29,
+                39
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3021,
+              "run_id": "lookup_latest_order_total/4",
+              "seconds": 37.5,
+              "seed": 2080928500,
+              "server": {
+                "largest_prompt": 2983,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2983
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                }
+              ]
+            }
+          ],
+          "passes": 0,
+          "passes_with_an_approximate_step": 0,
+          "run_errors": {},
+          "run_seconds_total": 213.4,
+          "runs": 5,
+          "runs_over_the_default_window": 0,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 0,
+          "runs_without_a_bound": 0,
+          "truncated_requests": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 213.4
+    },
+    "strips_policy": {
+      "agent": "eval.mutations.agents:strips_policy_ollama",
+      "label": "strips_policy",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 0,
+            "passed": 5,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "passing",
+          "decision": "pass",
+          "distinct_outputs": 5,
+          "distinct_tool_paths": 1,
+          "failed_checks": {},
+          "failures": {},
+          "largest_prompt": 2285,
+          "max_prompt_tokens_bound": 3541,
+          "most_tool_uses_in_a_reply": 1,
+          "name": "lookup_latest_order_total",
+          "outcomes": [
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1659,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It appears that the most recent order you placed is still pending and not yet processed. The total amount you paid for the items in this order is $829.43. If you need further assistance or have any questions, feel free to ask!",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                53
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/0",
+              "seconds": 204.3,
+              "seed": 2070263533,
+              "server": {
+                "largest_prompt": 2285,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  1662,
+                  1728,
+                  1950,
+                  2285
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "The total amount you paid for the order you most recently placed is $829.43.",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                22
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/1",
+              "seconds": 75.5,
+              "seed": 207783547,
+              "server": {
+                "largest_prompt": 2285,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  1662,
+                  1728,
+                  1950,
+                  2285
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "The total amount you paid for the most recent order, order ID #W6729841, is $829.43.",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                33
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/2",
+              "seconds": 77.4,
+              "seed": 2506872769,
+              "server": {
+                "largest_prompt": 2285,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  1662,
+                  1728,
+                  1950,
+                  2285
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "The total amount you paid for the order you most recently placed, order #W6729841, is $829.43.",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                34
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/3",
+              "seconds": 77.2,
+              "seed": 3798787927,
+              "server": {
+                "largest_prompt": 2285,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  1662,
+                  1728,
+                  1950,
+                  2285
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "The order you most recently placed (#W6729841) includes a Bluetooth Speaker and an Air Purifier, and you paid a total of $829.43 for it.",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                43
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/4",
+              "seconds": 79.8,
+              "seed": 2080928500,
+              "server": {
+                "largest_prompt": 2285,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  1662,
+                  1728,
+                  1950,
+                  2285
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            }
+          ],
+          "passes": 5,
+          "passes_with_an_approximate_step": 0,
+          "run_errors": {},
+          "run_seconds_total": 514.2,
+          "runs": 5,
+          "runs_over_the_default_window": 0,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 0,
+          "runs_without_a_bound": 0,
+          "truncated_requests": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 514.1
+    },
+    "truncates_history": {
+      "agent": "eval.mutations.agents:truncates_history_ollama",
+      "label": "truncates_history",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 5,
+            "passed": 0,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "failing",
+          "decision": "fail",
+          "distinct_outputs": 5,
+          "distinct_tool_paths": 4,
+          "failed_checks": {
+            "rule:matches_ground_truth": 5
+          },
+          "failures": {
+            "rule:matches_ground_truth": 5
+          },
+          "largest_prompt": 3708,
+          "max_prompt_tokens_bound": 4890,
+          "most_tool_uses_in_a_reply": 1,
+          "name": "lookup_latest_order_total",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                47,
+                120
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems there was an issue finding the order. Could you please double-check the order ID or provide more details about the order?",
+              "output_tokens": [
+                44,
+                29,
+                27
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3106,
+              "run_id": "lookup_latest_order_total/0",
+              "seconds": 40.6,
+              "seed": 2070263533,
+              "server": {
+                "largest_prompt": 2951,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2951
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0012345"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                35,
+                47,
+                120
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems the order you're trying to modify is not found. Please provide more details or check the order ID.",
+              "output_tokens": [
+                44,
+                29,
+                24
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3106,
+              "run_id": "lookup_latest_order_total/1",
+              "seconds": 43.4,
+              "seed": 207783547,
+              "server": {
+                "largest_prompt": 2951,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2951
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000009"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                35,
+                47,
+                290
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I've found your user details, Noah. I see you have a few orders: #W3445693, #W4219264, and #W6729841. Could you please specify which order you want to modify, cancel, return, or exchange? If you're unsure about the order IDs, let me know, and I can help you look them up.",
+              "output_tokens": [
+                44,
+                30,
+                89
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3277,
+              "run_id": "lookup_latest_order_total/2",
+              "seconds": 75.2,
+              "seed": 2506872769,
+              "server": {
+                "largest_prompt": 3121,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3121
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                35,
+                47,
+                290,
+                685,
+                868
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I have retrieved the product details for the sneakers. The available options are:\n\n- Size 10, Color Gray, Material Leather - $189.50\n- Size 6, Color Black, Material Synthetic - $186.45\n- Size 8, Color Gray, Material Canvas - $197.37\n\nWould you like to modify or exchange any of these items in your delivered order? Please specify which items you want to change and their new options.",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                31,
+                103
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 4890,
+              "run_id": "lookup_latest_order_total/3",
+              "seconds": 231.6,
+              "seed": 3798787927,
+              "server": {
+                "largest_prompt": 3708,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3121,
+                  3524,
+                  3708
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 2,
+                "fallback": 2,
+                "live": 5
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W3445693"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "144 Lakeview Drive",
+                      "address2": "Suite 925",
+                      "city": "New York",
+                      "country": "USA",
+                      "state": "NY",
+                      "zip": "10228"
+                    },
+                    "fulfillments": [
+                      {
+                        "item_ids": [
+                          "6477915553",
+                          "2206116040",
+                          "6341716129"
+                        ],
+                        "tracking_id": [
+                          "870596657470"
+                        ]
+                      }
+                    ],
+                    "items": [
+                      {
+                        "item_id": "6477915553",
+                        "name": "Sneakers",
+                        "options": {
+                          "color": "black",
+                          "material": "synthetic",
+                          "size": "6"
+                        },
+                        "price": 186.45,
+                        "product_id": "7471004230"
+                      },
+                      {
+                        "item_id": "2206116040",
+                        "name": "Cycling Helmet",
+                        "options": {
+                          "color": "blue",
+                          "size": "L",
+                          "ventilation": "high"
+                        },
+                        "price": 209.91,
+                        "product_id": "7765186836"
+                      },
+                      {
+                        "item_id": "6341716129",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "smart sensors",
+                          "filter type": "HEPA",
+                          "room size": "large"
+                        },
+                        "price": 523.31,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W3445693",
+                    "payment_history": [
+                      {
+                        "amount": 919.67,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "delivered",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "fallback"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "product_id": "7471004230"
+                  },
+                  "name": "get_product_details",
+                  "response": {
+                    "name": "Sneakers",
+                    "product_id": "7471004230",
+                    "variants": {
+                      "2509076505": {
+                        "available": true,
+                        "item_id": "2509076505",
+                        "options": {
+                          "color": "gray",
+                          "material": "leather",
+                          "size": "10"
+                        },
+                        "price": 189.5
+                      },
+                      "3631875806": {
+                        "available": false,
+                        "item_id": "3631875806",
+                        "options": {
+                          "color": "red",
+                          "material": "leather",
+                          "size": "11"
+                        },
+                        "price": 203.82
+                      },
+                      "4410138384": {
+                        "available": false,
+                        "item_id": "4410138384",
+                        "options": {
+                          "color": "gray",
+                          "material": "canvas",
+                          "size": "8"
+                        },
+                        "price": 197.37
+                      },
+                      "6477915553": {
+                        "available": true,
+                        "item_id": "6477915553",
+                        "options": {
+                          "color": "black",
+                          "material": "synthetic",
+                          "size": "6"
+                        },
+                        "price": 186.45
+                      },
+                      "9727387530": {
+                        "available": false,
+                        "item_id": "9727387530",
+                        "options": {
+                          "color": "black",
+                          "material": "synthetic",
+                          "size": "11"
+                        },
+                        "price": 207.75
+                      }
+                    }
+                  },
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                35,
+                47,
+                290
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I've located your user details, Noah Ito. You have the following orders: #W3445693, #W4219264, and #W6729841. Could you please specify which order you want to modify or cancel, and provide the order ID? Also, let me know if you need any assistance with your profile or address.",
+              "output_tokens": [
+                44,
+                30,
+                84
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3277,
+              "run_id": "lookup_latest_order_total/4",
+              "seconds": 77.6,
+              "seed": 2080928500,
+              "server": {
+                "largest_prompt": 3121,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3121
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 2,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                }
+              ]
+            }
+          ],
+          "passes": 0,
+          "passes_with_an_approximate_step": 0,
+          "run_errors": {},
+          "run_seconds_total": 468.4,
+          "runs": 5,
+          "runs_over_the_default_window": 0,
+          "runs_that_may_reach_the_context_window": 1,
+          "runs_with_a_fallback_step": 3,
+          "runs_without_a_bound": 0,
+          "truncated_requests": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 468.4
+    },
+    "truncates_tool_results": {
+      "agent": "eval.mutations.agents:truncates_tool_results_ollama",
+      "label": "truncates_tool_results",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 5,
+            "passed": 0,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "failing",
+          "decision": "fail",
+          "distinct_outputs": 5,
+          "distinct_tool_paths": 5,
+          "failed_checks": {
+            "rule:matches_ground_truth": 5
+          },
+          "failures": {
+            "rule:matches_ground_truth": 5
+          },
+          "largest_prompt": 3083,
+          "max_prompt_tokens_bound": 3142,
+          "most_tool_uses_in_a_reply": 1,
+          "name": "lookup_latest_order_total",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                47,
+                37
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find an order for you. Could you please provide me with the order ID or check if you have placed any orders recently?",
+              "output_tokens": [
+                44,
+                30,
+                29
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3024,
+              "run_id": "lookup_latest_order_total/0",
+              "seconds": 38.8,
+              "seed": 2070263533,
+              "server": {
+                "largest_prompt": 2985,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2985
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W00123456"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                47,
+                76,
+                43
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems like the order you're looking for could not be found. Could you please provide more details about the order, such as the date or any part of the order ID if you remember it?",
+              "output_tokens": [
+                44,
+                30,
+                36,
+                41
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3142,
+              "run_id": "lookup_latest_order_total/1",
+              "seconds": 59.8,
+              "seed": 207783547,
+              "server": {
+                "largest_prompt": 3083,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3024,
+                  3083
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 2,
+                "fallback": 1,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W20230101123456"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find an order in your account. Could you please provide more details about the order you are looking for?",
+              "output_tokens": [
+                44,
+                29,
+                25
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/2",
+              "seconds": 37.0,
+              "seed": 2506872769,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0012345"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems like there was an issue finding your recent order. Could you please provide me with the order ID so I can look up the payment details for you?",
+              "output_tokens": [
+                44,
+                29,
+                33
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/3",
+              "seconds": 38.0,
+              "seed": 3798787927,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000005"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                47,
+                38
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find an order for you. Could you please provide the order ID or try checking your email for the order details?",
+              "output_tokens": [
+                44,
+                31,
+                27
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3026,
+              "run_id": "lookup_latest_order_total/4",
+              "seconds": 38.5,
+              "seed": 2080928500,
+              "server": {
+                "largest_prompt": 2986,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2986
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W003850432"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            }
+          ],
+          "passes": 0,
+          "passes_with_an_approximate_step": 0,
+          "run_errors": {},
+          "run_seconds_total": 212.1,
+          "runs": 5,
+          "runs_over_the_default_window": 0,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 5,
+          "runs_without_a_bound": 0,
+          "truncated_requests": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 212.0
+    },
+    "unmutated": {
+      "agent": "examples.retail_agent.ollama:run",
+      "label": "unmutated",
+      "policy": "fallback",
+      "scenarios": [
+        {
+          "causes": {
+            "approximate": 0,
+            "model": 8,
+            "passed": 2,
+            "synth": 0,
+            "unrecorded": 0
+          },
+          "classification": "flaky",
+          "decision": "fail",
+          "distinct_outputs": 10,
+          "distinct_tool_paths": 8,
+          "failed_checks": {
+            "rule:matches_ground_truth": 8
+          },
+          "failures": {
+            "rule:matches_ground_truth": 8
+          },
+          "largest_prompt": 3489,
+          "max_prompt_tokens_bound": 3541,
+          "most_tool_uses_in_a_reply": 1,
+          "name": "lookup_latest_order_total",
+          "outcomes": [
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 0,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems like the order you're looking for couldn't be found. Could you please provide more details about the order, such as the order ID, or let me know if you placed this order recently?",
+              "output_tokens": [
+                44,
+                29,
+                42
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/0",
+              "seconds": 41.1,
+              "seed": 2070263533,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000023"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 1,
+              "input_tokens": [
+                1,
+                47,
+                36,
+                28,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find the order you placed recently. Could you please provide more details about the order, such as the date or any part of the order ID?",
+              "output_tokens": [
+                44,
+                29,
+                60,
+                29,
+                33
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3175,
+              "run_id": "lookup_latest_order_total/1",
+              "seconds": 69.8,
+              "seed": 207783547,
+              "server": {
+                "largest_prompt": 3080,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984,
+                  3028,
+                  3080
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 3,
+                "live": 5
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "fallback"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 2,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find any recent orders for you, Noah. Could you please check if you provided the correct order ID or provide more details about the order you're trying to find?",
+              "output_tokens": [
+                44,
+                29,
+                37
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/2",
+              "seconds": 39.1,
+              "seed": 2506872769,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0038500"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 3,
+              "input_tokens": [
+                1,
+                47,
+                37
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find any orders for you, Noah. Could you please check if you provided the correct order ID or provide more details about the order you're trying to look up?",
+              "output_tokens": [
+                44,
+                30,
+                37
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3024,
+              "run_id": "lookup_latest_order_total/3",
+              "seconds": 39.3,
+              "seed": 3798787927,
+              "server": {
+                "largest_prompt": 2985,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2985
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W12345678"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 4,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems like there might have been a mistake. Could you please provide me with the order ID or any other details related to the order you're trying to check?",
+              "output_tokens": [
+                44,
+                29,
+                34
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/4",
+              "seconds": 38.1,
+              "seed": 2080928500,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000009"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 5,
+              "input_tokens": [
+                1,
+                47,
+                38
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "It seems there was an issue finding your recent order. Let me try a different approach to identify your order.\n\nCould you please provide me with the order ID or any other details about the items you ordered, such as the product name or the date of the order? This will help me locate the correct order for you.",
+              "output_tokens": [
+                44,
+                31,
+                65
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3026,
+              "run_id": "lookup_latest_order_total/5",
+              "seconds": 46.8,
+              "seed": 185549410,
+              "server": {
+                "largest_prompt": 2986,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2986
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W000000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 6,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find the order you recently placed. Could you please provide the order ID or any other details so I can look it up for you?",
+              "output_tokens": [
+                44,
+                29,
+                31
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/6",
+              "seconds": 36.9,
+              "seed": 2449871832,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 7,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "The order you placed most recently is for a Bluetooth Speaker and an Air Purifier, totaling $829.43. You paid this amount via your credit card.",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                36
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/7",
+              "seconds": 87.5,
+              "seed": 3842057038,
+              "server": {
+                "largest_prompt": 3489,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3154,
+                  3489
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            },
+            {
+              "cause": "model",
+              "error": null,
+              "failed_checks": [
+                "rule:matches_ground_truth"
+              ],
+              "identity": false,
+              "index": 8,
+              "input_tokens": [
+                1,
+                47,
+                36
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "I couldn't find the order you're looking for. Could you please provide me with the order ID or any additional details about the order?",
+              "output_tokens": [
+                44,
+                29,
+                29
+              ],
+              "passed": false,
+              "prompt_tokens_bound": 3022,
+              "run_id": "lookup_latest_order_total/8",
+              "seconds": 36.4,
+              "seed": 1975402207,
+              "server": {
+                "largest_prompt": 2984,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  2984
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 1,
+                "fallback": 1,
+                "live": 3
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": "ValueError: order not found",
+                  "input": {
+                    "order_id": "#W0000001"
+                  },
+                  "name": "get_order_details",
+                  "response": null,
+                  "status": "fallback"
+                }
+              ]
+            },
+            {
+              "cause": "passed",
+              "error": null,
+              "failed_checks": [],
+              "identity": false,
+              "index": 9,
+              "input_tokens": [
+                1,
+                47,
+                206,
+                319
+              ],
+              "most_tool_uses_in_a_reply": 1,
+              "output": "The order you placed most recently was for a Bluetooth Speaker and an Air Purifier, with a total payment of $829.43 using your credit card.",
+              "output_tokens": [
+                44,
+                30,
+                29,
+                35
+              ],
+              "passed": true,
+              "prompt_tokens_bound": 3541,
+              "run_id": "lookup_latest_order_total/9",
+              "seconds": 87.6,
+              "seed": 45682249,
+              "server": {
+                "largest_prompt": 3489,
+                "n_ctx_slot": [
+                  8192
+                ],
+                "prompt_tokens": [
+                  2866,
+                  2932,
+                  3154,
+                  3489
+                ],
+                "truncated_requests": 0
+              },
+              "steps": {
+                "exact": 3,
+                "live": 4
+              },
+              "tool_calls": [
+                {
+                  "error": null,
+                  "input": {
+                    "first_name": "Noah",
+                    "last_name": "Ito",
+                    "zip": "98187"
+                  },
+                  "name": "find_user_id_by_name_zip",
+                  "response": "noah_ito_3850",
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "user_id": "noah_ito_3850"
+                  },
+                  "name": "get_user_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "email": "noah.ito4296@example.com",
+                    "name": {
+                      "first_name": "Noah",
+                      "last_name": "Ito"
+                    },
+                    "orders": [
+                      "#W3445693",
+                      "#W4219264",
+                      "#W6729841"
+                    ],
+                    "payment_methods": {
+                      "credit_card_1620755": {
+                        "brand": "mastercard",
+                        "id": "credit_card_1620755",
+                        "last_four": "1065",
+                        "source": "credit_card"
+                      }
+                    }
+                  },
+                  "status": "exact"
+                },
+                {
+                  "error": null,
+                  "input": {
+                    "order_id": "#W6729841"
+                  },
+                  "name": "get_order_details",
+                  "response": {
+                    "address": {
+                      "address1": "619 Broadway",
+                      "address2": "Suite 484",
+                      "city": "Seattle",
+                      "country": "USA",
+                      "state": "WA",
+                      "zip": "98187"
+                    },
+                    "fulfillments": [],
+                    "items": [
+                      {
+                        "item_id": "5855700373",
+                        "name": "Bluetooth Speaker",
+                        "options": {
+                          "battery life": "10 hours",
+                          "color": "black",
+                          "water resistance": "yes"
+                        },
+                        "price": 293.46,
+                        "product_id": "4768869376"
+                      },
+                      {
+                        "item_id": "3076708684",
+                        "name": "Air Purifier",
+                        "options": {
+                          "features": "quiet operation",
+                          "filter type": "HEPA",
+                          "room size": "medium"
+                        },
+                        "price": 535.97,
+                        "product_id": "3821016478"
+                      }
+                    ],
+                    "order_id": "#W6729841",
+                    "payment_history": [
+                      {
+                        "amount": 829.43,
+                        "payment_method_id": "credit_card_1620755",
+                        "transaction_type": "payment"
+                      }
+                    ],
+                    "status": "pending",
+                    "user_id": "noah_ito_3850"
+                  },
+                  "status": "exact"
+                }
+              ]
+            }
+          ],
+          "passes": 2,
+          "passes_with_an_approximate_step": 0,
+          "run_errors": {},
+          "run_seconds_total": 522.6,
+          "runs": 10,
+          "runs_over_the_default_window": 0,
+          "runs_that_may_reach_the_context_window": 0,
+          "runs_with_a_fallback_step": 8,
+          "runs_without_a_bound": 0,
+          "truncated_requests": 0,
+          "unrecorded_by_identity": 0
+        }
+      ],
+      "stats_impl": "baseline",
+      "wall_s": 522.5
+    }
+  },
+  "arms_wall_s": 2860.8,
+  "cassette": "examples/retail_agent/cassettes/lookup_latest_order_total.jsonl",
+  "cassette_source": "fake-model recording (no qwen attempt passed)",
+  "client": "examples.retail_agent.ollama:make_client",
+  "command": "uv run python -m eval.retail_error --task lookup_latest_order_total --runs 10 --mutant-runs 5 --server-log /tmp/ollama.log",
+  "context_window": 4096,
+  "detection": {
+    "mutations": {
+      "first_tool_only": {
+        "acted": false,
+        "by_a_crash": [],
+        "caught_by": [
+          "rule:matches_ground_truth"
+        ],
+        "mechanism": "acts only on a reply with two tool_use blocks",
+        "most_tool_uses_in_a_reply": 1,
+        "passes": 1,
+        "predicted": "survives",
+        "rule_verdict": "caught",
+        "runs": 5,
+        "scripted": {
+          "by_a_crash": [],
+          "caught_by": [],
+          "verdict": "survives"
+        },
+        "verdict": "not resolvable"
+      },
+      "max_turns_too_low": {
+        "acted": true,
+        "by_a_crash": [],
+        "caught_by": [
+          "rule:matches_ground_truth",
+          "run_error:RuntimeError"
+        ],
+        "mechanism": "the lookup needs four turns: run_error:RuntimeError",
+        "most_tool_uses_in_a_reply": 1,
+        "passes": 0,
+        "predicted": "caught",
+        "rule_verdict": "caught",
+        "runs": 5,
+        "scripted": {
+          "by_a_crash": [],
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError"
+          ],
+          "verdict": "caught"
+        },
+        "verdict": "not resolvable"
+      },
+      "mismatches_tool_use_ids": {
+        "acted": false,
+        "by_a_crash": [],
+        "caught_by": [
+          "rule:matches_ground_truth"
+        ],
+        "mechanism": "acts only on a reply with two tool_use blocks",
+        "most_tool_uses_in_a_reply": 1,
+        "passes": 1,
+        "predicted": "survives",
+        "rule_verdict": "caught",
+        "runs": 5,
+        "scripted": {
+          "by_a_crash": [],
+          "caught_by": [],
+          "verdict": "survives"
+        },
+        "verdict": "not resolvable"
+      },
+      "returns_empty_answer": {
+        "acted": true,
+        "by_a_crash": [],
+        "caught_by": [
+          "rule:matches_ground_truth"
+        ],
+        "mechanism": "the control: an empty answer has no total",
+        "most_tool_uses_in_a_reply": 1,
+        "passes": 0,
+        "predicted": "caught",
+        "rule_verdict": "caught",
+        "runs": 5,
+        "scripted": {
+          "by_a_crash": [],
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth"
+          ],
+          "verdict": "caught"
+        },
+        "verdict": "not resolvable"
+      },
+      "skips_order_lookup": {
+        "acted": true,
+        "by_a_crash": [],
+        "caught_by": [
+          "rule:matches_ground_truth"
+        ],
+        "mechanism": "the order read answers 'lookup skipped', so no total",
+        "most_tool_uses_in_a_reply": 1,
+        "passes": 0,
+        "predicted": "caught",
+        "rule_verdict": "caught",
+        "runs": 5,
+        "scripted": {
+          "by_a_crash": [],
+          "caught_by": [
+            "budget",
+            "output_schema",
+            "rule:matches_ground_truth",
+            "run_error:RuntimeError",
+            "tool_sequence"
+          ],
+          "verdict": "caught"
+        },
+        "verdict": "not resolvable"
+      },
+      "strips_policy": {
+        "acted": true,
+        "by_a_crash": [],
+        "caught_by": [],
+        "mechanism": "a read-only task's ground truth does not need the policy",
+        "most_tool_uses_in_a_reply": 1,
+        "passes": 5,
+        "predicted": "survives",
+        "rule_verdict": "survives",
+        "runs": 5,
+        "scripted": {
+          "by_a_crash": [],
+          "caught_by": [],
+          "verdict": "survives"
+        },
+        "verdict": "not resolvable"
+      },
+      "truncates_history": {
+        "acted": true,
+        "by_a_crash": [],
+        "caught_by": [
+          "rule:matches_ground_truth"
+        ],
+        "mechanism": "the last four messages no longer hold the request",
+        "most_tool_uses_in_a_reply": 1,
+        "passes": 0,
+        "predicted": "caught",
+        "rule_verdict": "caught",
+        "runs": 5,
+        "scripted": {
+          "by_a_crash": [],
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth",
+            "tool_sequence"
+          ],
+          "verdict": "caught"
+        },
+        "verdict": "not resolvable"
+      },
+      "truncates_tool_results": {
+        "acted": true,
+        "by_a_crash": [],
+        "caught_by": [
+          "rule:matches_ground_truth"
+        ],
+        "mechanism": "120 characters cut the order JSON before its total",
+        "most_tool_uses_in_a_reply": 1,
+        "passes": 0,
+        "predicted": "caught",
+        "rule_verdict": "caught",
+        "runs": 5,
+        "scripted": {
+          "by_a_crash": [
+            "run_error:JSONDecodeError"
+          ],
+          "caught_by": [
+            "output_schema",
+            "rule:matches_ground_truth",
+            "run_error:JSONDecodeError",
+            "tool_sequence"
+          ],
+          "verdict": "caught"
+        },
+        "verdict": "not resolvable"
+      }
+    },
+    "resolvable": false,
+    "rule": "resolvable only if the unmutated agent passes >= 8/10; a mutation is caught at <= 1/5 passes, survives at >= 4/5, unresolved between; a mutation that acts only on parallel calls and never saw two tool_use blocks in one reply never acted",
+    "unmutated": {
+      "passes": 2,
+      "runs": 10
+    },
+    "verdict": "not resolvable on qwen2.5:7b for this task"
+  },
+  "environment": {
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+    "logical_cpus": 4,
+    "model": "qwen2.5:7b",
+    "ollama": "0.40.11",
+    "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.43"
+  },
+  "id_probe": {
+    "control_changes_prompt": true,
+    "id_changes_prompt": false,
+    "probes": [
+      {
+        "content": "noah_ito_3850",
+        "input_tokens": 254,
+        "nonce": "W",
+        "tool_use_id": "call_1"
+      },
+      {
+        "content": "noah_ito_3850",
+        "input_tokens": 88,
+        "nonce": "A",
+        "tool_use_id": "call_1"
+      },
+      {
+        "content": "noah_ito_3850",
+        "input_tokens": 88,
+        "nonce": "B",
+        "tool_use_id": "call_2"
+      },
+      {
+        "content": "noah_ito_3850 (one exact match)",
+        "input_tokens": 92,
+        "nonce": "C",
+        "tool_use_id": "call_1"
+      }
+    ],
+    "reading": "the id never reaches the model",
+    "server": {
+      "largest_prompt": 261,
+      "n_ctx_slot": [
+        8192
+      ],
+      "prompt_tokens": [
+        257,
+        257,
+        257,
+        261
+      ],
+      "truncated_requests": 0
+    }
+  },
+  "identify": "the suite's [defaults.identify] keys",
+  "instruction": "I'm Noah Ito, zip code 98187. How much did I pay for the order I most recently placed?",
+  "mode": "model-live",
+  "policy": "fallback",
+  "predicted": {
+    "first_tool_only": {
+      "mechanism": "acts only on a reply with two tool_use blocks",
+      "verdict": "survives"
+    },
+    "max_turns_too_low": {
+      "mechanism": "the lookup needs four turns: run_error:RuntimeError",
+      "verdict": "caught"
+    },
+    "mismatches_tool_use_ids": {
+      "mechanism": "acts only on a reply with two tool_use blocks",
+      "verdict": "survives"
+    },
+    "returns_empty_answer": {
+      "mechanism": "the control: an empty answer has no total",
+      "verdict": "caught"
+    },
+    "skips_order_lookup": {
+      "mechanism": "the order read answers 'lookup skipped', so no total",
+      "verdict": "caught"
+    },
+    "strips_policy": {
+      "mechanism": "a read-only task's ground truth does not need the policy",
+      "verdict": "survives"
+    },
+    "truncates_history": {
+      "mechanism": "the last four messages no longer hold the request",
+      "verdict": "caught"
+    },
+    "truncates_tool_results": {
+      "mechanism": "120 characters cut the order JSON before its total",
+      "verdict": "caught"
+    }
+  },
+  "prompt_prefix_tokens": 2866,
+  "recording_attempts": 3,
+  "scripted": {
+    "first_tool_only": {
+      "by_a_crash": [],
+      "caught_by": [],
+      "verdict": "survives"
+    },
+    "max_turns_too_low": {
+      "by_a_crash": [],
+      "caught_by": [
+        "output_schema",
+        "rule:matches_ground_truth",
+        "run_error:RuntimeError"
+      ],
+      "verdict": "caught"
+    },
+    "mismatches_tool_use_ids": {
+      "by_a_crash": [],
+      "caught_by": [],
+      "verdict": "survives"
+    },
+    "returns_empty_answer": {
+      "by_a_crash": [],
+      "caught_by": [
+        "output_schema",
+        "rule:matches_ground_truth"
+      ],
+      "verdict": "caught"
+    },
+    "skips_order_lookup": {
+      "by_a_crash": [],
+      "caught_by": [
+        "budget",
+        "output_schema",
+        "rule:matches_ground_truth",
+        "run_error:RuntimeError",
+        "tool_sequence"
+      ],
+      "verdict": "caught"
+    },
+    "strips_policy": {
+      "by_a_crash": [],
+      "caught_by": [],
+      "verdict": "survives"
+    },
+    "truncates_history": {
+      "by_a_crash": [],
+      "caught_by": [
+        "output_schema",
+        "rule:matches_ground_truth",
+        "tool_sequence"
+      ],
+      "verdict": "caught"
+    },
+    "truncates_tool_results": {
+      "by_a_crash": [
+        "run_error:JSONDecodeError"
+      ],
+      "caught_by": [
+        "output_schema",
+        "rule:matches_ground_truth",
+        "run_error:JSONDecodeError",
+        "tool_sequence"
+      ],
+      "verdict": "caught"
+    }
+  },
+  "server_log": {
+    "n_ctx_slot_line": "srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'",
+    "path": "/tmp/ollama.log"
+  },
+  "suite": "examples/retail_agent/replay-qwen.toml",
+  "task": "lookup_latest_order_total",
+  "unable_to_act": {
+    "drops_error_flag": "acts on a failed tool call; the task's tools all succeed",
+    "repeats_write_calls": "repeats writes; the task makes none",
+    "unregisters_product_tool": "removes get_product_details, which the task never needs",
+    "wrong_write_argument": "changes the arguments of writes; the task makes none"
+  },
+  "window": {
+    "largest_prompt": 3708,
+    "largest_prompt_bound": 4890,
+    "runs": 50,
+    "runs_over_4096": 0,
+    "runs_with_server_counts": 50,
+    "truncated_requests": 0
+  }
+}

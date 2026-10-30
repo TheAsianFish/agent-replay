@@ -419,3 +419,43 @@ def test_without_ollama_the_m19_command_names_the_fix(
     monkeypatch.setattr(retail_error, "_serving", lambda: serving(lambda _model: None))
     assert retail_error.main(["--task", "lookup_latest_order_total"]) == 2
     assert "ollama pull qwen2.5:7b" in capsys.readouterr().err
+
+
+# --- the committed live report ------------------------------------------------------------
+
+COMMITTED = Path(__file__).parents[1] / "eval" / "results" / "m19_retail_mutations_qwen.json"
+
+
+def test_the_committed_report_recomputes_from_its_runs() -> None:
+    report = json.loads(COMMITTED.read_text(encoding="utf-8"))
+
+    assert (
+        retail_error.detection(report["arms"], report["scripted"])["mutations"]
+        == (report["detection"]["mutations"])
+    )
+    assert report["scripted"] == retail_error.scripted_verdicts(retail_error.M19_MUTATIONS)
+    assert report["window"] == retail_error.window(report["arms"])
+    assert set(report["arms"]) == {"unmutated", *retail_error.M19_MUTATIONS}
+    for label, arm in report["arms"].items():
+        (scenario,) = arm["scenarios"]
+        assert scenario["runs"] == (10 if label == "unmutated" else 5)
+        assert scenario["passes"] == sum(r["passed"] for r in scenario["outcomes"])
+        # Every request of every run was counted by the server, and none was cut.
+        assert all(r["server"]["prompt_tokens"] for r in scenario["outcomes"])
+        assert scenario["truncated_requests"] == 0
+
+
+def test_the_committed_report_is_not_resolvable_and_says_so() -> None:
+    report = json.loads(COMMITTED.read_text(encoding="utf-8"))
+    detection = report["detection"]
+
+    assert detection["unmutated"] == {"passes": 2, "runs": 10}
+    assert detection["verdict"] == "not resolvable on qwen2.5:7b for this task"
+    assert {row["verdict"] for row in detection["mutations"].values()} == {"not resolvable"}
+    # No reply held two tool_use blocks, so the two parallel-call mutations never acted.
+    for mutation in retail_error.ACTS_ON_PARALLEL:
+        assert detection["mutations"][mutation]["acted"] is False
+    assert report["id_probe"]["reading"] == "the id never reaches the model"
+    assert report["server_log"]["n_ctx_slot_line"].endswith(
+        "n_ctx_slot = 8192, kv_unified = 'false'"
+    )
