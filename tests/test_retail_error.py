@@ -282,3 +282,22 @@ def test_error_flags_sent_counts_the_last_request():
     steps = [SimpleNamespace(request={"messages": []}), SimpleNamespace(request=request)]
     result = SimpleNamespace(trajectory=SimpleNamespace(model_steps=lambda: steps))
     assert retail_error.error_flags_sent(result) == 1  # type: ignore[arg-type]
+
+
+# --- the qwen2.5:7b recording -----------------------------------------------------------
+
+
+def test_the_qwen_recording_replays_in_full():
+    qwen = EXAMPLE / "cassettes" / "qwen"
+    header = Cassette.load(qwen / f"{TASK.id}.jsonl").header
+
+    # With the agent that recorded it: the default agent asks for claude-opus-5-5, so
+    # every model request would differ from the recording (approximate).
+    report = run_suite(
+        SUITE, overrides=Overrides(cassette_dir=qwen, agent="examples.retail_agent.ollama:run")
+    )
+
+    assert header.metadata["model"] == "qwen2.5:7b"
+    assert header.metadata["provider"] == "ollama"
+    assert report.passed
+    assert report.scenarios[0].steps.by_status == {"exact": 5}

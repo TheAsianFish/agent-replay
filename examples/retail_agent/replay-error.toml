@@ -2,7 +2,9 @@
 # gives a wrong zip code, find_user_id_by_name_zip returns an error, and the correct reply
 # is that the account was not found, with nothing written.
 # `uv run replay ci examples/retail_agent/replay-error.toml` replays the fake-model
-# recording.
+# recording; `--cassette-dir examples/retail_agent/cassettes/qwen --agent
+# examples.retail_agent.ollama:run` the qwen2.5:7b one (with the agent that asks for
+# qwen2.5:7b, so its model requests match the recording's).
 # Kept out of replay.toml so the mutation study's six-scenario tables stay as they are.
 #
 # No tool_sequence check: which lookups a model tries before giving up (a guessed email,

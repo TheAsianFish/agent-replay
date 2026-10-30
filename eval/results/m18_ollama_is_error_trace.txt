@@ -1,0 +1,21 @@
+# Ollama 0.40.11 with OLLAMA_DEBUG=2: one tool result sent to /v1/messages with and without
+# is_error: true (qwen2.5:7b). The 'converting request' line is what arrived; the
+# 'converted block message' line for the tool result is what the model is given:
+# role tool, the content, no flag. Both prompts are 201 tokens (task.n_tokens).
+# Excerpted from the server log of the M18 session; timestamps kept.
+time=2026-10-30T08:00:25.574Z level=TRACE source=anthropic.go:324 msg="anthropic: converting request" req="map[max_tokens:5 messages:[map[content:[map[text:Find user with zip 98178. MARKERTrue type:text]] role:user] map[content:[map[id:call_1 input:map[zip:98178] name:lookup type:tool_use]] role:assistant] map[content:[map[content:Error: user not found is_error:true tool_use_id:call_1 type:tool_result]] role:user]] model:qwen2.5:7b stop_sequences:[] stream:false system:<nil> temperature:<nil> thinking:<nil> tool_choice:<nil> tools:[map[description:Look a user up. input_schema:map[properties:map[zip:map[type:string]] required:[zip] type:object] max_uses:0 name:lookup type:]] top_k:<nil> top_p:<nil>]"
+time=2026-10-30T08:00:40.584Z level=TRACE source=anthropic.go:324 msg="anthropic: converting request" req="map[max_tokens:5 messages:[map[content:[map[text:Find user with zip 98178. MARKERFalse type:text]] role:user] map[content:[map[id:call_1 input:map[zip:98178] name:lookup type:tool_use]] role:assistant] map[content:[map[content:Error: user not found tool_use_id:call_1 type:tool_result]] role:user]] model:qwen2.5:7b stop_sequences:[] stream:false system:<nil> temperature:<nil> thinking:<nil> tool_choice:<nil> tools:[map[description:Look a user up. input_schema:map[properties:map[zip:map[type:string]] required:[zip] type:object] max_uses:0 name:lookup type:]] top_k:<nil> top_p:<nil>]"
+time=2026-10-30T08:00:25.574Z level=TRACE source=anthropic.go:566 msg="anthropic: converted block message" role=user blocks=1 text=0 image=0 tool_use=0 tool_result=1 server_tool_use=0 web_search_result=0 thinking=0 unknown=0 messages="[map[content:Error: user not found images:[] role:tool thinking: tool_call_id:call_1 tool_calls:[] tool_name:]]"
+time=2026-10-30T08:00:40.584Z level=TRACE source=anthropic.go:566 msg="anthropic: converted block message" role=user blocks=1 text=0 image=0 tool_use=0 tool_result=1 server_tool_use=0 web_search_result=0 thinking=0 unknown=0 messages="[map[content:Error: user not found images:[] role:tool thinking: tool_call_id:call_1 tool_calls:[] tool_name:]]"
+slot   operator(): id  0 | task 0 | new prompt, n_ctx_slot = 4096, n_keep = 4, task.n_tokens = 201
+slot   operator(): id  0 | task 6 | new prompt, n_ctx_slot = 4096, n_keep = 4, task.n_tokens = 201
+#
+# Prompt sizes (task.n_tokens) over all 73 requests the server saw in the M18 session
+# (the recording, the probes, one stopped start of the arms, and the 20 arm runs);
+# count, tokens. None reached the 4096-token context, so no prompt was shifted.
+      2 201
+      8 253
+      3 256
+     22 2879
+     22 2941
+     16 2991
