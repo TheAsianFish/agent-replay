@@ -3145,7 +3145,10 @@ vendored ones): *"I'm Noah Ito, zip code 98178. Please cancel my pending order
 the model an `is_error: true` result. Ground truth: no write and no transfer
 (`expected_actions = ()`), and an answer that says the account was not found
 (the new rule `reports_account_not_found`: no write tool called, and the answer
-matches a fixed not-found pattern, `rules.NOT_FOUND`). Its suite,
+matches a fixed not-found pattern, `rules.NOT_FOUND`, which must name the account,
+the user or their identity; tightened after the live runs so that "the payment did
+not match" no longer passes, with all 23 committed live answers read the same and
+`mutations.json` unchanged). Its suite,
 `examples/retail_agent/replay-error.toml`, is separate from `replay.toml`, so
 every earlier table is unchanged. It has no `tool_sequence` check: which
 lookups a model tries before giving up is not the regression. Its fake-model

@@ -104,14 +104,18 @@ def matches_ground_truth(run: RunResult, task: str) -> Verdict:
 
 NOT_FOUND = re.compile(
     r"\b(?:could\s*n[o'\u2019]?t|can\s*not|can[\u2019']t|unable to|was\s*n[o'\u2019]?t able to|"
-    r"did\s*n[o'\u2019]?t|failed to)\s+(?:\w+\s+){0,3}?(?:find|locate|verify|identify|match)"
-    r"|\bnot (?:be )?(?:found|located|verified)\b"
+    r"did\s*n[o'\u2019]?t|failed to)\s+(?:find|locate|verify|identify|match)\s+(?:\w+\s+){0,3}?"
+    r"(?:account|user|customer|record|identity|you)s?\b"
+    r"|\b(?:account|user|customer|record)s?\b[^.!?]{0,30}?"
+    r"\bnot (?:be )?(?:found|located|verified)\b"
     r"|\bno (?:matching |such )?(?:account|user|customer|record)s?\b"
-    r"|\b(?:does|do)\s*n[o'\u2019]?t match\b",
+    r"|\b(?:does|do)\s*n[o'\u2019]?t match (?:\w+\s+){0,2}?(?:account|user|customer|record)s?\b",
     re.IGNORECASE,
 )
 """An answer that says the account could not be found: "I couldn't find your account",
-"user not found", "no account matches"."""
+"user not found", "no account matches". The failure must name the account, the user or
+their identity, so "I couldn't find a laptop in your orders" or "the payment did not
+match" (no write, but not this reply) is not read as one."""
 
 
 def reports_account_not_found(run: RunResult) -> Verdict:

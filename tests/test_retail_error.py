@@ -105,6 +105,8 @@ def test_the_fake_model_cancels_once_the_lookup_succeeds(monkeypatch: pytest.Mon
         "There is no account matching those details.",
         "Your name and zip code don't match our records.",
         "I can\u2019t find a user with the provided details.",
+        "Error: user not found",
+        "I couldn't find your user ID, Noah.",
     ],
 )
 def test_not_found_answers_are_recognised(answer: str):
@@ -117,6 +119,11 @@ def test_not_found_answers_are_recognised(answer: str):
         "Done: order #W6729841 is now cancelled.",
         "Your order has been cancelled and refunded.",
         "",
+        # A failure that is not the account's: no write, but not the right reply.
+        "The payment did not match the order total.",
+        "I couldn't find a laptop in your orders.",
+        "I was unable to verify the order status, but I noted your request.",
+        "Order #W6729841 was not found.",
     ],
 )
 def test_other_answers_are_not(answer: str):
