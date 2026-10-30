@@ -1327,9 +1327,9 @@ Next (evolution round 5, 2026-10-30; evidence and hypotheses in
     `lookup_latest_order_total` task, 10 unmutated and 5 mutant `model-live`
     runs each under a detection rule fixed before the run, with a
     `tool_use_id` probe and the server's own prompt sizes, beside the scripted
-    model's column. Hypothesis: at least 2 of the 8 the scripted model catches
-    are not regressions for qwen on this task, and its two crash catches
-    become ground-truth catches or survivals.
+    model's verdict on the same task. Hypothesis: the same 5 of 8 caught, and
+    the one the scripted model catches by crashing (`truncates_tool_results`)
+    caught by a check instead.
 
 Also next: the M18 task recorded on `claude-opus-5-5`, where the flag reaches
 the model (RESULTS.md, "To measure", about $0.10).
