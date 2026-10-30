@@ -140,6 +140,7 @@ the rows still to measure.
 | Frozen-world divergence on a long chain | qwen2.5:7b on an 8-link rebooking chain, 20 runs under `strict` and `fallback`: 320 of 320 chain lookups served exact, 1 world step in 321 served calls (0.31%, against 2.1% on the short runs), so 40 of 40 runs survived the 8 lookups where independence predicts 0.844 each; 0 / 20 passed in both arms, 39 of 40 answering a euro total without calling the conversion tool | `make eval-pydantic-ai-long` (RESULTS.md, M16) |
 | `synth`, the third unrecorded-call policy | offline (7th mutation-study configuration): 12 / 12 model mutations as `fallback`, 0 / 5 false alarms, but a correct agent that re-reads an order fails the ground truth in 4 of 6 scenarios, as under `strict` (`fallback` 0); live (qwen2.5:7b without the guard line, 20 runs per arm): `synth` 0 / 20 and 2 / 20, `fallback` 2 / 20 and 3 / 20, M15's `strict` 2 / 20 and 2 / 20, so the guessed amounts, not the recording, failed the runs; 11 of 20 `synth` answers stated the stub's 0.00 EUR; 0 passes with a stubbed step | `make eval-mutations`; `make eval-pydantic-ai-no-guard` (RESULTS.md, M17) |
 | A tool that legitimately fails (lost `is_error`) | `drops_error_flag`, which survived every configuration on the six τ-bench tasks, is caught in 4 of 7 on a hand-written wrong-zip task: wherever the model runs (`model-live` under `strict`, `fallback`, `synth`) and with `fail_on_approximate`; it survives `full`, `tools-live` and `tools-live` with `fail_on_tool_drift`, where the model's reply is served; live, qwen2.5:7b through Ollama said "not found" with no write in 8 / 10 unmutated runs and 9 / 10 mutant runs, because Ollama's `/v1/messages` drops `is_error` before the prompt (84 / 84 tokens with and without it) | `make eval-mutations`; `make eval-retail-error-qwen` (RESULTS.md, M18) |
+| The agent mutations on a real model | on `lookup_latest_order_total`, qwen2.5:7b through Ollama (`model-live`, `fallback`) passed the unmutated task only 2 / 10 (it invented order ids instead of reading the profile), so the eight agent mutations are **not resolvable** on this model under the rule fixed before the run; beside the scripted model's on-task 5 of 8 (one by a JSONDecodeError crash), every qwen failure was the ground-truth check and none a crash; the two parallel-call mutations never acted (1 `tool_use` per reply at most); `strips_policy` passed 5 / 5; largest prompt 3,708 tokens, 0 of 50 runs over 4,096 | `make eval-retail-mutations-qwen` (RESULTS.md, M19) |
 | Runs a fixed-threshold verdict needs | 5 runs agree with the all-runs verdict in ≥ 95% of draws on all 15 committed scenarios, but not on 3 of the 4 new ones (90–94%), which sit 0.15–0.35 from the 0.75 threshold | `make eval-verdict-curve` |
 | Cassette bytes at scale | quadratic in turns: 3.65 MB at 100 turns, 13.1 MB at 200 (seeded text, retail-sized prompt); live Opus retail traces grow 2.4 to 4.4× faster per turn; `full` replay 1.7 s at 200 turns | `make bench-scale` |
 | What compression recovers at 100 turns | xz 105×; gzip 3.8× (19× at 20 turns, until envelopes outgrow its 32 KB window); a shared-prefix encoding adds only 1.07× under xz, so cassettes compress as `.jsonl.xz` and the schema is unchanged | `make bench-scale` |
@@ -1319,20 +1320,17 @@ Next (evolution round 3, 2026-10-28; evidence and hypotheses in
     8 / 10), because Ollama's `/v1/messages` drops `is_error` before the
     prompt is built; see [RESULTS.md](RESULTS.md))
 
-Next (evolution round 5, 2026-10-30; evidence and hypotheses in
-[PLAN.md](PLAN.md), "Evolution round 5"):
-
-19. The agent mutations on a real model: the eight agent mutations that can
-    act on a read-only task, on qwen2.5:7b through Ollama against the
-    `lookup_latest_order_total` task, 10 unmutated and 5 mutant `model-live`
-    runs each under a detection rule fixed before the run, with a
-    `tool_use_id` probe and the server's own prompt sizes, beside the scripted
-    model's verdict on the same task. Hypothesis: the same 5 of 8 caught, and
-    the one the scripted model catches by crashing (`truncates_tool_results`)
-    caught by a check instead.
+19. ~~The agent mutations on a real model~~ (done: on
+    `lookup_latest_order_total`, qwen2.5:7b passed the unmutated task only
+    2 / 10, inventing order ids instead of reading the profile, so the eight
+    mutations are not resolvable on this model for this task, as the rule
+    fixed before the run says. Every failure was the ground-truth check, none
+    a crash; the two parallel-call mutations never acted; `strips_policy`
+    passed 5 / 5; see [RESULTS.md](RESULTS.md))
 
 Also next: the M18 task recorded on `claude-opus-5-5`, where the flag reaches
-the model (RESULTS.md, "To measure", about $0.10).
+the model (RESULTS.md, "To measure", about $0.10), and M19's question on a
+task the local model passes at least 8 of 10 times.
 
 Later: live updates in the dashboard (server-sent events), authentication for
 a shared deployment, and running a flake suite's scenarios in parallel as well
