@@ -14,7 +14,6 @@ from anthropic import Anthropic, omit
 from anthropic.types import MessageParam, ToolResultBlockParam, ToolUseBlock
 
 from examples.retail_agent.agent import (
-    MODEL,
     SINGLE_TURN_NOTE,
     SYSTEM,
     TOOLS,
@@ -22,6 +21,7 @@ from examples.retail_agent.agent import (
     ToolTable,
     final_text,
 )
+from examples.retail_agent.mutants import FirstToolOnly, SkipsOrderLookup, WrongWriteArgument
 from examples.retail_agent.ollama import OllamaRetailAgent
 from examples.retail_agent.tools import WRITE_TOOLS, reset_db
 
@@ -97,7 +97,9 @@ class UnregistersProductTool(RetailAgent):
 
 
 class _CopiedLoop(RetailAgent):
-    """``RetailAgent.run`` copied with two seams, for mutants that change the request."""
+    """``RetailAgent.run`` copied with two seams, for mutants that change the request. The
+    model is ``self.model``, as in ``RetailAgent.run``, so a subclass on Ollama asks for
+    the local model."""
 
     def system(self) -> str:
         return SYSTEM
@@ -110,7 +112,7 @@ class _CopiedLoop(RetailAgent):
         messages: list[MessageParam] = [{"role": "user", "content": task}]
         for _ in range(self.max_turns):
             response = client.messages.create(
-                model=MODEL,
+                model=self.model,
                 max_tokens=4096,
                 system=self.system(),
                 tools=[t.to_anthropic() for t in self.tools.values()],
@@ -203,3 +205,29 @@ class OllamaDropsErrorFlag(OllamaRetailAgent, DropsErrorFlag):
 
 
 drops_error_flag_ollama = OllamaDropsErrorFlag().run
+
+
+# --- every agent mutation on the local model (M19) ---------------------------------
+#
+# The mutant's loop with the model taken from $REPLAY_OLLAMA_MODEL when it runs
+# (``OllamaRetailAgent.model``); ``eval/retail_error.py --mutations`` refers to them
+# as ``eval.mutations.agents:<mutation>_ollama``.
+
+
+def _on_ollama(mutant: type[RetailAgent]) -> RetailAgent:
+    return type(f"Ollama{mutant.__name__}", (OllamaRetailAgent, mutant), {})()  # type: ignore[no-any-return]
+
+
+skips_order_lookup_ollama = _on_ollama(SkipsOrderLookup).run
+wrong_write_argument_ollama = _on_ollama(WrongWriteArgument).run
+first_tool_only_ollama = _on_ollama(FirstToolOnly).run
+truncates_tool_results_ollama = _on_ollama(TruncatesToolResults).run
+max_turns_too_low_ollama = _on_ollama(MaxTurnsTooLow).run
+returns_empty_answer_ollama = _on_ollama(ReturnsEmptyAnswer).run
+repeats_write_calls_ollama = _on_ollama(RepeatsWriteCalls).run
+mismatches_tool_use_ids_ollama = _on_ollama(MismatchesToolUseIds).run
+unregisters_product_tool_ollama = _on_ollama(UnregistersProductTool).run
+strips_policy_ollama = _on_ollama(StripsPolicy).run
+truncates_history_ollama = _on_ollama(TruncatesHistory).run
+guesses_user_id_ollama = _on_ollama(GuessesUserId).run
+reads_wrong_order_ollama = _on_ollama(ReadsWrongOrder).run
