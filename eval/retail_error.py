@@ -12,17 +12,19 @@ account was not found, with nothing written) on qwen2.5:7b through Ollama:
    rather than trusted. Ollama counts only the tokens its prompt cache did not
    already hold, so each run also gets an upper bound on its largest prompt
    (:func:`prompt_bound`).
-2. ``--probe``: what Ollama's ``/v1/messages`` does with the flag. The same tool
-   result is sent with and without ``is_error: true`` (and once with a word added to
-   its text, as a control that the count moves), each request opened by a different
-   nonce so the prompt cache reuses the same prefix for all three; equal
-   ``input_tokens`` with and without the flag means the flag never reached the model.
-3. The arms (the default): ``model-live`` under ``fallback`` on the qwen recording (the
-   fake-model one if no qwen attempt passed, and the report says so), ``--runs`` (10)
-   runs with the unmutated agent and as many with ``drops_error_flag``, both on the
-   local model. Every run records its tool calls, its answer, whether it replied "not
-   found" with no write (:func:`examples.retail_agent.rules.reports_account_not_found`),
-   how many ``is_error`` flags its model requests carried, and each model call's
+2. The probe (run first by the default command, :func:`probe_flag`): what Ollama's
+   ``/v1/messages`` does with the flag. After a warm-up call, the same tool result is
+   sent with and without ``is_error: true`` (and once with three words added to its
+   text, as a control that the count moves), each request opened by a different nonce
+   so the prompt cache reuses the same prefix for all three; equal ``input_tokens``
+   with and without the flag means the flag never reached the model.
+3. The arms (the default, after the probe): ``model-live`` under ``fallback`` on the
+   qwen recording (the fake-model one if no qwen attempt passed, and the report says
+   so), ``--runs`` (10) runs with the unmutated agent and as many with
+   ``drops_error_flag``, both on the local model. Every run records its tool calls,
+   its answer, whether it replied "not found" with no write
+   (:func:`examples.retail_agent.rules.reports_account_not_found`), how many
+   ``is_error`` flags its model requests carried, and each model call's
    ``input_tokens`` and ``output_tokens``, with the bound on its largest prompt. The
    report answers the milestone's hypothesis (:func:`hypothesis`).
 
@@ -142,9 +144,9 @@ def error_flags_sent(result: RunResult) -> int:
 
 def run_facts(result: RunResult | None, prefix: int | None = None) -> dict[str, Any]:
     """One run's tool calls (with each result, or the error a failed call raised), its
-    answer, the not-found verdict,
-    the ``is_error`` flags its requests carried, each model call's ``input_tokens`` and
-    ``output_tokens``, and the bound on its largest prompt (:func:`prompt_bound`)."""
+    answer, the not-found verdict, the ``is_error`` flags its requests carried, each
+    model call's ``input_tokens`` and ``output_tokens``, and the bound on its largest
+    prompt (:func:`prompt_bound`)."""
     if result is None:
         return {}
     verdict, reason = reports_account_not_found(result)
