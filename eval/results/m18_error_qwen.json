@@ -1085,7 +1085,7 @@
       "drops_error_flag": 9,
       "unmutated": 8
     },
-    "rule": "mutant >= 8/10 and within 2 of unmutated: near-equivalent; mutant < 6/10: the flag matters; else partial",
+    "rule": "mutant >= 8/10 and within 2 of unmutated: near-equivalent; mutant < 6/10 and unmutated more than 2 above it: the flag matters; mutant < 6/10 otherwise: inconclusive; else partial",
     "runs": {
       "drops_error_flag": 10,
       "unmutated": 10

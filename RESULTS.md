@@ -3234,14 +3234,20 @@ and context shift on (`llama-server -c 4096 --context-shift`), so a long
 prompt would be cut silently. The retail policy, tools and task are 2,876
 tokens (the recording's first call, on a cold cache). Ollama's
 `usage.input_tokens` counts only what its prompt cache did not already hold:
-43 and 33 for the recording's next two calls. So each run also gets an upper
+43 and 33 for the recording's next two calls. (Even the cold count is 3
+tokens under the server's own, 2,876 against 2,879, so the bound below is
+approximate; the server's counts are the check.) So each run also gets an upper
 bound on its largest prompt (`prompt_bound`: the cold prefix, plus every later
 call's input, plus every earlier call's output). It is 3,024 tokens for the
 recording and at most 3,024 in all 20 arm runs. The server's own
 `task.n_tokens`, read from its debug log, agree: the largest prompt among all
 73 requests of the session was 2,991 tokens (2,879 / 2,941 / 2,991 per turn).
 No prompt reached the window. The counts are in
-`eval/results/m18_ollama_is_error_trace.txt`.
+`eval/results/m18_ollama_is_error_trace.txt`. Of the 73, the 60 at those three
+sizes are the recording's 3, the arms' 55 and 2 from the stopped start
+described below; the 13 small ones are the first `is_error` check and three
+runs of the probe (in the stopped start, once by hand after the fix, and in
+the arms).
 
 **What Ollama does with `is_error`.** With `OLLAMA_DEBUG=2` the server logs
 each Anthropic request as it arrived and as converted. A `tool_result` with
@@ -3266,8 +3272,10 @@ suite's identify keys, 10 runs with the unmutated agent and 10 with
 qwen2.5:7b (digest `845dbda0…`), one run at a time (`wilson` gate, so exactly 10).
 4 vCPU AMD EPYC 9V74, CPU only, Ollama 0.40.11, nothing else running on the
 cores. $0. Raw report: `eval/results/m18_error_qwen.json` (every run's tool calls
-with status and result, answer, not-found verdict, `is_error` flags its
-requests carried, input and output tokens, prompt bound, seconds).
+with their status, answer, not-found verdict, `is_error` flags its requests
+carried, input and output tokens, prompt bound, seconds). The committed runs
+predate keeping a failed call's error text with the call (a review fix); every
+lookup was served `exact`, so each failed with the recording's `user not found`.
 
 ```
 $ make eval-retail-error-qwen
@@ -3306,8 +3314,10 @@ is not a regression. The plan's reason was "a model that reads the error text
 does not need the flag". The probe shows something stronger, and different.
 qwen never saw the flag in either arm, because Ollama's Anthropic layer drops
 it before the prompt is built. The unmutated runs sent it (10 of 10), the
-mutant's did not (0 of 10), and the model's prompts were the same size turn
-by turn (2,879 / 2,941 / 2,991 tokens in both arms). So on this stack the two
+mutant's did not (0 of 10). Every one of the arms' 55 model requests was
+2,879, 2,941 or 2,991 tokens, the sizes of the recording's three turns, so
+the flag added no token in either arm (the probe and the trace show that the
+content is the same, not only the size). So on this stack the two
 arms are two samples of the same input, and 8 against 9 is sampling. The
 fake-model catches above are the fake policy's dependence on the flag, as
 predicted. Whether a model that *does* see the flag misbehaves without it

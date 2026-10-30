@@ -141,7 +141,8 @@ def error_flags_sent(result: RunResult) -> int:
 
 
 def run_facts(result: RunResult | None, prefix: int | None = None) -> dict[str, Any]:
-    """One run's tool calls (with each result's text), its answer, the not-found verdict,
+    """One run's tool calls (with each result, or the error a failed call raised), its
+    answer, the not-found verdict,
     the ``is_error`` flags its requests carried, each model call's ``input_tokens`` and
     ``output_tokens``, and the bound on its largest prompt (:func:`prompt_bound`)."""
     if result is None:
@@ -152,7 +153,13 @@ def run_facts(result: RunResult | None, prefix: int | None = None) -> dict[str, 
     outputs = [_usage(s.response, "output_tokens") for s in steps]
     return {
         "tool_calls": [
-            {"name": s.name, "input": s.request, "status": s.status.value, "response": s.response}
+            {
+                "name": s.name,
+                "input": s.request,
+                "status": s.status.value,
+                "response": s.response,
+                "error": None if s.error is None else f"{s.error.type}: {s.error.message}",
+            }
             for s in result.trajectory.tool_steps()
         ],
         "output": result.output,
@@ -203,9 +210,10 @@ def ollama_metadata() -> dict[str, Any]:
 
 
 def record_attempt(
-    agent: str, client: str, scratch: Path, metadata: dict[str, Any]
+    agent: str, client: str, scratch: Path, metadata: dict[str, Any], prefix: int | None = None
 ) -> tuple[dict[str, Any], Path]:
-    """Record the task once into ``scratch`` and check it in ``full`` with the suite."""
+    """Record the task once into ``scratch`` and check it in ``full`` with the suite.
+    ``prefix``: the first attempt's cold count of the first prompt (:func:`prompt_bound`)."""
     reset_db()
     started = time.perf_counter()
     result, cassette = record(
@@ -224,7 +232,7 @@ def record_attempt(
         "passed": report.passed,
         "failed_checks": [c.check for c in report.checks if not c.passed],
         "error": result.error.message if result.error else None,
-        **run_facts(result),
+        **run_facts(result, prefix),
         "model_calls": len(result.trajectory.model_steps()),
         "wall_s": wall_s,
     }
@@ -248,7 +256,11 @@ def record_task(
     kept = False
     for k in range(1, attempts + 1):
         with tempfile.TemporaryDirectory() as tmp:
-            entry, path = record_attempt(agent, client, Path(tmp), header)
+            # Later attempts find the prompt in Ollama's cache; the first one's count is cold.
+            prefix = (
+                entries[0]["input_tokens"][0] if entries and entries[0]["input_tokens"] else None
+            )
+            entry, path = record_attempt(agent, client, Path(tmp), header, prefix)
             entry["attempt"] = k
             entries.append(entry)
             verdict = "passed" if entry["passed"] else f"failed {entry['failed_checks']}"
@@ -401,27 +413,35 @@ def run_arm(
 
 
 def hypothesis(arms: dict[str, Any]) -> dict[str, Any]:
-    """The milestone's rule: the mutant replies "not found" with no write in at least 8 of
-    10 runs and within 2 of the unmutated arm (near-equivalent for a model that reads the
-    text); fewer than 6 means the flag matters to a real model; between, partial."""
+    """The milestone's rule, for 10 runs an arm (scaled to others): the mutant replies "not
+    found" with no write in at least 8 of 10 and within 2 of the unmutated arm, so the
+    flag is near-equivalent; fewer than 6, with the unmutated arm more than 2 above it,
+    means the flag matters to a real model; a mutant under 6 that the unmutated arm does
+    not beat by more than 2 says the task fails either way, not that the flag matters;
+    anything else is partial."""
     counts = {label: arm["scenarios"][0]["not_found_no_write"] for label, arm in arms.items()}
     runs = {label: arm["scenarios"][0]["runs"] for label, arm in arms.items()}
     mutant, unmutated = counts.get("drops_error_flag"), counts.get("unmutated")
     if mutant is None or unmutated is None:
         return {"not_found_no_write": counts, "runs": runs, "verdict": "incomplete"}
     n = runs["drops_error_flag"]
-    if mutant >= 0.8 * n and abs(unmutated - mutant) <= 2:
+    difference = unmutated - mutant
+    gap = 0.2 * n  # "within 2" of 10
+    if mutant >= 0.8 * n and abs(difference) <= gap:
         verdict = "near-equivalent: the mutant replies not found as the unmutated agent does"
-    elif mutant < 0.6 * n:
+    elif mutant < 0.6 * n and difference > gap:
         verdict = "the flag matters to the real model"
+    elif mutant < 0.6 * n:
+        verdict = "inconclusive: the unmutated arm fails the task about as often"
     else:
         verdict = "partial: between the two thresholds, or more than 2 from the unmutated arm"
     return {
         "not_found_no_write": counts,
         "runs": runs,
-        "difference": unmutated - mutant,
-        "rule": "mutant >= 8/10 and within 2 of unmutated: near-equivalent; mutant < 6/10: "
-        "the flag matters; else partial",
+        "difference": difference,
+        "rule": "mutant >= 8/10 and within 2 of unmutated: near-equivalent; mutant < 6/10 "
+        "and unmutated more than 2 above it: the flag matters; mutant < 6/10 otherwise: "
+        "inconclusive; else partial",
         "verdict": verdict,
     }
 

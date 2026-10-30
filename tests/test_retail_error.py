@@ -232,6 +232,8 @@ def test_the_arms_on_the_fake_model(tmp_path: Path):
         (8, 5, "partial"),
         (7, 7, "partial"),
         (5, 10, "the flag matters"),
+        (3, 3, "inconclusive"),
+        (5, 7, "inconclusive"),
     ],
 )
 def test_hypothesis_thresholds(mutant: int, unmutated: int, verdict: str):
@@ -240,6 +242,58 @@ def test_hypothesis_thresholds(mutant: int, unmutated: int, verdict: str):
 
     result = retail_error.hypothesis({"unmutated": arm(unmutated), "drops_error_flag": arm(mutant)})
     assert result["verdict"].startswith(verdict)
+
+
+def test_hypothesis_needs_both_arms():
+    arm = {"scenarios": [{"not_found_no_write": 9, "runs": 10}]}
+    assert retail_error.hypothesis({"unmutated": arm})["verdict"] == "incomplete"
+
+
+@pytest.mark.parametrize(
+    ("inputs", "outputs", "prefix", "bound"),
+    [
+        # The recording: a cold first call, then only what the cache lacked.
+        ([2876, 43, 33], [44, 28, 28], None, 2876 + 43 + 33 + 44 + 28),
+        # A later run: its first call found the prompt in the cache.
+        ([12, 43, 33], [44, 28, 28], 2876, 2876 + 43 + 33 + 44 + 28),
+        ([2876], [44], None, 2876),
+        ([2876, None], [44, 28], None, None),
+        ([], [], 2876, None),
+    ],
+)
+def test_prompt_bound(
+    inputs: list[int | None], outputs: list[int | None], prefix: int | None, bound: int | None
+):
+    assert retail_error.prompt_bound(inputs, outputs, prefix) == bound
+
+
+def test_the_arms_use_a_qwen_recording_and_its_cold_prefix(tmp_path: Path):
+    qwen = tmp_path / "qwen"
+    qwen.mkdir()
+    name = f"{TASK.id}.jsonl"
+    (qwen / name).write_bytes((EXAMPLE / "cassettes" / "error" / name).read_bytes())
+    log = tmp_path / "log.json"
+    log.write_text(json.dumps({"attempts": [{"input_tokens": [5000, 40]}]}), encoding="utf-8")
+
+    report = retail_error.run_arms(
+        1,
+        tmp_path / "out.json",
+        arms=FAKE_ARMS[:1],
+        client=FAKE,
+        environment={"cpu": "test"},
+        recording_log=log,
+        qwen_cassettes=qwen,
+    )
+
+    assert report["cassette_source"] == "qwen recording"
+    assert report["recording_attempts"] == 1
+    assert report["prompt_prefix_tokens"] == 5000
+    scenario = report["arms"]["unmutated"]["scenarios"][0]
+    run = scenario["outcomes"][0]
+    assert run["prompt_tokens_bound"] >= 5000
+    assert scenario["runs_that_may_reach_the_context_window"] == 1
+    # The failed lookup's error is kept with the call.
+    assert run["tool_calls"][0]["error"] == "ValueError: user not found"
 
 
 def test_the_probe_reads_equal_counts_as_a_flag_that_never_arrives():
