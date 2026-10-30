@@ -7,7 +7,8 @@
 	data-llmbar eval-llmbar eval-llmbar-dry eval-llmbar-heuristics \
 	bench-replay bench-replay-record eval bench regression-pr regression-pr-rehearse walkthrough \
 	pydantic-ai-cassettes record-pydantic-ai eval-pydantic-ai eval-pydantic-ai-offline \
-	eval-pydantic-ai-arms eval-pydantic-ai-swap eval-pydantic-ai-long eval-pydantic-ai-no-guard record-pydantic-ai-chain eval-verdict-curve bench-scale bench-scale-record bench-upstream
+	eval-pydantic-ai-arms eval-pydantic-ai-swap eval-pydantic-ai-long eval-pydantic-ai-no-guard record-pydantic-ai-chain eval-verdict-curve \
+	record-retail-error-qwen eval-retail-error-qwen bench-scale bench-scale-record bench-upstream
 
 TOY_RECORD = uv run replay record examples.toy_agent.agent:run \
 	--client examples.toy_agent.fake_model:make_client --force
@@ -162,7 +163,8 @@ eval-judge-objective:
 # fail_on_approximate and tools-live with fail_on_tool_drift; detection rate per check type
 # and per configuration. Then everything again with the suite's identify keys, plus the two
 # identity mutations, and five correct-but-different paths of the fake model in model-live
-# under strict and fallback (offline, about two minutes). The JSON is byte-stable across runs.
+# under strict and fallback; then (M18) the hand-written error task unmutated and under every
+# agent mutation (offline, about two minutes). The JSON is byte-stable across runs.
 eval-mutations:
 	uv run python eval/mutation_study.py --out eval/results/mutations.json
 
@@ -228,6 +230,21 @@ eval-pydantic-ai-long:
 # 4 CPU cores); never on pull requests (ollama.yml's `no_guard` input runs it).
 eval-pydantic-ai-no-guard:
 	uv run python -m eval.pydantic_ai --no-guard
+
+# M18: the retail task where a tool legitimately fails (a wrong zip code), recorded on
+# qwen2.5:7b through Ollama: up to 3 attempts, the first that passes the suite's checks is
+# kept in examples/retail_agent/cassettes/qwen/, every attempt (with each model call's
+# input tokens) logged to eval/results/m18_qwen_recording.json. Needs `ollama serve` with
+# qwen2.5:7b; never on pull requests (ollama.yml's `retail_error` input runs it).
+record-retail-error-qwen:
+	uv run python -m eval.retail_error --record
+
+# M18: a probe of what Ollama's /v1/messages does with `is_error`, then the task in
+# model-live under fallback, 10 runs with the unmutated agent and 10 with drops_error_flag,
+# both on qwen2.5:7b, into eval/results/m18_error_qwen.json. Needs `ollama serve` with
+# qwen2.5:7b (CPU only); never on pull requests (ollama.yml's `retail_error` input runs it).
+eval-retail-error-qwen:
+	uv run python -m eval.retail_error --runs 10
 
 # M12: how often a subset of n runs gives the all-runs fixed-threshold verdict, for every
 # committed flake report (seeded draws without replacement; offline, byte-stable).

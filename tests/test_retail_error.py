@@ -16,6 +16,7 @@ from agent_replay import Cassette
 from agent_replay.ci import Overrides, run_suite
 from agent_replay.runner import make_client, record
 from eval import mutation_study as study
+from eval import retail_error
 from eval.mutations import MUTATIONS
 from examples.retail_agent import agent as retail
 from examples.retail_agent import fake_model, rules, tools
@@ -169,3 +170,115 @@ def test_drops_error_flag_on_the_error_task_is_seen_where_the_model_runs():
     assert full.approximate_steps == 1
     # The fake model takes the error text for a user id; the recording has no such call.
     assert "run_error:UnrecordedCallError" in live.caught_by
+
+
+# --- the live harness, against the fake model -----------------------------------------
+
+FAKE_ARMS = (
+    retail_error.Arm("unmutated", "examples.retail_agent.agent:run"),
+    retail_error.Arm("drops_error_flag", "eval.mutations.agents:drops_error_flag"),
+)
+
+
+def test_recording_keeps_the_first_passing_attempt(tmp_path: Path):
+    log = retail_error.record_task(
+        3,
+        tmp_path / "log.json",
+        tmp_path / "qwen",
+        agent="examples.retail_agent.agent:run",
+        client=FAKE,
+        environment={"cpu": "test"},
+        metadata={"model": "fake"},
+    )
+
+    assert log["kept"] == str(tmp_path / "qwen" / f"{TASK.id}.jsonl")
+    assert len(log["attempts"]) == 1
+    attempt = log["attempts"][0]
+    assert attempt["passed"] is True
+    assert attempt["not_found_no_write"] is True
+    assert attempt["error_flags_sent"] == 1
+    assert len(attempt["input_tokens"]) == attempt["model_calls"] == 2
+    assert json.loads((tmp_path / "log.json").read_text(encoding="utf-8")) == log
+
+
+def test_the_arms_on_the_fake_model(tmp_path: Path):
+    report = retail_error.run_arms(
+        2,
+        tmp_path / "out.json",
+        arms=FAKE_ARMS,
+        client=FAKE,
+        environment={"cpu": "test"},
+        recording_log=tmp_path / "missing.json",
+        qwen_cassettes=tmp_path / "no-qwen",
+    )
+
+    assert report["cassette_source"].startswith("fake-model recording")
+    unmutated = report["arms"]["unmutated"]["scenarios"][0]
+    mutant = report["arms"]["drops_error_flag"]["scenarios"][0]
+    assert (unmutated["passes"], unmutated["not_found_no_write"]) == (2, 2)
+    assert unmutated["runs_with_an_error_flag_sent"] == 2
+    # The fake model branches on the flag: without it, it reads the error text as a user id.
+    assert (mutant["passes"], mutant["not_found_no_write"]) == (0, 0)
+    assert mutant["runs_with_an_error_flag_sent"] == 0
+    assert report["hypothesis"]["verdict"] == "the flag matters to the real model"
+    assert json.loads((tmp_path / "out.json").read_text(encoding="utf-8")) == report
+
+
+@pytest.mark.parametrize(
+    ("mutant", "unmutated", "verdict"),
+    [
+        (9, 10, "near-equivalent"),
+        (8, 10, "near-equivalent"),
+        (8, 5, "partial"),
+        (7, 7, "partial"),
+        (5, 10, "the flag matters"),
+    ],
+)
+def test_hypothesis_thresholds(mutant: int, unmutated: int, verdict: str):
+    def arm(count: int) -> dict[str, Any]:
+        return {"scenarios": [{"not_found_no_write": count, "runs": 10}]}
+
+    result = retail_error.hypothesis({"unmutated": arm(unmutated), "drops_error_flag": arm(mutant)})
+    assert result["verdict"].startswith(verdict)
+
+
+def test_the_probe_reads_equal_counts_as_a_flag_that_never_arrives():
+    counts = iter([180, 51, 51, 55])
+    sent: list[dict[str, Any]] = []
+
+    def create(**request: Any) -> Any:
+        sent.append(request)
+        return SimpleNamespace(usage=SimpleNamespace(input_tokens=next(counts)))
+
+    client = SimpleNamespace(messages=SimpleNamespace(create=create))
+    probe = retail_error.probe_flag(client, "qwen2.5:7b")  # type: ignore[arg-type]
+
+    assert probe["reading"] == "the flag never reaches the model"
+    flags = [r["messages"][-1]["content"][0].get("is_error") for r in sent]
+    assert flags == [None, True, None, None]
+    firsts = [r["messages"][0]["content"] for r in sent]
+    assert len({len(f) for f in firsts}) == 1  # same length, different nonce
+    assert len(set(firsts)) == 4
+
+
+def test_without_ollama_the_fix_is_named(capsys: pytest.CaptureFixture[str]):
+    assert retail_error._serving(lambda _model: None) is False
+    assert "ollama pull qwen2.5:7b" in capsys.readouterr().err
+
+
+def test_error_flags_sent_counts_the_last_request():
+    request = {
+        "messages": [
+            {"role": "user", "content": "hi"},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "a", "content": "x", "is_error": True},
+                    {"type": "tool_result", "tool_use_id": "b", "content": "y"},
+                ],
+            },
+        ]
+    }
+    steps = [SimpleNamespace(request={"messages": []}), SimpleNamespace(request=request)]
+    result = SimpleNamespace(trajectory=SimpleNamespace(model_steps=lambda: steps))
+    assert retail_error.error_flags_sent(result) == 1  # type: ignore[arg-type]
