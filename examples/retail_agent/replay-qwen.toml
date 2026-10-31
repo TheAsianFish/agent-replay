@@ -1,0 +1,42 @@
+# The retail suite's ground-truth checks for a local model (M19):
+# `uv run replay ci examples/retail_agent/replay-qwen.toml --agent examples.retail_agent.ollama:run`
+# replays the qwen2.5:7b recordings in cassettes/qwen/ (with the agent that asks for
+# qwen2.5:7b, so its model requests match the recording's); `eval/retail_error.py --task
+# lookup_latest_order_total` runs it in model-live on Ollama under every agent mutation.
+# Paths are relative to this file.
+#
+# What differs from replay.toml, and why:
+# - No tool_sequence. The exact sequence is the recording's (Opus read three orders at
+#   once; a local model reads one per reply), so it fails a different correct path, not
+#   a regression. The writes are still checked against τ-bench's ground truth.
+# - No output_schema on "$829.43". τ-bench's own output check (matches_ground_truth)
+#   already needs 829.43 in the answer; the dollar sign is formatting.
+# - The M11 identify keys stay: a read of an order the recording never fetched is
+#   unrecorded, and the policy decides.
+# Only the lookup task has a qwen recording; the other tasks join when one passes.
+
+[defaults]
+agent = "examples.retail_agent.ollama:run"
+mode = "full"
+policy = "strict"
+checks = [
+  { type = "rule", ref = "examples.retail_agent.rules:checked_before_writing" },
+  { type = "max_tool_calls", limit = 12 },
+  { type = "budget", max_model_calls = 8 },
+]
+
+# replay.toml's keys for the tools these recordings hold (the suite refuses a key for a
+# tool no cassette recorded, since a misspelt name would switch the check off).
+[defaults.identify]
+find_user_id_by_name_zip = ["first_name", "last_name", "zip"]
+get_user_details = ["user_id"]
+get_order_details = ["order_id"]
+
+[[scenario]]
+name = "lookup_latest_order_total"
+cassette = "cassettes/qwen/lookup_latest_order_total.jsonl"
+checks = [
+  { type = "rule", ref = "examples.retail_agent.rules:matches_ground_truth", args = { task = "lookup_latest_order_total" } },
+  { type = "rule", ref = "examples.retail_agent.rules:db_matches_ground_truth", args = { task = "lookup_latest_order_total" } },
+  { type = "forbidden_tools", tools = ["cancel_pending_order", "modify_pending_order_address", "return_delivered_order_items", "exchange_delivered_order_items"] },
+]

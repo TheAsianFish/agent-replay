@@ -1,0 +1,552 @@
+# Ollama 0.40.11 serving qwen2.5:7b with OLLAMA_CONTEXT_LENGTH=8192 and OLLAMA_NUM_PARALLEL=1,
+# for M19's recording attempts, id probe and arms. The lines eval/retail_error.py reads
+# (ServerLog): the model load's n_ctx_slot, each request's 'new prompt' (task.n_tokens: the
+# whole prompt) and 'stop processing' (truncated), and each HTTP response. Filtered from the
+# server's full log with: grep -E 'n_ctx_slot|stop processing|GIN'
+time=2026-10-30T21:53:50.240Z level=INFO source=routes.go:2454 msg="server config" env="map[CUDA_VISIBLE_DEVICES: GGML_VK_VISIBLE_DEVICES: GPU_DEVICE_ORDINAL: HIP_VISIBLE_DEVICES: HSA_OVERRIDE_GFX_VERSION: HTTPS_PROXY: HTTP_PROXY: LLAMA_ARG_FIT: LLAMA_ARG_FIT_TARGET: NO_PROXY: OLLAMA_CONTEXT_LENGTH:8192 OLLAMA_CREATE_REMOTE:false OLLAMA_DEBUG:INFO OLLAMA_DEBUG_LOG_REQUESTS:false OLLAMA_EDITOR: OLLAMA_FLASH_ATTENTION:false OLLAMA_GO_TEMPLATE:true OLLAMA_GPU_OVERHEAD:0 OLLAMA_HOST:http://127.0.0.1:11434 OLLAMA_IGPU_ENABLE: OLLAMA_KEEP_ALIVE:5m0s OLLAMA_KV_CACHE_TYPE: OLLAMA_LLM_LIBRARY: OLLAMA_LOAD_TIMEOUT:5m0s OLLAMA_MAX_LOADED_MODELS:0 OLLAMA_MAX_QUEUE:512 OLLAMA_MAX_TRANSFER_STREAMS:4 OLLAMA_MODELS:/home/runner/.ollama/models OLLAMA_NOHISTORY:false OLLAMA_NOPRUNE:false OLLAMA_NO_CLOUD:false OLLAMA_NUM_PARALLEL:1 OLLAMA_ORIGINS:[http://localhost https://localhost http://localhost:* https://localhost:* http://127.0.0.1 https://127.0.0.1 http://127.0.0.1:* https://127.0.0.1:* http://0.0.0.0 https://0.0.0.0 http://0.0.0.0:* https://0.0.0.0:* app://* file://* tauri://* vscode-webview://* vscode-file://*] OLLAMA_REMOTES:[ollama.com] OLLAMA_SCHED_SPREAD:false OLLAMA_VULKAN:true ROCR_VISIBLE_DEVICES: http_proxy: https_proxy: no_proxy:]"
+[GIN] 2026/10/30 - 21:53:54 | 200 | 65.102µs |       127.0.0.1 | GET      "/api/version"
+[GIN] 2026/10/30 - 21:53:57 | 200 | 35.156µs |       127.0.0.1 | GET      "/api/version"
+[GIN] 2026/10/30 - 21:53:57 | 200 |   1.23ms |       127.0.0.1 | GET      "/api/tags"
+[GIN] 2026/10/30 - 21:53:57 | 200 | 15.379µs |       127.0.0.1 | GET      "/api/version"
+[GIN] 2026/10/30 - 21:53:57 | 200 | 864.62µs |       127.0.0.1 | GET      "/api/tags"
+srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+slot   operator(): id  0 | task 0 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+[GIN] 2026/10/30 - 21:58:34 | 200 |    4m30s |       127.0.0.1 | POST     "/v1/messages"
+slot      release: id  0 | task 0 | stop processing: n_tokens = 2909, truncated = 0
+slot   operator(): id  0 | task 47 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 47 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 21:58:51 | 200 |   17.06s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 77 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 77 | stop processing: n_tokens = 3015, truncated = 0
+[GIN] 2026/10/30 - 21:59:08 | 200 |   16.61s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 110 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 110 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 21:59:25 | 200 |   17.08s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 155 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 155 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 21:59:45 | 200 |   19.73s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 185 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 185 | stop processing: n_tokens = 3013, truncated = 0
+[GIN] 2026/10/30 - 22:00:00 | 200 |   15.35s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 216 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 216 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:00:14 | 200 |   13.39s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 261 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+[GIN] 2026/10/30 - 22:00:56 | 500 |   42.67s |       127.0.0.1 | POST     "/v1/messages"
+[GIN] 2026/10/30 - 22:00:56 | 200 | 45.084µs |       127.0.0.1 | GET      "/api/version"
+[GIN] 2026/10/30 - 22:00:56 | 200 |    1.4ms |       127.0.0.1 | GET      "/api/tags"
+slot      release: id  0 | task 261 | stop processing: n_tokens = 3054, truncated = 0
+[GIN] 2026/10/30 - 22:01:09 | 200 | 47.839µs |       127.0.0.1 | GET      "/api/version"
+[GIN] 2026/10/30 - 22:01:09 | 200 |   1.21ms |       127.0.0.1 | GET      "/api/tags"
+slot   operator(): id  0 | task 386 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 257
+slot      release: id  0 | task 386 | stop processing: n_tokens = 257, truncated = 0
+[GIN] 2026/10/30 - 22:01:27 | 200 |   18.41s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 388 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 257
+slot      release: id  0 | task 388 | stop processing: n_tokens = 257, truncated = 0
+[GIN] 2026/10/30 - 22:01:34 | 200 |    6.43s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 390 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 257
+slot      release: id  0 | task 390 | stop processing: n_tokens = 257, truncated = 0
+[GIN] 2026/10/30 - 22:01:40 | 200 |    6.42s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 392 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 261
+slot      release: id  0 | task 392 | stop processing: n_tokens = 261, truncated = 0
+[GIN] 2026/10/30 - 22:01:47 | 200 |    6.73s |       127.0.0.1 | POST     "/v1/messages"
+[GIN] 2026/10/30 - 22:01:47 | 200 | 42.519µs |       127.0.0.1 | GET      "/api/version"
+[GIN] 2026/10/30 - 22:01:47 | 200 |   1.21ms |       127.0.0.1 | GET      "/api/tags"
+slot   operator(): id  0 | task 394 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 394 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:01:59 | 200 |   11.64s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 439 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 439 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:02:12 | 200 |   13.52s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 469 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 469 | stop processing: n_tokens = 3025, truncated = 0
+[GIN] 2026/10/30 - 22:02:28 | 200 |   15.85s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 512 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 512 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:02:40 | 200 |   11.76s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 557 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 557 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:02:53 | 200 |   13.24s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 587 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 587 | stop processing: n_tokens = 3043, truncated = 0
+[GIN] 2026/10/30 - 22:03:14 | 200 |   20.38s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 648 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3028
+slot      release: id  0 | task 648 | stop processing: n_tokens = 3056, truncated = 0
+[GIN] 2026/10/30 - 22:03:25 | 200 |   11.23s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 678 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3080
+slot      release: id  0 | task 678 | stop processing: n_tokens = 3112, truncated = 0
+[GIN] 2026/10/30 - 22:03:38 | 200 |   13.11s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 712 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 712 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:03:50 | 200 |   11.52s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 757 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 757 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:04:03 | 200 |   13.35s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 787 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 787 | stop processing: n_tokens = 3020, truncated = 0
+[GIN] 2026/10/30 - 22:04:17 | 200 |   14.17s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 825 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 825 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:04:28 | 200 |   11.31s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 870 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 870 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:04:42 | 200 |   13.65s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 901 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2985
+slot      release: id  0 | task 901 | stop processing: n_tokens = 3021, truncated = 0
+[GIN] 2026/10/30 - 22:04:56 | 200 |   14.32s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 939 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 939 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:05:08 | 200 |   11.39s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 984 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 984 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:05:21 | 200 |   13.49s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1014 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 1014 | stop processing: n_tokens = 3017, truncated = 0
+[GIN] 2026/10/30 - 22:05:35 | 200 |   13.16s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1049 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 1049 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:05:46 | 200 |   11.34s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1094 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 1094 | stop processing: n_tokens = 2962, truncated = 0
+[GIN] 2026/10/30 - 22:06:00 | 200 |   13.79s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1126 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2986
+slot      release: id  0 | task 1126 | stop processing: n_tokens = 3050, truncated = 0
+[GIN] 2026/10/30 - 22:06:21 | 200 |   21.61s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1192 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 1192 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:06:33 | 200 |   11.39s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1237 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 1237 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:06:46 | 200 |   13.19s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1267 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 1267 | stop processing: n_tokens = 3014, truncated = 0
+[GIN] 2026/10/30 - 22:06:58 | 200 |   12.31s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1299 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 1299 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:07:10 | 200 |   11.42s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1344 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 1344 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:07:24 | 200 |   13.78s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1375 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3154
+slot      release: id  0 | task 1375 | stop processing: n_tokens = 3182, truncated = 0
+[GIN] 2026/10/30 - 22:07:49 | 200 |   25.14s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1405 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3489
+slot      release: id  0 | task 1405 | stop processing: n_tokens = 3524, truncated = 0
+[GIN] 2026/10/30 - 22:08:26 | 200 |   37.06s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1442 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 1442 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:08:37 | 200 |   11.44s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1487 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 1487 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:08:50 | 200 |   13.12s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1517 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 1517 | stop processing: n_tokens = 3012, truncated = 0
+[GIN] 2026/10/30 - 22:09:02 | 200 |   11.78s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1547 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 1547 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:09:14 | 200 |   11.64s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1592 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 1592 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:09:28 | 200 |   13.74s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1623 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3154
+slot      release: id  0 | task 1623 | stop processing: n_tokens = 3182, truncated = 0
+[GIN] 2026/10/30 - 22:09:53 | 200 |   25.26s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1653 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3489
+slot      release: id  0 | task 1653 | stop processing: n_tokens = 3523, truncated = 0
+[GIN] 2026/10/30 - 22:10:30 | 200 |    36.9s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1689 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 1689 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:10:41 | 200 |   11.61s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1734 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 1734 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:10:55 | 200 |   13.53s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1764 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2983
+slot      release: id  0 | task 1764 | stop processing: n_tokens = 3023, truncated = 0
+[GIN] 2026/10/30 - 22:11:10 | 200 |    15.5s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1806 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 1806 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:11:22 | 200 |   11.63s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1851 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 1851 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:11:35 | 200 |   13.23s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1882 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3154
+slot      release: id  0 | task 1882 | stop processing: n_tokens = 3182, truncated = 0
+[GIN] 2026/10/30 - 22:12:00 | 200 |   25.02s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1912 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3205
+slot      release: id  0 | task 1912 | stop processing: n_tokens = 3242, truncated = 0
+[GIN] 2026/10/30 - 22:12:15 | 200 |   14.29s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1951 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 1951 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:12:26 | 200 |   11.37s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 1996 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 1996 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:12:39 | 200 |   13.25s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2026 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2983
+slot      release: id  0 | task 2026 | stop processing: n_tokens = 3008, truncated = 0
+[GIN] 2026/10/30 - 22:12:50 | 200 |   10.84s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2053 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 2053 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:13:01 | 200 |   11.13s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2098 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 2098 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:13:14 | 200 |    13.1s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2128 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2983
+slot      release: id  0 | task 2128 | stop processing: n_tokens = 3010, truncated = 0
+[GIN] 2026/10/30 - 22:13:26 | 200 |   11.19s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2157 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 2157 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:13:36 | 200 |   10.81s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2202 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 2202 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:13:49 | 200 |   12.72s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2232 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2983
+slot      release: id  0 | task 2232 | stop processing: n_tokens = 3021, truncated = 0
+[GIN] 2026/10/30 - 22:14:03 | 200 |   13.94s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2272 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 2272 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:14:14 | 200 |   11.28s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2317 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 2317 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:14:27 | 200 |   12.84s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2347 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 2347 | stop processing: n_tokens = 3013, truncated = 0
+[GIN] 2026/10/30 - 22:14:39 | 200 |   11.74s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2378 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 2378 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:14:50 | 200 |   10.92s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2423 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 2423 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:15:03 | 200 |   12.96s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2453 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 2453 | stop processing: n_tokens = 3017, truncated = 0
+[GIN] 2026/10/30 - 22:15:16 | 200 |   12.85s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2488 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 2488 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:15:27 | 200 |   10.87s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2533 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 2533 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:15:40 | 200 |   12.91s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2563 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 2563 | stop processing: n_tokens = 3024, truncated = 0
+[GIN] 2026/10/30 - 22:15:54 | 200 |   14.63s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2605 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 2605 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:16:05 | 200 |   10.95s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2650 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 2650 | stop processing: n_tokens = 2963, truncated = 0
+[GIN] 2026/10/30 - 22:16:19 | 200 |   14.12s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2683 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2987
+slot      release: id  0 | task 2683 | stop processing: n_tokens = 3012, truncated = 0
+[GIN] 2026/10/30 - 22:16:31 | 200 |   11.24s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2710 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 2710 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:16:42 | 200 |   11.03s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2755 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 2755 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:16:55 | 200 |    13.2s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2786 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3154
+slot      release: id  0 | task 2786 | stop processing: n_tokens = 3182, truncated = 0
+[GIN] 2026/10/30 - 22:17:20 | 200 |    25.2s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2816 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3489
+slot      release: id  0 | task 2816 | stop processing: n_tokens = 3521, truncated = 0
+[GIN] 2026/10/30 - 22:17:56 | 200 |   35.51s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2850 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 2850 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:18:08 | 200 |   12.15s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2895 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 2895 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:18:22 | 200 |   14.19s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2926 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2985
+slot      release: id  0 | task 2926 | stop processing: n_tokens = 3013, truncated = 0
+[GIN] 2026/10/30 - 22:18:34 | 200 |   12.38s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 2956 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 2956 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:18:47 | 200 |   12.22s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3001 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 3001 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:19:00 | 200 |   13.82s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3032 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3024
+slot      release: id  0 | task 3032 | stop processing: n_tokens = 3059, truncated = 0
+[GIN] 2026/10/30 - 22:19:17 | 200 |    16.9s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3069 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3083
+slot      release: id  0 | task 3069 | stop processing: n_tokens = 3123, truncated = 0
+[GIN] 2026/10/30 - 22:19:34 | 200 |   16.83s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3111 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 3111 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:19:46 | 200 |   11.98s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3156 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 3156 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:20:00 | 200 |   13.57s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3186 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 3186 | stop processing: n_tokens = 3008, truncated = 0
+[GIN] 2026/10/30 - 22:20:11 | 200 |   11.35s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3212 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 3212 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:20:23 | 200 |   11.39s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3257 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 3257 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:20:36 | 200 |   13.31s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3287 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 3287 | stop processing: n_tokens = 3016, truncated = 0
+[GIN] 2026/10/30 - 22:20:49 | 200 |   13.24s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3321 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 3321 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:21:01 | 200 |    11.6s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3366 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 3366 | stop processing: n_tokens = 2962, truncated = 0
+[GIN] 2026/10/30 - 22:21:16 | 200 |   14.78s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3398 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2986
+slot      release: id  0 | task 3398 | stop processing: n_tokens = 3012, truncated = 0
+[GIN] 2026/10/30 - 22:21:28 | 200 |   12.05s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3426 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 3426 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:21:40 | 200 |   12.03s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3471 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 3471 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:21:53 | 200 |    13.6s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3501 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 3501 | stop processing: n_tokens = 3021, truncated = 0
+[GIN] 2026/10/30 - 22:22:08 | 200 |   14.73s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3540 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 3540 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:22:20 | 200 |    12.3s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3585 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 3585 | stop processing: n_tokens = 2963, truncated = 0
+[GIN] 2026/10/30 - 22:22:35 | 200 |    14.4s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3618 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2987
+slot      release: id  0 | task 3618 | stop processing: n_tokens = 3016, truncated = 0
+[GIN] 2026/10/30 - 22:22:48 | 200 |    12.9s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3649 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 3649 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:22:59 | 200 |   11.49s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3694 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 3694 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:23:13 | 200 |   13.41s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3725 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3154
+slot      release: id  0 | task 3725 | stop processing: n_tokens = 3182, truncated = 0
+[GIN] 2026/10/30 - 22:23:38 | 200 |   25.54s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3755 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 3755 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:23:50 | 200 |   12.12s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3800 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 3800 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:24:03 | 200 |      13s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3830 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 3830 | stop processing: n_tokens = 3027, truncated = 0
+[GIN] 2026/10/30 - 22:24:19 | 200 |   15.67s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3875 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 3875 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:24:30 | 200 |   10.93s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3920 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 3920 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:24:44 | 200 |   13.54s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3950 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 3950 | stop processing: n_tokens = 3018, truncated = 0
+[GIN] 2026/10/30 - 22:24:57 | 200 |   13.81s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 3986 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 3986 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:25:09 | 200 |   11.14s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4031 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 4031 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:25:22 | 200 |   13.76s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4061 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 4061 | stop processing: n_tokens = 3015, truncated = 0
+[GIN] 2026/10/30 - 22:25:35 | 200 |   12.68s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4094 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 4094 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:25:47 | 200 |   11.52s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4139 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 4139 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:26:00 | 200 |   13.56s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4169 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 4169 | stop processing: n_tokens = 3014, truncated = 0
+[GIN] 2026/10/30 - 22:26:13 | 200 |   12.97s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4201 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+[GIN] 2026/10/30 - 22:26:25 | 200 |   11.61s |       127.0.0.1 | POST     "/v1/messages"
+slot      release: id  0 | task 4201 | stop processing: n_tokens = 2909, truncated = 0
+slot   operator(): id  0 | task 4246 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 4246 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:26:38 | 200 |   13.55s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4277 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2985
+slot      release: id  0 | task 4277 | stop processing: n_tokens = 3019, truncated = 0
+[GIN] 2026/10/30 - 22:26:51 | 200 |   13.19s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4313 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 4313 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:27:03 | 200 |   11.52s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4358 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 4358 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:27:17 | 200 |   13.58s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4389 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3154
+slot      release: id  0 | task 4389 | stop processing: n_tokens = 3182, truncated = 0
+[GIN] 2026/10/30 - 22:27:42 | 200 |    24.9s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4419 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3489
+slot      release: id  0 | task 4419 | stop processing: n_tokens = 3518, truncated = 0
+[GIN] 2026/10/30 - 22:28:17 | 200 |   35.87s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4450 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 4450 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:28:29 | 200 |   11.52s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4495 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 4495 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:28:42 | 200 |   13.37s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4525 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 4525 | stop processing: n_tokens = 3015, truncated = 0
+[GIN] 2026/10/30 - 22:28:55 | 200 |   13.11s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4558 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 4558 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:29:08 | 200 |   12.05s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4603 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 4603 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:29:21 | 200 |   13.81s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4633 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 4633 | stop processing: n_tokens = 3020, truncated = 0
+[GIN] 2026/10/30 - 22:29:36 | 200 |   14.18s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4671 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 4671 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:29:48 | 200 |   11.86s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4716 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 4716 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:30:01 | 200 |   13.74s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4747 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3154
+slot      release: id  0 | task 4747 | stop processing: n_tokens = 3182, truncated = 0
+[GIN] 2026/10/30 - 22:30:27 | 200 |   26.04s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4777 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3489
+slot      release: id  0 | task 4777 | stop processing: n_tokens = 3522, truncated = 0
+[GIN] 2026/10/30 - 22:31:04 | 200 |   36.59s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4812 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 4812 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:31:16 | 200 |   12.18s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4857 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 4857 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:31:30 | 200 |   13.51s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4887 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 4887 | stop processing: n_tokens = 3019, truncated = 0
+[GIN] 2026/10/30 - 22:31:43 | 200 |   13.29s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4924 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 4924 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:31:54 | 200 |   10.98s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4969 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 4969 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:32:07 | 200 |      13s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 4999 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 4999 | stop processing: n_tokens = 3021, truncated = 0
+[GIN] 2026/10/30 - 22:32:22 | 200 |   15.27s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5038 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 5038 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:32:35 | 200 |   12.41s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5083 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 5083 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:32:48 | 200 |   13.73s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5113 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2984
+slot      release: id  0 | task 5113 | stop processing: n_tokens = 3027, truncated = 0
+[GIN] 2026/10/30 - 22:33:05 | 200 |   16.94s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5158 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1662
+slot      release: id  0 | task 5158 | stop processing: n_tokens = 1705, truncated = 0
+[GIN] 2026/10/30 - 22:35:17 | 200 |    2m10s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5204 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1728
+slot      release: id  0 | task 5204 | stop processing: n_tokens = 1757, truncated = 0
+[GIN] 2026/10/30 - 22:35:29 | 200 |   11.48s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5235 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1950
+slot      release: id  0 | task 5235 | stop processing: n_tokens = 1978, truncated = 0
+[GIN] 2026/10/30 - 22:35:51 | 200 |   22.86s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5265 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2285
+slot      release: id  0 | task 5265 | stop processing: n_tokens = 2337, truncated = 0
+[GIN] 2026/10/30 - 22:36:30 | 200 |   38.28s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5319 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1662
+slot      release: id  0 | task 5319 | stop processing: n_tokens = 1705, truncated = 0
+[GIN] 2026/10/30 - 22:36:40 | 200 |   10.27s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5364 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1728
+slot      release: id  0 | task 5364 | stop processing: n_tokens = 1757, truncated = 0
+[GIN] 2026/10/30 - 22:36:52 | 200 |   11.62s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5395 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1950
+slot      release: id  0 | task 5395 | stop processing: n_tokens = 1978, truncated = 0
+[GIN] 2026/10/30 - 22:37:15 | 200 |   23.39s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5425 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2285
+slot      release: id  0 | task 5425 | stop processing: n_tokens = 2306, truncated = 0
+[GIN] 2026/10/30 - 22:37:45 | 200 |   30.13s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5448 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1662
+[GIN] 2026/10/30 - 22:37:55 | 200 |    9.81s |       127.0.0.1 | POST     "/v1/messages"
+slot      release: id  0 | task 5448 | stop processing: n_tokens = 1705, truncated = 0
+slot   operator(): id  0 | task 5493 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1728
+slot      release: id  0 | task 5493 | stop processing: n_tokens = 1757, truncated = 0
+[GIN] 2026/10/30 - 22:38:07 | 200 |   11.53s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5524 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1950
+slot      release: id  0 | task 5524 | stop processing: n_tokens = 1978, truncated = 0
+[GIN] 2026/10/30 - 22:38:30 | 200 |   23.17s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5554 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2285
+slot      release: id  0 | task 5554 | stop processing: n_tokens = 2317, truncated = 0
+[GIN] 2026/10/30 - 22:39:03 | 200 |   32.82s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5588 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1662
+slot      release: id  0 | task 5588 | stop processing: n_tokens = 1705, truncated = 0
+[GIN] 2026/10/30 - 22:39:12 | 200 |    9.91s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5633 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1728
+slot      release: id  0 | task 5633 | stop processing: n_tokens = 1757, truncated = 0
+[GIN] 2026/10/30 - 22:39:24 | 200 |   11.36s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5664 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1950
+slot      release: id  0 | task 5664 | stop processing: n_tokens = 1978, truncated = 0
+[GIN] 2026/10/30 - 22:39:47 | 200 |   22.69s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5694 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2285
+slot      release: id  0 | task 5694 | stop processing: n_tokens = 2318, truncated = 0
+[GIN] 2026/10/30 - 22:40:20 | 200 |   33.18s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5729 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1662
+slot      release: id  0 | task 5729 | stop processing: n_tokens = 1705, truncated = 0
+[GIN] 2026/10/30 - 22:40:30 | 200 |    9.84s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5774 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1728
+slot      release: id  0 | task 5774 | stop processing: n_tokens = 1757, truncated = 0
+[GIN] 2026/10/30 - 22:40:41 | 200 |   11.44s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5805 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 1950
+slot      release: id  0 | task 5805 | stop processing: n_tokens = 1978, truncated = 0
+[GIN] 2026/10/30 - 22:41:04 | 200 |   22.84s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5835 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2285
+slot      release: id  0 | task 5835 | stop processing: n_tokens = 2327, truncated = 0
+[GIN] 2026/10/30 - 22:41:40 | 200 |    35.6s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5879 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 5879 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:41:50 | 200 |   10.86s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5924 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 5924 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:42:03 | 200 |   12.77s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5954 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2951
+slot      release: id  0 | task 5954 | stop processing: n_tokens = 2977, truncated = 0
+[GIN] 2026/10/30 - 22:42:20 | 200 |   16.91s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 5982 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 5982 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:42:35 | 200 |   14.86s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6027 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 6027 | stop processing: n_tokens = 2960, truncated = 0
+[GIN] 2026/10/30 - 22:42:48 | 200 |   12.72s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6057 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2951
+slot      release: id  0 | task 6057 | stop processing: n_tokens = 2974, truncated = 0
+[GIN] 2026/10/30 - 22:43:04 | 200 |   15.76s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6082 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 6082 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:43:19 | 200 |   15.23s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6127 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 6127 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:43:32 | 200 |      13s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6158 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3121
+slot      release: id  0 | task 6158 | stop processing: n_tokens = 3209, truncated = 0
+[GIN] 2026/10/30 - 22:44:19 | 200 |   46.94s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6248 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 6248 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:44:34 | 200 |   15.37s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6293 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 6293 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:44:48 | 200 |   14.11s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6324 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3121
+slot      release: id  0 | task 6324 | stop processing: n_tokens = 3149, truncated = 0
+[GIN] 2026/10/30 - 22:45:21 | 200 |    33.2s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6354 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3524
+slot      release: id  0 | task 6354 | stop processing: n_tokens = 3554, truncated = 0
+[GIN] 2026/10/30 - 22:46:28 | 200 |     1m0s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6386 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3708
+slot      release: id  0 | task 6386 | stop processing: n_tokens = 3810, truncated = 0
+[GIN] 2026/10/30 - 22:48:10 | 200 |    1m40s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6490 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2866
+slot      release: id  0 | task 6490 | stop processing: n_tokens = 2909, truncated = 0
+[GIN] 2026/10/30 - 22:48:26 | 200 |    15.8s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6535 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 2932
+slot      release: id  0 | task 6535 | stop processing: n_tokens = 2961, truncated = 0
+[GIN] 2026/10/30 - 22:48:40 | 200 |    13.5s |       127.0.0.1 | POST     "/v1/messages"
+slot   operator(): id  0 | task 6566 | new prompt, n_ctx_slot = 8192, n_keep = 4, task.n_tokens = 3121
+slot      release: id  0 | task 6566 | stop processing: n_tokens = 3204, truncated = 0
+[GIN] 2026/10/30 - 22:49:28 | 200 |   48.26s |       127.0.0.1 | POST     "/v1/messages"

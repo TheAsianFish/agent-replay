@@ -89,9 +89,21 @@ every older version.
   (`eval/retail_error.py`, a `retail_error` input of the manual Ollama workflow): the
   task recorded on qwen2.5:7b, a probe of what Ollama does with `is_error`, and
   `model-live` arms with the unmutated agent and with `drops_error_flag`.
+- `eval/retail_error.py --task --mutations`: the live retail harness for any task with a
+  setup and any agent mutation (M18's arms stay the default). `make
+  record-retail-lookup-qwen` and `make eval-retail-mutations-qwen` (a `retail_mutations`
+  input of the manual Ollama workflow) run `lookup_latest_order_total` on qwen2.5:7b under
+  eight agent mutations, with a `tool_use_id` probe, every prompt's size read from the
+  Ollama server's log, and the detection rule beside the scripted model's verdict.
+- `examples/retail_agent/replay-qwen.toml`: the retail suite's ground-truth checks for a
+  local model (no exact tool sequence). `make eval-retail-qwen-offline` (in `make eval`)
+  replays every qwen retail recording in `full`.
+- An `<id>_ollama` variant of every agent mutation in `eval/mutations/agents.py`.
 
 ### Changed
 
+- The mutations that copy the retail agent's loop (`strips_policy`, `truncates_history`)
+  ask for the agent's model instead of always `claude-opus-5-5`.
 - `make record-pydantic-ai` re-records only M9's three tasks; the rebooking chain
   records through `make record-pydantic-ai-chain` into its own attempts log.
 - A run whose model has no price is reported as `unpriced` (or `$x + N unpriced

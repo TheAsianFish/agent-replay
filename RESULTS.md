@@ -43,6 +43,7 @@ byte-stable ones and fails on any change.
 | Frozen-world divergence on a long chain (`model-live`, real model) | qwen2.5:7b, an 8-link rebooking chain (9 served tool calls on the shortest path), 20 runs per arm: 0 / 20 under `strict` and `fallback` alike; 320 of 320 chain lookups served exact; 1 world step in 321 served tool calls (0.31%, against 3 / 143 = 2.1% on M12's short runs); `strict` world endings 1 / 20 (Clopper-Pearson 0.1% to 24.9%) beside 3.47 predicted by independence; clustering not measurable (0 world steps under `fallback`); identity keys fired once in 40 runs; 39 of 40 runs answered a euro total without calling `convert_currency`; no qwen recording passed in 5 attempts; 1703 s on 4 vCPU (AMD EPYC 9V45); $0 | Divergence on a long chain (M16) | `make eval-pydantic-ai-long` (Ollama) | measured, local model |
 | `synth`, the third unrecorded-call policy | offline, seventh configuration `model-live+synth`: 12/12 model mutations (as `fallback`), identity mutations 2/2 with keys by `run_error:KeyError`, refactors 0/5, and the correct `repeats_order_lookup` path fails the ground truth in 4 of 6 scenarios (as `strict`; `fallback` 0); live, qwen2.5:7b without the guard line, 20 runs per arm: `fallback` 2/20 and 3/20, `synth` 0/20 and 2/20 beside M15's `strict` 2/20 and 2/20, so M15's attribution stands; 11 of 20 `synth` fare answers state the stub's 0.00 EUR; 0 passes with a stubbed step; 3803 s on 4 vCPU (AMD EPYC 7763); $0 | `synth`, measured (M17) | `make eval-mutations`; `make eval-pydantic-ai-no-guard` (Ollama) | measured, offline and local model |
 | A task where a tool legitimately fails | offline: `drops_error_flag`, which survived every configuration on the six tasks, is caught in 4 of 7 on a hand-written wrong-zip task (`model-live` under `strict`, `fallback` and `synth`; `tools-live+strict`) and survives `full`, `tools-live` and `tools-live+drift`, where the model's reply is served; unmutated passes all 7; live on qwen2.5:7b (`model-live`, `fallback`, 10 runs each): not found with no write 8/10 unmutated, 9/10 with `drops_error_flag` (9 and 10 read by hand), because Ollama's `/v1/messages` drops `is_error` before the prompt (probe 84 / 84 tokens with and without it, control 87); recorded on the first of 3 attempts; largest prompt 2,991 of 4,096 tokens; 485 s of arms on 4 vCPU (AMD EPYC 9V74); $0 | A task where a tool legitimately fails (M18) | `make eval-mutations`; `make eval-retail-error-qwen` (Ollama) | measured, offline and local model |
+| The agent mutations on a real model | `lookup_latest_order_total`, qwen2.5:7b, `model-live`, `fallback`: the unmutated agent passed 2 / 10 (8 runs skipped the profile and invented an order id), so under the rule fixed before the run the eight mutations are **not resolvable on this model for this task**; beside the scripted model's on-task verdict (5 of 8 caught, `truncates_tool_results` by a JSONDecodeError crash): every qwen failure was the ground-truth rule, none a crash; `first_tool_only` and `mismatches_tool_use_ids` never acted (at most 1 `tool_use` per reply in 50 runs; a mismatched id left the prompt's size unchanged, 88 / 88 tokens, control 92, though a same-length id cannot show whether it is printed); `strips_policy` passed 5 / 5 against 2 / 10 (Fisher p = 0.007); largest prompt 3,708 tokens, 0 of 50 runs over 4,096, 0 truncated; no qwen recording passed in 3 attempts; 2,861 s on 4 vCPU (AMD EPYC 7763); $0 | The agent mutations on a real model (M19) | `make eval-retail-mutations-qwen` (Ollama) | measured, local model |
 | Verdict-stability curve | 5 runs agree with the all-runs fixed-threshold verdict in ≥ 95% of draws on all 15 committed scenarios, but on only 1 of the 4 new M12 rows (90.3% to 94.3%; 0.15 to 0.35 from the 0.75 threshold); 13 of 19 rows pass 0% or 100% | Frozen-world bias (M12) | `make eval-verdict-curve` | measured, offline |
 | Cassette bytes at scale | quadratic (c2 291 bytes/turn², fitted exponent 1.54 over 5 to 200 turns, 1.85 from 100 to 200); 3.65 MB at 100 turns; gzip 19.5× at 20 turns → 3.8× at 100 (envelopes outgrow its 32 KB window), xz 105×; prefix encoding under xz only 1.07× more, so `.jsonl.xz` and no schema change; `full` replay 1.7 s at 200 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline (sizes byte-stable) |
 | Real recordings vs the fit | live Opus retail requests grow 1.4 to 2.6 KB a turn (synthetic 0.58), projecting to 8.0 to 13.9 MB of requests at 100 turns; xz 8.9× to 13.6× at 3 to 6 turns | Cassette bytes at scale (M13) | `make bench-scale` | measured, offline |
@@ -54,8 +55,8 @@ byte-stable ones and fails on any change.
 | D3 flake benchmark | — | To measure | `make bench-flake` (not built; ~$21 Opus / ~$0.52 Haiku) | **to measure** |
 
 API spend to date: $3.326 (M1 $0.014, M2 $0.691, M3 $1.408, M4 $1.213, M5 to
-M18 $0; the live runs of M9, M12, M15, M16, M17 and M18 used qwen2.5:7b and qwen2.5:3b on
-a local CPU).
+M19 $0; the live runs of M9, M12, M15, M16, M17, M18 and M19 used qwen2.5:7b and qwen2.5:3b
+on a local CPU).
 
 ## Live recording smoke test (M1)
 
@@ -3336,6 +3337,227 @@ Ollama's `/v1/messages` the flag is dropped on the way in, so the refactor
 changes nothing the model sees. The approximate step `tools-live+strict` flags
 is then a true difference in what the agent sent that makes no difference to
 the model.
+
+## The agent mutations on a real model (M19)
+
+**Question.** The mutation study's agent mutations were only ever caught or
+missed by the scripted fake model. On a model that reads the prompt and the
+tool results, which of the mutations the scripted model catches are
+regressions, and by which check? One task, `lookup_latest_order_total` (*"I'm
+Noah Ito, zip code 98187. How much did I pay for the order I most recently
+placed?"*, τ-bench's answer 829.43), read-only, so the eight agent mutations
+that can act on it: `skips_order_lookup`, `first_tool_only`,
+`truncates_tool_results`, `max_turns_too_low`, `returns_empty_answer`,
+`mismatches_tool_use_ids`, `strips_policy`, `truncates_history`. The other four
+cannot: `wrong_write_argument` and `repeats_write_calls` act on writes (the
+task makes none), `drops_error_flag` on a failed tool (none fails on the right
+path), `unregisters_product_tool` removes a tool the task never needs.
+
+**The comparison column.** The scripted model's `model-live` verdict on this
+task alone (`eval/retail_error.py:scripted_verdicts`, the mutation study's
+configuration on `replay.toml`'s scenario; it matches each mutation's
+`failed_scenarios` in `eval/results/mutations.json`) catches 5 of the 8:
+`skips_order_lookup`, `truncates_tool_results` (by `run_error:JSONDecodeError`:
+the fake model parses the cut JSON), `max_turns_too_low`,
+`returns_empty_answer`, `truncates_history`. It survives `first_tool_only`,
+`mismatches_tool_use_ids` and `strips_policy`. Not the suite-wide column's 7 of
+8, which counts all six tasks.
+
+**Suite.** `examples/retail_agent/replay-qwen.toml`: `replay.toml`'s checks on
+this task without the exact `tool_sequence` (a local model reads one order a
+reply where Opus read three) and without the `$829.43` output pattern
+(τ-bench's own check, `rule:matches_ground_truth`, already needs 829.43 in the
+answer); the write checks, the budget and the M11 `identify` keys for the
+three tools its recordings hold. Both changes were made before any run.
+
+**Detection rule (PLAN.md, fixed before the run).** The arms resolve only if
+the unmutated agent passes at least 8 of 10. Then a mutation is caught at 1 of
+5 passes or fewer, survives at 4 of 5 or more, and is unresolved between. A
+mutation that acts only on a reply with two `tool_use` blocks
+(`first_tool_only`, `mismatches_tool_use_ids`) and never saw one never acted.
+Fewer than 8 unmutated passes is written as "not resolvable on qwen2.5:7b for
+this task".
+
+### Recording
+
+`make record-retail-lookup-qwen` (`eval/retail_error.py --task
+lookup_latest_order_total --record`): 3 attempts, **none passed** (log:
+`eval/results/m19_qwen_recording.json`). Attempts 1 and 2 (310.7 s with the
+cold load, 52.2 s) looked the user up, skipped `get_user_details`, asked for an
+order id they made up (`#W0000001`, `#W0023456`), and answered that no recent
+order was found. Attempt 3 (56.1 s) ended on the second model call with
+Ollama's HTTP 500 *"prediction aborted, token repeat limit reached"*. So the
+arms ran on the fake-model recording
+(`examples/retail_agent/cassettes/lookup_latest_order_total.jsonl`, the same
+world: user, profile, order #W6729841), and `make eval` has no qwen lookup
+cassette to replay. `make eval-retail-qwen-offline` (new, in `make eval`)
+replays every qwen retail recording that exists in `full`, and names this one
+as missing:
+
+```
+$ make eval-retail-qwen-offline
+uv run python -m eval.retail_error --offline
+PASS examples/retail_agent/replay-error.toml account_not_found_wrong_zip: 5 steps, 0 approximate
+SKIP lookup_latest_order_total: no qwen recording in examples/retail_agent/cassettes/qwen
+```
+
+### The id probe and the window
+
+**Does a mismatched `tool_use_id` reach the model?** As M18's flag probe:
+after a warm-up, the same tool result with its matching id, with a mismatched
+id, and with three words added (the control). Ollama's net counts were 88, 88
+and 92; the server's own `task.n_tokens` were 257, 257 and 261. The harness
+printed "the id never reaches the model", but this run cannot show that: the
+mismatched id was `call_2` against `call_1`, the same length, so a template
+that printed the result's id would have counted both the same. What the equal
+counts do show is that Ollama neither dropped nor reshaped the result whose id
+matched no call: the model got the same prompt size either way. Whether the
+id is printed at all is not measured. The probe now sends a mismatched id
+several tokens longer (`eval/retail_error.py:ID_PROBES`), so the next run's
+equal counts would mean the id is not in the prompt. None of this changes
+the never-acted reading below, which rests on no reply holding two calls.
+
+**The window.** The server was started with `OLLAMA_CONTEXT_LENGTH=8192`; its
+log (`n_ctx_slot = 8192` at load) was kept and read run by run
+(`ServerLog`; the lines it reads, with every HTTP status, are committed as
+`eval/results/m19_ollama_server_log.txt`): every request's whole prompt (`task.n_tokens`) and whether the
+server truncated it. Over the 50 runs (166 requests), the largest prompt was
+**3,708 tokens, 0 runs over 4,096, 0 truncated requests**. The bound M18 used
+when it had no server counts (`prompt_bound`) reached 4,890, so it would have
+flagged a run the server shows was 3,708: the bound is loose by a reply or
+two, and the server's count is the one to trust. qwen read one order (or
+none) in every run, as the plan expected, so the arms ran uncut at the
+default window too.
+
+### Arms
+
+`make eval-retail-mutations-qwen` (`eval/retail_error.py --task
+lookup_latest_order_total --runs 10 --mutant-runs 5 --server-log
+/tmp/ollama.log`): the probe, then `model-live` under `fallback` with the
+suite's identify keys, 10 runs of the unmutated agent and 5 of each mutation
+(`eval/mutations/agents.py:<mutation>_ollama`: the mutant's loop with the
+model from `REPLAY_OLLAMA_MODEL`; `_CopiedLoop`, which `strips_policy` and
+`truncates_history` use, used to send `claude-opus-5-5` whatever the agent's
+model). qwen2.5:7b (digest `845dbda0…`), Ollama 0.40.11, 4 vCPU AMD EPYC 7763,
+CPU only, one run at a time, nothing else on the cores. **2,861 s of arms
+(48 min 21 s for the command); runs 35.5 s / 40.3 s / 231.6 s min / median /
+max; $0.** Raw report: `eval/results/m19_retail_mutations_qwen.json` (every
+run's failed checks and cause, tool calls with status and result, the most
+`tool_use` blocks in one reply, answer, seconds, each request's prompt size).
+
+```
+$ make eval-retail-mutations-qwen OLLAMA_LOG=/tmp/ollama.log
+uv run python -m eval.retail_error --task lookup_latest_order_total \
+	--runs 10 --mutant-runs 5 --server-log /tmp/ollama.log
+id probe: the id never reaches the model ([254, 88, 88, 92])
+arm unmutated: 10 model-live runs under fallback
+  lookup_latest_order_total: 2/10 passed; 522.5 s
+arm skips_order_lookup: 5 model-live runs under fallback
+  lookup_latest_order_total: 0/5 passed; 213.4 s
+arm first_tool_only: 5 model-live runs under fallback
+  lookup_latest_order_total: 1/5 passed; 232.5 s
+arm truncates_tool_results: 5 model-live runs under fallback
+  lookup_latest_order_total: 0/5 passed; 212.0 s
+arm max_turns_too_low: 5 model-live runs under fallback
+  lookup_latest_order_total: 0/5 passed; 209.7 s
+arm returns_empty_answer: 5 model-live runs under fallback
+  lookup_latest_order_total: 0/5 passed; 238.1 s
+arm mismatches_tool_use_ids: 5 model-live runs under fallback
+  lookup_latest_order_total: 1/5 passed; 249.9 s
+arm strips_policy: 5 model-live runs under fallback
+  lookup_latest_order_total: 5/5 passed; 514.1 s
+arm truncates_history: 5 model-live runs under fallback
+  lookup_latest_order_total: 0/5 passed; 468.4 s
+not resolvable on qwen2.5:7b for this task; wrote .../eval/results/m19_retail_mutations_qwen.json
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 48:21.37
+```
+
+The path columns are counted from the raw report's tool calls ("read the
+profile": a `get_user_details` call; "guessed an order": a `get_order_details`
+call on an id the recording never fetched, run for real under `fallback` and
+failing with `order not found`).
+
+| `model-live`, `fallback`, qwen2.5:7b | Passed | Failed checks | Run errors | Read the profile | Guessed an order | Most `tool_use` in a reply | Largest prompt | Scripted model on this task | Rule on qwen (not resolvable) |
+|---|---|---|---|---|---|---|---|---|---|
+| unmutated | 2 / 10 | `rule:matches_ground_truth` 8 | — | 2 | 8 | 1 | 3,489 | pass | — |
+| `skips_order_lookup` | 0 / 5 | ground truth 5 | — | 1 | 0 (the mutant answers every read "lookup skipped") | 1 | 3,205 | caught | ≤ 1 / 5 |
+| `first_tool_only` | 1 / 5 | ground truth 4 | — | 1 | 4 | 1 (never acted) | 3,489 | survives | ≤ 1 / 5 |
+| `truncates_tool_results` | 0 / 5 | ground truth 5 | **none** | 1 | 5 | 1 | 3,083 | caught, by `run_error:JSONDecodeError` | ≤ 1 / 5 |
+| `max_turns_too_low` | 0 / 5 | ground truth 5 | `RuntimeError` 1 | 1 | 4 | 1 | 3,154 | caught | ≤ 1 / 5 |
+| `returns_empty_answer` | 0 / 5 | ground truth 5 | — | 1 | 4 | 1 | 3,489 | caught | ≤ 1 / 5 |
+| `mismatches_tool_use_ids` | 1 / 5 | ground truth 4 | — | 1 | 4 | 1 (never acted) | 3,489 | survives | ≤ 1 / 5 |
+| `strips_policy` | **5 / 5** | — | — | **5** | **0** | 1 | 2,285 | survives | ≥ 4 / 5 |
+| `truncates_history` | 0 / 5 | ground truth 5 | — | 3 | 3 | 1 | 3,708 | caught | ≤ 1 / 5 |
+
+Every failure in all 50 runs was `rule:matches_ground_truth` (the answer lacks
+829.43); every cause is `model` (no approximate step, no unrecorded ending, no
+stub); no run wrote or transferred.
+
+**The rule: not resolvable on qwen2.5:7b for this task.** The unmutated agent
+passed 2 of 10. In the 8 failures qwen did what the three recording attempts
+did: it skipped `get_user_details`, asked for an order id it made up
+(`#W0000001` three times, `#W0000023`, `#W12345678`, …), got `order not found`
+from the real tool (`fallback`; the identify keys kept the recording's order
+from being served to the wrong id), and asked the user for the order id. With
+a baseline that fails 80% of the time, a mutant failing 5 of 5 says nothing
+about the mutation. `first_tool_only` and `mismatches_tool_use_ids` show it:
+they could not act in any run (no reply held two `tool_use` blocks), and the
+rule still reads 1 of 5 as "caught". So no per-mutation verdict is stated, and
+none of the agreement with the scripted model either. The rule's readings are
+in the last column for the record only.
+
+**Per-mutation hypotheses, answered as far as the runs allow:**
+
+- **`first_tool_only`, `mismatches_tool_use_ids`: predicted to survive because
+  they cannot act. They never acted.** The most `tool_use` blocks in any reply
+  of the 50 runs was 1. Their 1 / 5 passes are the baseline's 2 / 10, not the
+  mutation. The probe adds only that a result with a mismatched id
+  reached qwen's prompt at the same size (88 / 88 tokens); with a same-length
+  id it cannot say whether the id itself is printed.
+- **`strips_policy`: predicted to survive (a read-only task's ground truth
+  does not need the policy). It passed 5 of 5, against the unmutated agent's
+  2 of 10** (two-sided Fisher exact p = 0.007, `scipy.stats.fisher_exact([[5, 0],
+  [2, 8]])`). The direction is the surprise: without τ-bench's retail policy (about
+  1,200 tokens: the first prompt is 2,866 with it and 1,662 without, by the
+  server's count) in front of the deployment note, qwen read the profile in all
+  5 runs (1,662 / 1,728 / 1,950 / 2,285 tokens a turn) and answered $829.43
+  every time; with it, it read the profile in 2 of 10 and guessed an order id
+  in 8. On this model and task the "regression" improves the agent. Why is not
+  measured here (the shorter prompt, or something the policy says); 5 runs on
+  one task is a lead, not a finding about policies.
+- **`truncates_tool_results`: predicted caught by the ground truth, not by a
+  crash. All 5 failures are the ground-truth rule and none is a crash**
+  (the fake model's catch on this task was `run_error:JSONDecodeError`). But
+  the mutation acted in one run only: the cut matters only for results over
+  120 characters, and 4 of 5 runs never got one (they guessed an order, whose
+  error is short). In the one that read the profile, the cut ended it inside
+  the address, 249 characters before the list of orders, and qwen asked for `#W20230101123456`, an id it made up:
+  the mechanism the plan predicted (a model reading a cut string instead of a
+  parser failing), seen once.
+- **`truncates_history`: predicted caught because the last four messages lose
+  the request.** Seen in the runs that got far enough: 3 of 5 read the profile,
+  and then, with the task out of the window, asked *"which order you want to
+  modify"* (2 runs) or read another order and listed a product's variants
+  (1 run). The other 2 failed as the baseline does.
+- **`max_turns_too_low`: predicted `run_error:RuntimeError`.** One run, the one
+  on the policy's path (user, profile, order), hit the 3-turn limit with
+  `RuntimeError`; the other 4 guessed an order and answered within 3 turns.
+- **`skips_order_lookup`, `returns_empty_answer`: caught by construction or
+  close to it.** The mutant answers every `get_order_details` with "lookup skipped",
+  so no run saw an order; every `returns_empty_answer` answer was empty.
+
+**What it says.** M19's question needs a baseline the model passes, and on
+`lookup_latest_order_total` qwen2.5:7b with the retail policy does not: it
+fails the unmutated task by inventing order ids instead of reading the
+profile. That is the result, written as the plan allowed. What the 50 runs
+still show: (1) Replay classified every run the same way the scripted study
+does, by the ground-truth check, with no crash catches and no world steps;
+(2) two mutations never had anything to act on, and a pass-rate rule would
+have reported them as caught, so recording each run's most `tool_use` blocks
+was what kept the rule honest; (3) the mutation the plan expected to be
+harmless, `strips_policy`, is the only arm that does better than the
+unmutated agent. A resolvable version of this question needs a task qwen
+passes at least 8 of 10 (M18's error task did) or a model that does.
 
 ## To measure
 

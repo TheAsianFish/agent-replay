@@ -89,6 +89,13 @@ make record-retail-error-qwen  M18: the retail error task recorded on qwen2.5:7b
                   each model call's input tokens logged to eval/results/m18_qwen_recording.json)
 make eval-retail-error-qwen  M18: an is_error probe of Ollama, then the error task in model-live under
                   fallback, 10 runs unmutated and 10 with drops_error_flag, into eval/results/m18_error_qwen.json
+make record-retail-lookup-qwen  M19: lookup_latest_order_total recorded on qwen2.5:7b (up to 3 attempts,
+                  logged to eval/results/m19_qwen_recording.json)
+make eval-retail-mutations-qwen  M19: a tool_use_id probe, then the lookup task in model-live under fallback,
+                  10 runs unmutated and 5 of each of eight agent mutations, every prompt's size read from
+                  the server log ($(OLLAMA_LOG), default /tmp/ollama.log; start `ollama serve` with
+                  OLLAMA_CONTEXT_LENGTH=8192), into eval/results/m19_retail_mutations_qwen.json
+make eval-retail-qwen-offline  the qwen retail recordings replayed in full, 0 approximate (in make eval)
 make demo-data    real replay ci / replay flake runs of the retail example into .replay/demo.db
 make openapi      regenerate dashboard/openapi.json (then `npm run gen:types` in dashboard/)
 make ui           npm ci + build the dashboard into agent_replay/server/static
@@ -129,7 +136,7 @@ that change the retail agent (`make regression-pr` opens one built to fail), and
 [act](https://github.com/nektos/act): `act pull_request -j action -W .github/workflows/ci.yml
 -P ubuntu-latest=catthehacker/ubuntu:act-latest --artifact-server-path /tmp/act-artifacts`
 (`-j replay -W .github/workflows/replay.yml` runs the real, failing job on a seeded suite).
-The local-model runs (`make record-pydantic-ai`, `make eval-pydantic-ai`, `make eval-retail-error-qwen`) need `ollama serve`
+The local-model runs (`make record-pydantic-ai`, `make eval-pydantic-ai`, `make eval-retail-error-qwen`, `make eval-retail-mutations-qwen`) need `ollama serve`
 and `ollama pull qwen2.5:7b` (`make eval-pydantic-ai-swap` also `qwen2.5:3b`); on GitHub they run only from the manual `ollama.yml` workflow.
 Release steps are in RELEASE.md; never publish by hand.
 
