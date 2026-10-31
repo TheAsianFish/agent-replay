@@ -8,137 +8,54 @@ every older version.
 
 ## [Unreleased]
 
-### Added
+Nothing yet.
 
-- Records and replays `client.beta.messages.create` (plain and `stream=True`) and
-  `client.beta.messages.stream(...)` for `Anthropic` and `AsyncAnthropic`, under the
-  call name `anthropic.beta.messages.create`. `betas` is part of the fingerprint;
-  replays return `BetaMessage` and the beta stream event types. This is the surface
-  pydantic-ai calls, so a pydantic-ai agent records with
-  `AnthropicProvider(anthropic_client=replay.wrap(AsyncAnthropic(...)))`.
-- `examples/pydantic_ai_agent`: a tool-using pydantic-ai agent with fake-model and
-  qwen2.5:7b (Ollama) cassettes; `make eval-pydantic-ai` replays them and, with
-  Ollama running, gates them with `replay flake` in `model-live`.
-- `fail_on_tool_drift` in suites (and `replay ci --fail-on-tool-drift`): in `tools-live`,
-  every live tool result is compared with the one recorded for the same call, and a
-  difference fails the scenario as `no_tool_drift`, naming the first differing path.
-  Per-tool `ignore_fields` skip values that legitimately vary.
-- The mutation study's sixth configuration, `tools-live+drift`.
-- `identify` in suites (`[defaults.identify]`, per scenario, or `replay(identify=...)`):
-  per tool, the arguments that name the entity a call reads or writes. A served call
-  only falls back to a recording of the same entity; otherwise it is unrecorded and the
-  policy decides. With `fail_on_tool_drift`, a live call whose identity no recording has
-  is drift (`identity_unrecorded`). The retail and pydantic-ai suites declare theirs.
-- The mutation study re-runs with the identify keys, adds two mutations that read an
-  entity the recording never saw (`guesses_user_id`, `reads_wrong_order`), and replays
-  five correct-but-different paths of the fake model in `model-live` under `strict` and
-  `fallback`, with a termination cause per scenario.
-- `make eval-pydantic-ai-arms` (`eval.pydantic_ai --arms strict,fallback`): the
-  qwen2.5:7b-recorded travel-desk scenarios in `model-live` under each unrecorded-call
-  policy, every run classified by how it ended (passed, unrecorded, approximate,
-  model); an `arms` input on the manual Ollama workflow.
-- `make eval-pydantic-ai-swap` (`eval.pydantic_ai --swap`): the qwen2.5:7b-recorded
-  travel-desk scenarios in `model-live` with the live side changed (qwen2.5:3b under
-  `strict` and `fallback`, the prompt without its guard line, a control, and
-  `temperature=0` after probe calls), each run's tool calls and wire settings recorded,
-  and the first failed 3b run diffed against its cassette; ad hoc `--model`,
-  `--prompt-variant` and `--temperature` for `--arms`; a `swap` input on the manual
-  Ollama workflow. The pydantic-ai example reads its live model from
-  `REPLAY_OLLAMA_MODEL`.
-- `make eval-verdict-curve` (in `make eval`): how often a subset of n runs gives the
-  all-runs fixed-threshold verdict, for every committed flake report.
+## [1.0.0] - 2026-10-31
 
-- xz-compressed cassettes: a cassette path ending in `.xz` (`run.jsonl.xz`) is read and
-  written as xz everywhere a cassette goes (`replay record --out run.jsonl.xz`, `replay
-  run`, `replay ci` suites, `replay diff`, `Cassette.load` / `dump`). The file is plain
-  xz, so the `xz` tool converts either way. `.gz`, `.bz2`, `.zst` and other compression
-  suffixes are refused with the rename that fixes them. `replay record` also takes `--out`.
-- `make bench-scale`: cassette bytes, codecs, load, replay and run-store timings for runs
-  of 5 to 200 turns and for every committed real recording. `make bench-upstream`: the
-  pydantic-ai cassettes replayed on pydantic-ai-slim 2.58.0 to 2.62.0.
-- Partial cassettes: a recording to a path (`replay record`, `record(..., out=...)`,
-  `RecordingSession(out=...)`) appends each envelope to `<out>.partial` as it completes
-  and moves the finished file into place at the end, with the same bytes `dump` writes.
-  A `.partial` without a footer loads as interrupted (`Cassette.interrupted`; a torn last
-  line is dropped and counted in `torn_bytes`). `replay run` replays it with a warning,
-  `replay diff` compares it, and `replay ci` refuses it. `replay record` keeps the
-  partial on Ctrl-C and refuses to overwrite one without `--force`.
-- `make bench-scale` gains a 400-turn row, a streaming-xz recoverability count, peak
-  RSS, load with the collector paused and on, `full` replay with `gc.freeze()`, and
-  load timings on the committed real recordings; `make bench-replay` gains the
-  per-envelope cost of appending to a partial.
-- The pydantic-ai travel desk's `trace_rebooking_chain` task: an eight-booking
-  rebooking chain (`RebookedBooking.rebooked_from`) traced with eight sequential
-  `get_booking` calls and one conversion, with a fake-model cassette in both suites.
-  Its step limits are per scenario (12 tool and 14 model calls; the short tasks keep
-  8 and 6).
-- `make eval-pydantic-ai-long` (`eval/pydantic_ai.py --long`, an input of the manual
-  Ollama workflow): the chain in `model-live` under `strict` and `fallback`, with
-  per-run step statuses, a survival curve by served-call index, a clustering rate and
-  the identify keys' firings; `make record-pydantic-ai-chain` logs its live recording
-  attempts.
-
-- A seventh retail task, hand-written and not from τ-bench
-  (`account_not_found_wrong_zip`, `examples/retail_agent/replay-error.toml`): a wrong zip
-  code, so the user lookup fails with `is_error: true` and the right reply is that the
-  account was not found, with nothing written; the rule `reports_account_not_found`; a
-  fake-model cassette and a qwen2.5:7b one. The mutation study replays it unmutated and
-  under every agent mutation in all seven configurations (`error_task`).
-- `examples/retail_agent/ollama.py`: the retail agent on a local model through Ollama.
-- `make record-retail-error-qwen` and `make eval-retail-error-qwen`
-  (`eval/retail_error.py`, a `retail_error` input of the manual Ollama workflow): the
-  task recorded on qwen2.5:7b, a probe of what Ollama does with `is_error`, and
-  `model-live` arms with the unmutated agent and with `drops_error_flag`.
-- `eval/retail_error.py --task --mutations`: the live retail harness for any task with a
-  setup and any agent mutation (M18's arms stay the default). `make
-  record-retail-lookup-qwen` and `make eval-retail-mutations-qwen` (a `retail_mutations`
-  input of the manual Ollama workflow) run `lookup_latest_order_total` on qwen2.5:7b under
-  eight agent mutations, with a `tool_use_id` probe, every prompt's size read from the
-  Ollama server's log, and the detection rule beside the scripted model's verdict.
-- `examples/retail_agent/replay-qwen.toml`: the retail suite's ground-truth checks for a
-  local model (no exact tool sequence). `make eval-retail-qwen-offline` (in `make eval`)
-  replays every qwen retail recording in `full`.
-- An `<id>_ollama` variant of every agent mutation in `eval/mutations/agents.py`.
-
-### Changed
-
-- The mutations that copy the retail agent's loop (`strips_policy`, `truncates_history`)
-  ask for the agent's model instead of always `claude-opus-5-5`.
-- `make record-pydantic-ai` re-records only M9's three tasks; the rebooking chain
-  records through `make record-pydantic-ai-chain` into its own attempts log.
-- A run whose model has no price is reported as `unpriced` (or `$x + N unpriced
-  calls`), not `$0.0000`.
-- `count_tokens`, message batches and the beta `parse` / `tool_runner` raise a
-  `ReplayError` that names them inside a session instead of going live.
-- `Cassette.loads` pauses the cyclic garbage collector while it parses, and only then:
-  loading 400 turns (50 MB) went from 1.84–2.11× to 1.22–1.33× linear in bytes against 100
-  turns (two runs).
-
-### Fixed
-
-- `client.with_options(...)` and `client.copy(...)` on a wrapped client return a
-  wrapped client; they used to return the bare client, so calls through the copy
-  (pydantic-ai makes them when `max_retries` is set) went live unrecorded.
-- Replaying with no client gave the offline stand-in no `base_url`, which
-  pydantic-ai reads on every response.
-
-## [1.0.0] - 2026-10-16
-
-The first release: the SDK, the `replay` CLI, the GitHub Action and the
-self-hosted dashboard.
+The first release: the SDK, the `replay` CLI, the GitHub Action, the
+self-hosted dashboard, and the evaluations that measure them (RESULTS.md).
 
 ### Recording and replay
 
 - Record a real agent run into a JSONL cassette: every model call (Anthropic SDK
-  sync, async, streaming and `messages.parse`; Ollama), every `@tool` call, clock
-  reads and random draws, with usage, cost and latency. Cassette schema v2, with
-  v1 cassettes read through a migration.
+  sync, async, streaming and `messages.parse`; `client.beta.messages.create`,
+  plain and `stream=True`, and `client.beta.messages.stream(...)` under the call
+  name `anthropic.beta.messages.create`, with `betas` in the fingerprint, the
+  surface pydantic-ai calls; Ollama), every `@tool` call, clock reads and random
+  draws, with usage, cost and latency. Cassette schema v2, with v1 cassettes read
+  through a migration.
+- `client.with_options(...)` and `client.copy(...)` on a wrapped client return a
+  wrapped client, so calls through a copy (pydantic-ai makes them when
+  `max_retries` is set) are recorded. `count_tokens`, message batches and the beta
+  `parse` / `tool_runner` raise a `ReplayError` that names them inside a session
+  instead of going live.
 - Replay with cut points: `full` (everything from the cassette, offline and
   bit-stable), `model-live` (the model runs live against frozen tools) and
-  `tools-live` (tools run live against recorded model replies).
+  `tools-live` (tools run live against recorded model replies). The offline
+  stand-in client carries a `base_url`, which pydantic-ai reads on every response.
 - Fingerprint matching with a cursor fallback that flags `approximate` steps;
   unrecorded-call policies `strict`, `fallback` and `synth` (stubs generated from
   a tool's JSON schema).
+- `identify` keys (`[defaults.identify]`, per scenario, or `replay(identify=...)`):
+  per tool, the arguments that name the entity a call reads or writes. A served
+  call only falls back to a recording of the same entity; otherwise it is
+  unrecorded and the policy decides.
+- xz-compressed cassettes: a path ending in `.xz` (`run.jsonl.xz`) is read and
+  written as xz everywhere a cassette goes (`replay record --out run.jsonl.xz`,
+  `replay run`, `replay ci` suites, `replay diff`, `Cassette.load` / `dump`). The
+  file is plain xz, so the `xz` tool converts either way. `.gz`, `.bz2`, `.zst`
+  and other compression suffixes are refused with the rename that fixes them.
+- Partial cassettes: a recording to a path (`replay record`, `record(..., out=...)`,
+  `RecordingSession(out=...)`) appends each envelope to `<out>.partial` as it
+  completes and moves the finished file into place at the end, with the same
+  bytes `dump` writes. A `.partial` without a footer loads as interrupted
+  (`Cassette.interrupted`; a torn last line is dropped and counted in
+  `torn_bytes`). `replay run` replays it with a warning, `replay diff` compares
+  it, and `replay ci` refuses it. `replay record` keeps the partial on Ctrl-C and
+  refuses to overwrite one without `--force`.
+- `Cassette.loads` pauses the cyclic garbage collector while it parses, and only
+  then: loading 400 turns (50 MB) went from 1.84–2.11× to 1.22–1.33× linear in
+  bytes against 100 turns (two runs).
 
 ### Checks and CI
 
@@ -146,9 +63,16 @@ self-hosted dashboard.
   `max_tool_calls`, `arg_schema`, `output_schema`, `rule`, `budget` and `judge`.
 - `replay ci`: a TOML suite of scenarios, exit codes 0 / 1 / 2, JSON and Markdown
   reports, the Markdown summary written to the GitHub step summary.
+- `fail_on_tool_drift` in suites (and `replay ci --fail-on-tool-drift`): in
+  `tools-live`, every live tool result is compared with the one recorded for the
+  same call, and a difference fails the scenario as `no_tool_drift`, naming the
+  first differing path. Per-tool `ignore_fields` skip values that legitimately
+  vary; with `identify` keys, a live call whose identity no recording has is
+  drift (`identity_unrecorded`).
 - Cost and latency baselines (`replay baseline`) with relative budget limits;
   a dated pricing table (`agent_replay/pricing.py`, overridable with
-  `REPLAY_PRICES_FILE`).
+  `REPLAY_PRICES_FILE`). A run whose model has no price is reported as
+  `unpriced` (or `$x + N unpriced calls`), not `$0.0000`.
 - The composite GitHub Action (`uses: TheAsianFish/agent-replay@v1`): runs
   `replay ci`, upserts one sticky PR comment per suite, uploads the reports as an
   artifact and fails the job on a regression; a dry-run mode reports without
@@ -185,12 +109,55 @@ self-hosted dashboard.
   viewer, aligned diff, suites, flakiness trends, calibration reports), bundled
   in the wheel; `docker compose up` runs it on PostgreSQL with demo data.
 
+### Examples
+
+- `examples/toy_agent`: the quickstart agent, with fake-model cassettes for the
+  Anthropic and Ollama adapters.
+- `examples/retail_agent`: the τ-bench retail subset (six tasks, MIT, attributed)
+  plus a hand-written seventh task (`account_not_found_wrong_zip`,
+  `replay-error.toml`) in which a wrong zip code makes the user lookup fail with
+  `is_error: true` and the right reply is that the account was not found, with
+  nothing written (rule `reports_account_not_found`); fake-model, live
+  `claude-opus-5-5` and qwen2.5:7b cassettes; `ollama.py` runs the agent on a
+  local model through Ollama; `replay-qwen.toml` holds the ground-truth checks for
+  a local model (no exact tool sequence).
+- `examples/pydantic_ai_agent`: a tool-using pydantic-ai travel desk with the
+  client injected through
+  `AnthropicProvider(anthropic_client=replay.wrap(AsyncAnthropic(...)))` and no
+  other framework change; fake-model and qwen2.5:7b cassettes; the
+  `trace_rebooking_chain` task (an eight-booking chain, `RebookedBooking.rebooked_from`,
+  traced with eight sequential `get_booking` calls and one conversion), with
+  per-scenario step limits.
+
 ### Evaluation
 
-- A mutation study (32 injected regressions, 5 benign refactors), a simulation of
-  the sequential gate, the judge against objective labels, LLMBar floors and a
-  recorder-overhead and replay-speed benchmark, all offline. Results and the
-  commands that need an API key are in `RESULTS.md`.
+- Offline, re-run by CI against the committed results: the mutation study (32
+  injected regressions, 5 benign refactors, 2 identity mutations, 5
+  correct-but-different paths and the error task, in seven replay
+  configurations), a simulation of the sequential gate, the judge against
+  objective labels, LLMBar floors, `make eval-verdict-curve` (how often a subset
+  of n runs gives the all-runs fixed-threshold verdict, for every committed flake
+  report), a recorder-overhead and replay-speed benchmark, `make bench-scale`
+  (cassette bytes, codecs, load, replay and run-store timings for runs of 5 to
+  400 turns and for every committed real recording) and `make bench-upstream`
+  (the pydantic-ai cassettes on pydantic-ai-slim 2.58.0 to 2.62.0).
+- On a local model through Ollama, from `make` targets and the manual
+  `ollama.yml` workflow, never on pull requests: `eval-pydantic-ai` (a
+  `model-live` flake on qwen2.5:7b), `eval-pydantic-ai-arms` (`strict` against
+  `fallback`), `eval-pydantic-ai-swap` (qwen2.5:3b, the prompt without its guard
+  line, `temperature=0` after probe calls, and a control), `eval-pydantic-ai-long`
+  (the rebooking chain, with a survival curve by served-call index),
+  `eval-pydantic-ai-no-guard` (`fallback` against `synth`), `eval-retail-error-qwen`
+  (the error task unmutated and with `drops_error_flag`, after a probe of what
+  Ollama does with `is_error`) and `eval-retail-mutations-qwen` (eight agent
+  mutations on `lookup_latest_order_total`, with a `tool_use_id` probe and every
+  prompt's size read from the server log). Every run is classified by how it
+  ended; the raw reports are committed under `eval/results/`. `make record-*`
+  targets log each recording attempt.
+- `make regression-pr` opens a pull request that seeds a regression so the
+  Action fails it for real; `make walkthrough` records the README's dashboard
+  walkthrough. Results and the commands that need an API key are in
+  `RESULTS.md`.
 
 ### Known limitations
 
@@ -198,6 +165,8 @@ self-hosted dashboard.
   oracle tests; until it is implemented, calibration reports show raw agreement
   in the kappa column and no judge criterion can gate.
 - The dashboard API has no authentication; run it on a trusted network.
+- The longest committed real recording is 6 turns; the cassette-bytes results
+  past that are on synthetic runs.
 
 [Unreleased]: https://github.com/TheAsianFish/agent-replay/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/TheAsianFish/agent-replay/releases/tag/v1.0.0
