@@ -8,8 +8,9 @@
 #
 # The wheel must bundle the dashboard (a build from a checkout without `make ui` is
 # valid to pip but serves a 404 at /); --no-dashboard allows such a wheel.
-# PYTHON picks the interpreter (default python3.12). Needs curl; pip fetches the
-# dependencies from the package index.
+# PYTHON picks the interpreter (default python3.12; when that is not on PATH, the
+# CPython 3.12 uv manages, `uv python find --system 3.12`). Needs curl; pip fetches
+# the dependencies from the package index.
 set -euo pipefail
 
 expect_dashboard=1
@@ -29,6 +30,13 @@ python=${PYTHON:-python3.12}
 
 fail() { echo "check_wheel: FAIL: $*" >&2; exit 1; }
 step() { printf '\n== %s\n' "$*"; }
+
+if [ -z "${PYTHON:-}" ] && ! command -v "$python" > /dev/null 2>&1; then
+    # No python3.12 on PATH: use the one uv manages (outside the project's .venv).
+    python=$(uv python find --system 3.12 2> /dev/null) \
+        || fail "python3.12 is not on PATH and uv has no CPython 3.12; run \`uv python install 3.12\` or set PYTHON"
+    echo "python: $python (python3.12 is not on PATH)"
+fi
 
 shopt -s nullglob
 wheels=("$dist"/agent_replay-*.whl)
