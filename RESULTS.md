@@ -31,7 +31,7 @@ byte-stable ones and fails on any change.
 | LLMBar heuristic floors (Adversarial) | shorter 82.0%, longer 18.0%, first 50.0% (position bias 100%) | LLMBar heuristic baselines (M6) | `make eval-llmbar-heuristics` | measured, offline |
 | Recorder overhead | model ~0.7 ms, tool ~0.1 ms, clock / random ~50 µs per call (median) | Recorder overhead and replay speed (M7) | `make bench-replay` | measured, offline (machine-dependent) |
 | Full replay vs live call time | suite 222 ms with checks vs 51.0 s (230×) | Recorder overhead and replay speed (M7) | `make bench-replay` | measured, offline (machine-dependent) |
-| Wheel installs in a clean venv | wheel 342,782 B with the dashboard; sdist 327,427 B; both install and pass the smoke test | Release readiness (M7) | `make dist` | measured |
+| Wheel installs in a clean venv | 1.0.0 release build: wheel 375,285 B with the dashboard, sdist 369,194 B; both install in fresh venvs and pass the smoke test; `twine check --strict` passed (M7 build: 342,782 B and 327,427 B) | Release readiness (1.0.0, final) | `make dist` | measured |
 | The Action, dry run on the retail suite | pass: exit 0, 0 failed; mutant: exit 1, 5/6 failed | Release readiness (M7) | CI job `action`; locally with `act` | measured |
 | The Action fails a seeded regression, rehearsed | `replay ci` 2/6 passed, 4 failed on `rule:matches_ground_truth`; the `replay.yml` job under act fails with exit 1 | The Action on a real failing PR (M8) | `make regression-pr-rehearse`; act | measured, offline |
 | The Action on a real PR, passing half | PR #11 (it changes `replay.yml`): 6/6 passed, sticky comment posted by `github-actions[bot]`, identical to a local run; PR #12: 6/6 again, same rows | The Action on a real failing PR (M8) | `replay.yml` on PRs #11 and #12 | measured, observed on GitHub |
@@ -3558,6 +3558,115 @@ was what kept the rule honest; (3) the mutation the plan expected to be
 harmless, `strips_policy`, is the only arm that does better than the
 unmutated agent. A resolvable version of this question needs a task qwen
 passes at least 8 of 10 (M18's error task did) or a model that does.
+
+## Release readiness (1.0.0, final)
+
+The release pass over `main` at M19 (2026-10-31), before the maintainer tags
+`v1.0.0`. Nothing was published; these are the checks the release workflow and
+the CI jobs run, executed locally on the release branch. The M7 section above
+is the same set of checks on the v1 build and is kept as history. Machine: 4
+vCPU GitHub-hosted runner (AMD EPYC 7763), Python 3.12.16, Node 24.22, Docker 29.4.
+
+**Quality gate.** `make check` (ruff, `mypy --strict` over 120 source files,
+pytest with sockets blocked): 3 min 14 s.
+
+```
+Success: no issues found in 120 source files
+uv run pytest -q
+1542 passed, 22 skipped, 3 deselected, 58 xfailed in 154.61s (0:02:34)
+```
+
+The 58 expected failures are the `core` statistics tests, which fail until
+`agent_replay/stats.py` is implemented; the 22 skips are the PostgreSQL and
+live tests, which need `REPLAY_TEST_PG_URL` or a key.
+
+**Every offline evaluation and benchmark reproduces its committed result.**
+`make eval` (2 min 56 s) then `make bench` (4 min 55 s), then
+`git diff --exit-code eval/results`, which is what the CI `python` job runs:
+the committed results are byte-identical. The last lines of `make eval`:
+
+```
+PASS replay-qwen.toml cheapest_fare_in_euros: 5 steps, 0 approximate
+PASS replay-qwen.toml book_earliest_flight: 5 steps, 0 approximate
+PASS replay-qwen.toml cancel_refundable_booking: 5 steps, 0 approximate
+PASS replay-qwen.toml trace_rebooking_chain: 19 steps, 0 approximate
+uv run python -m eval.retail_error --offline
+PASS examples/retail_agent/replay-error.toml account_not_found_wrong_zip: 5 steps, 0 approximate
+```
+
+`make bench` wrote `sprt_sim.json` unchanged ("fixed-sample test meeting
+alpha=0.05, beta=0.05 (exact binomial): 24 runs, pass on at least 19") and
+`bench_scale`'s committed sizes unchanged ("exponent 1.607; decision:
+transparent .jsonl.xz cassettes"). The machine-dependent timings went to
+`.replay/`; this run's `bench_replay.json` summary, beside the committed 230×:
+suite replay 175.7 ms (205.2 ms with checks) against 51,011 ms of recorded
+live latency, 290× (249× with checks); recorder overhead medians 593 µs per
+model call, 89 µs per tool call, 36 µs per clock read; append to a partial
+81 µs per model envelope, 0.0046% of the 1,775 ms median recorded model call.
+
+**Demos.** `make demo`, `make ci-demo` and `make flake-demo` (44 s together):
+the toy replay passes and its mutant exits 1; the retail suite passes in every
+mode, each of the three seeded mutants exits 1, the stale-status tool fails
+`tools-live` with `--fail-on-tool-drift`; the offline flake gate passes the
+fake model 6/6 and fails the seeded flaky model (4/6 passed the gate, 2 flaky,
+`exchange_waterproof_boots` 14/20 and `transfer_swapped_refunds` 0/20).
+
+**Dashboard.** `make ui-check` (24 s): the generated API types match
+`openapi.json`, `tsc` and `eslint` clean, vitest 12 files, 101 tests passed.
+
+**Wheel and sdist in clean venvs.** `make dist` (51.0 s): the dashboard built
+into the package, `uv build`, then `scripts/check_wheel.sh --expect-dashboard`
+with `PYTHON` pointed at a plain CPython 3.12.16, then `twine check --strict`.
+Raw output (absolute paths shortened):
+
+```
+wheel: dist/agent_replay-1.0.0-py3-none-any.whl (368 KiB)
+sdist: dist/agent_replay-1.0.0.tar.gz (364 KiB)
+version: 1.0.0
+== wheel: fresh venv, pip install 'agent_replay-1.0.0-py3-none-any.whl[server]'
+== replay --version
+agent-replay 1.0.0
+== import agent_replay from the venv
+agent_replay 1.0.0 from $TMP/venv/lib/python3.12/site-packages/agent_replay
+migrations: 0001_initial.py, 0002_flake_and_calibration.py, 0003_unpriced_calls.py; dashboard bundled: True
+== the run store migrates to head
+run store at schema revision 0003
+== replay show and replay run on the toy cassette
+replay show: 14 lines
+PASS tool_sequence: 3 tool call(s) match the expected sequence (exact)
+passed
+== replay serve
+/api/health: {"status":"ok","version":"1.0.0","backend":"sqlite","revision":"0003"}
+/: the dashboard's index.html
+== sdist: fresh venv, pip install agent_replay-1.0.0.tar.gz
+agent-replay 1.0.0
+check_wheel: OK (1.0.0)
+Checking dist/agent_replay-1.0.0-py3-none-any.whl: PASSED
+Checking dist/agent_replay-1.0.0.tar.gz: PASSED
+$ ls -l dist/
+-rw-r--r-- 1 runner runner 375285 Oct 31 05:24 agent_replay-1.0.0-py3-none-any.whl
+-rw-r--r-- 1 runner runner 369194 Oct 31 05:24 agent_replay-1.0.0.tar.gz
+```
+
+The wheel grew from 342,782 B (M7) to 375,285 B: the drift, identify, xz,
+partial-cassette and third migration code, and the dashboard bundle
+(416.41 kB of JavaScript before gzip, against 416.24 kB).
+
+**Containers.** `docker compose up --build --detach --wait app` (1 min 15 s
+including the image build): the seed container filled PostgreSQL,
+`/api/runs?limit=1` reported 480 runs, `/api/health` returned
+`{"status":"ok","version":"1.0.0","backend":"postgresql","revision":"0003"}`
+and `/` served the dashboard's `index.html`; `docker compose down --volumes`
+cleaned up. Neither hosted route in RELEASE.md was deployed (no account).
+
+**Release notes.** `python3 scripts/release_notes.py 1.0.0` extracts the
+dated `[1.0.0]` section of CHANGELOG.md, so the tag check in `release.yml`
+would pass. No `v1.0.0` tag exists yet; the changelog's earlier `[Unreleased]`
+entries were folded into that one section because nothing had shipped to
+split a version on.
+
+**Not done here.** Observing GitHub Actions, pushing the tag and publishing
+(RELEASE.md, steps 2 to 7) need the maintainer's account.
 
 ## To measure
 

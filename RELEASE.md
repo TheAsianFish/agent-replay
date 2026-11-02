@@ -40,9 +40,9 @@ the GHCR push.
 The Action can be used by other repositories, and listed on the Marketplace,
 only from a public repository. Settings → General → Danger zone → *Change
 visibility*. Before that, check that nothing private is tracked:
-`git ls-files | grep -Ei '(^|/)(CLAUDE\.md|AGENTS\.md|\.claude/|\.agent/|\.env)'`
-must print nothing (`.gitignore` already lists them, so a plain `git add` skips
-them, but a forced add would not).
+`git ls-files | grep -Ei '(^|/)(\.env|\.replay/|.*\.db$)'` must print nothing
+(`.gitignore` lists them, so a plain `git add` skips them, but a forced add
+would not), and `git grep -nE 'sk-ant-[A-Za-z0-9]'` finds no key.
 
 ## 2. Check that main is releasable
 
@@ -70,10 +70,12 @@ them, but a forced add would not).
 3. `uv lock` (the lockfile records the project version), commit:
    `git commit -am "Release X.Y.Z"`, and push to `main` through a PR as usual.
 
-For 1.0.0 this step is done: `pyproject.toml` and `uv.lock` say `1.0.0` and
-CHANGELOG.md has a dated `[1.0.0]` section. If the tag lands on a later day,
-change that date before tagging, as Keep a Changelog dates a section by its
-release day.
+For 1.0.0 this step is done: `pyproject.toml` and `uv.lock` say `1.0.0`, and
+CHANGELOG.md has one dated `[1.0.0]` section holding everything built so far
+(no `v1.0.0` tag exists yet, so nothing was split off into a later version).
+Its date is the day the release branch was prepared; if the tag lands on a
+later day, change that date before tagging, as Keep a Changelog dates a
+section by its release day.
 
 ## 4. Dry-run the release (optional)
 

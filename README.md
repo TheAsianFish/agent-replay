@@ -36,8 +36,8 @@ the retail example: the runs list, a failing run's checks and trace with its
 scenario (the order lookups a mutant skipped show up as removed steps), and the
 flakiness page with a flaky scenario's pass rate and interval over reports.
 
-**Status: 1.0.0, all seven milestones built** (not yet published to PyPI; see
-[RELEASE.md](RELEASE.md)). Working today:
+**Status: 1.0.0, all nineteen milestones built** (not yet published to PyPI;
+see [RELEASE.md](RELEASE.md) for the maintainer's release steps). Working today:
 - recording through the Anthropic SDK (sync, async, streaming,
   `messages.parse`), Ollama, `@tool`, and the clock and random helpers;
 - the three cut-point modes, fingerprint matching and the three
@@ -70,7 +70,20 @@ flakiness page with a flaky scenario's pass rate and interval over reports.
 - a GitHub Action (`uses: TheAsianFish/agent-replay@v1`) that runs `replay ci`
   on a PR, keeps one summary comment up to date and fails the check on a
   regression; a wheel with the dashboard bundled, a guarded release workflow
-  and a container image.
+  and a container image;
+- recording of the `beta` messages surface pydantic-ai uses, so a pydantic-ai
+  agent records with its client wrapped and no other framework change
+  ([examples/pydantic_ai_agent](examples/pydantic_ai_agent), fake-model and
+  qwen2.5:7b cassettes);
+- a tool-result drift check (`fail_on_tool_drift`) and per-tool `identify`
+  keys, so a live tool's changed result and a read of an entity the recording
+  never saw are both caught instead of served another entity's result;
+- `.jsonl.xz` cassettes, and partial cassettes that keep every step a killed
+  recording completed;
+- the retail agent on a local model through Ollama, a hand-written task in
+  which a tool legitimately fails, and seven local-model evaluations run from
+  a manual workflow (never on pull requests), every run classified by how it
+  ended.
 
 Measured so far ([RESULTS.md](RESULTS.md)):
 - **Mutation study (offline).** Stubbing everything (`full`) caught 7 of
@@ -96,6 +109,17 @@ Measured so far ([RESULTS.md](RESULTS.md)):
   choosing the shorter output is right 82.0% of the time and the longer one
   18.0%; always choosing the first output is right 50.0% with a position bias
   of 100%. A real judge's score means little until read against these.
+- **A real framework on a free local model.** An unchanged pydantic-ai agent
+  records and replays through Replay; on qwen2.5:7b through Ollama its
+  booking task passed 2 of 10 `model-live` runs behind a recording that
+  passes. Removing one guard line from its prompt took the fare task from
+  18 / 20 to 2 / 20, and real tools in place of the frozen ones still failed
+  18 of 20, so the verdict was the model's, not the recording's. On an
+  8-link chain, 320 of 320 served lookups stayed on the recorded path.
+- **Cassettes at scale.** Cassette bytes grow quadratically in turns; at 100
+  turns gzip recovers 3.8× (envelopes outgrow its 32 KB window) and xz 105×,
+  and a custom shared-prefix schema would add only 1.07× under xz, so
+  cassettes compress as `.jsonl.xz` with no schema change.
 
 Earlier milestones: on a live `model-live` run, a
 25% relative cost limit passed the unchanged agent (within 5% of baseline)
@@ -1179,7 +1203,8 @@ make cassettes         # re-record the toy agent's cassettes (Anthropic and Olla
 make retail-cassettes  # re-record the retail agent's cassettes with the fake model
 make bench-sprt        # simulate the sequential gate over true pass rates (offline)
 make flake-demo        # replay flake offline: fake model passes, seeded flaky model fails
-make eval-mutations    # the mutation study: 32 mutations + 5 benign refactors, 5 configurations (~25 s)
+make eval-mutations    # the mutation study: 32 mutations + 5 benign refactors, 2 identity mutations, 5 paths and
+                       # the error task in 7 configurations (~2 min, byte-stable JSON)
 make eval-judge-smoke  # judge vs deterministic checks on 24 retail runs (offline, from the cache)
 make golden            # rebuild the retail golden set: 21 items from 24 runs (offline)
 make eval-judge-objective  # judge vs the golden set's objective labels (offline, from the cache)
@@ -1190,11 +1215,24 @@ make data-llmbar       # fetch LLMBar at the pinned commit into eval/data/llmbar
 make eval-llmbar-heuristics  # LLMBar floors: first / longer / shorter output (offline)
 make eval-llmbar-dry   # calls and estimated cost of the real judge's LLMBar run (offline)
 make eval-llmbar       # the real judge on LLMBar (needs a key; 838 calls, ~$12.73 estimated)
+make eval-pydantic-ai-offline  # both pydantic-ai suites replayed in full, 0 approximate steps (in make eval)
+make eval-retail-qwen-offline  # the qwen2.5:7b retail recordings replayed in full (in make eval)
+make eval-verdict-curve  # how many runs a fixed-threshold verdict needs, from every committed flake report
+make eval-pydantic-ai  # with Ollama: replay flake in model-live on qwen2.5:7b, 10 runs per scenario (~17 min)
+make eval-pydantic-ai-arms      # local-model arms through Ollama (hours on a CPU; inputs of the manual
+make eval-pydantic-ai-swap      #   ollama.yml workflow, never on pull requests): strict vs fallback,
+make eval-pydantic-ai-long      #   model and prompt swaps, the rebooking chain, and fallback vs synth
+make eval-pydantic-ai-no-guard  #   on the prompt without its guard line
+make eval-retail-error-qwen     # the error task on qwen2.5:7b, unmutated and with drops_error_flag
+make eval-retail-mutations-qwen # eight agent mutations on qwen2.5:7b (ollama serve with OLLAMA_CONTEXT_LENGTH=8192)
+make record-pydantic-ai         # re-record the qwen2.5:7b cassettes through Ollama (also record-pydantic-ai-chain,
+make pydantic-ai-cassettes      #   record-retail-error-qwen, record-retail-lookup-qwen); the fake-model cassettes
 make demo-data         # fill .replay/demo.db with real replay runs for the dashboard (~25 s)
 make ui                # npm ci + build the dashboard into agent_replay/server/static
 make ui-check          # dashboard: generated types current, tsc, eslint, vitest
 make serve             # replay serve over $REPLAY_DB_URL (or .replay/replay.db)
-make eval              # every offline evaluation (mutations, judge smoke and objective, LLMBar floors, token rates)
+make eval              # every offline evaluation (mutations, judge smoke and objective, LLMBar floors, token rates,
+                       # pydantic-ai and qwen retail replays, verdict curve); CI re-runs it and diffs eval/results
 make bench             # every offline benchmark (bench-sprt, bench-replay, bench-scale)
 make bench-replay      # recorder overhead per boundary and full replay vs live duration (~20 s, to .replay/)
 make bench-scale       # cassette bytes from 5 to 200 turns, codecs, store; timings to .replay/ (~1 min)
