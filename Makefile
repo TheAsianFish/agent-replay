@@ -315,7 +315,8 @@ ui:
 
 # The release artifacts: the dashboard built into the package, then the wheel and sdist in
 # dist/, each installed in a fresh venv outside the repo and smoke-tested (scripts/check_wheel.sh;
-# needs python3.12 and the package index, ~1 min), then `twine check` on their metadata.
+# needs python3.12, on PATH or managed by uv, and the package index, ~1 min), then `twine check`
+# on their metadata.
 dist: ui
 	rm -rf dist
 	uv build

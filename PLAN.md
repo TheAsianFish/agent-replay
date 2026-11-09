@@ -204,14 +204,16 @@ judge baseline when available; it is never presented as the headline judge.
   summary on the PR. A `v1` moving tag is documented in RELEASE.md.
 - `docker compose up` for the dashboard (FastAPI + PostgreSQL + static React
   build). One image, multi-stage Dockerfile.
-- Optional hosted demo (read-only dashboard seeded with D1 and the mutation
-  results) described in RELEASE.md with exact steps for Fly.io or Render.
+- Optional hosted demo (read-only dashboard seeded with `make demo-data`'s
+  real `replay ci` and `replay flake` runs of the retail example) described in
+  RELEASE.md with exact steps for Fly.io or Render.
 
 **Maintainer steps** (listed in RELEASE.md):
 create the PyPI project and trusted-publisher binding; add `ANTHROPIC_API_KEY`
-as a repository secret for the manual-dispatch `eval-live` workflow; record D1
-and label it (`make record-golden`, `replay label`); tag `v1.0.0`; optionally
-publish the Action to the Marketplace and deploy the demo.
+as a repository secret for the `live` job of `ci.yml` (it skips without the
+secret) and any key-requiring eval run in Actions; record D1 and label it
+(`make record-golden`, `replay label`); tag `v1.0.0`; optionally publish the
+Action to the Marketplace and deploy the demo.
 
 ## Statistics core
 
